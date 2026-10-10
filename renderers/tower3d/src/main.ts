@@ -28,6 +28,7 @@ import { CABINET, DESK, EYE, bigScreens, cabinetOf, carBox, colliders, coreFront
 import { loadModels } from './models.ts'
 import { PROC } from './proc/flag.ts'
 import { shadowEverything } from './proc/look.ts'
+import { contactShadows } from './proc/contact.ts'
 import { fillLayer, loadKit, zonesPlaced, type Kit, type Placed } from './kit.ts'
 import { hangOn, levelsShown, onLevel, showLevels } from './levels.ts'
 import { THEMES, bare, dress, itemOf, type Placement } from './dress.ts'
@@ -1332,10 +1333,15 @@ function render() {
   if (s.board && s.world) paintScreens(s.simNow, screenDistance)
   showLevels(levelsShown(s))
   if (PROC.has('look')) shadowEverything(scene)
+  if (PROC.size) (renderer.info.autoReset = false), renderer.info.reset()
+  if (PROC.has('contact')) contactShadows(renderer, scene, standingOn(), { ...s.plan, y: s.plan.levels[s.me.level]?.y ?? 0 })
   renderer.render(scene, camera)
   Object.assign(s.meter, { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles })
   if (s.hands && handsShown()) drawHands(renderer, s.hands)
 }
+
+/** What stands on your level and its own part of the building, while you are on one: walking or petting, not riding or flying. */
+const standingOn = () => (s.world && handsShown() ? [s.levels[s.me.level]?.group, s.world.levels[s.me.level]].filter((o) => o !== undefined) : [])
 
 /** Your hands are in view while you walk or pet a cat, but not while the camera rides or flies. */
 const handsShown = () => (s.view === 'walk' || s.view === 'pet') && !s.ride && !s.flight
