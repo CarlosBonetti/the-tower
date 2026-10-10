@@ -11,7 +11,7 @@ import { PROC } from './flag.ts'
  * - The fill is the sky: a cool hemisphere, tinted by the horizon, never darker than a clear night's.
  * - Interiors have their own light from the ceiling: every lit material adds it inside the building's volume (under
  *   the party's lights over the roof, within the plan), banded by the toon ramp by how much a face looks up. The city
- *   never sees it. With `?proc=rig,lamps` a few unshadowed point lights over your level light it instead, for comparison.
+ *   never sees it. It pools under each ceiling panel, from the grid the panels hang on. With `?proc=rig,lamps` a few unshadowed point lights over your level light it instead, for comparison.
  */
 
 /** Hours the sun is up, and its highest elevation (radians). */
@@ -58,7 +58,15 @@ const uniforms = {
   interiorMin: { value: new THREE.Vector3() },
   interiorMax: { value: new THREE.Vector3() },
   interiorLight: { value: new THREE.Color() },
+  panelGrid: { value: new THREE.Vector4() },
+  panelCount: { value: new THREE.Vector2() },
 }
+
+/**
+ * Under each ceiling panel a pool: the interior's light is `low` of its strength between panels and rises to `high`
+ * under one, over an ellipse `reach` m across (x, z), the panels being long in x.
+ */
+const POOL = { low: 0.7, high: 1.45, reach: [3.2, 2.4] }
 
 /** Adds the interior's ceiling light to a lit material's shader: a fill inside the building's box, banded like the sun. */
 function lightInside(m: THREE.Material) {
@@ -79,7 +87,7 @@ function lightInside(m: THREE.Material) {
   vInterior = ( modelMatrix * interiorAt ).xyz;`,
       )
     shader.fragmentShader = shader.fragmentShader
-      .replace('void main() {', 'varying vec3 vInterior;\nuniform vec3 interiorMin;\nuniform vec3 interiorMax;\nuniform vec3 interiorLight;\nvoid main() {')
+      .replace('void main() {', 'varying vec3 vInterior;\nuniform vec3 interiorMin;\nuniform vec3 interiorMax;\nuniform vec3 interiorLight;\nuniform vec4 panelGrid;\nuniform vec2 panelCount;\nvoid main() {')
       .replace(
         '#include <lights_fragment_end>',
         `#include <lights_fragment_end>
@@ -90,7 +98,10 @@ function lightInside(m: THREE.Material) {
   #else
     float band = 0.75 + 0.25 * up;
   #endif
-  reflectedLight.indirectDiffuse += inside.x * inside.y * inside.z * band * interiorLight * material.diffuseColor;`,
+  vec2 panel = panelGrid.xz + clamp( floor( ( vInterior.xz - panelGrid.xz ) / panelGrid.yw + 0.5 ), vec2( 0.0 ), panelCount - 1.0 ) * panelGrid.yw;
+  vec2 offset = ( vInterior.xz - panel ) / vec2( ${POOL.reach[0] / 2}, ${POOL.reach[1] / 2} );
+  float pool = mix( ${POOL.low.toFixed(3)}, ${POOL.high.toFixed(3)}, smoothstep( 0.2, 0.8, exp( -dot( offset, offset ) ) ) );
+  reflectedLight.indirectDiffuse += inside.x * inside.y * inside.z * band * pool * interiorLight * material.diffuseColor;`,
       )
   }
   m.customProgramCacheKey = () => 'interior'
@@ -167,11 +178,14 @@ export function rigHour(hours: number, sky: Sky) {
  * Each frame: enlists what is new, fits the sun's shadow to what is seen (your level while walking, the whole building
  * from outside), sets the interior's box to the building, and hangs the lamps over your level.
  */
-export function rigFrame(scene: THREE.Scene, at: { width: number; depth: number; top: number; y: number; height: number; whole: boolean }) {
+export function rigFrame(scene: THREE.Scene, at: { width: number; depth: number; top: number; y: number; height: number; whole: boolean; panels: { x0: number; x1: number; dx: number; z0: number; z1: number; dz: number } }) {
   const { sun, lamps, toward } = rig!
   enlist(scene)
   uniforms.interiorMin.value.set(-at.width / 2 + 0.1, -0.5, -at.depth / 2 + 0.1)
   uniforms.interiorMax.value.set(at.width / 2 - 0.1, at.top + ROOF_LIT, at.depth / 2 - 0.1)
+  const { x0, x1, dx, z0, z1, dz } = at.panels
+  uniforms.panelGrid.value.set(x0, dx, z0, dz)
+  uniforms.panelCount.value.set(Math.floor((x1 - x0) / dx + 1e-6) + 1, Math.floor((z1 - z0) / dz + 1e-6) + 1)
   const [low, high] = at.whole ? [0, at.top + 8] : [at.y, at.y + at.height]
   const center = new THREE.Vector3(0, (low + high) / 2, 0)
   const reach = Math.hypot(at.width / 2, at.depth / 2, (high - low) / 2) + SHADOW.margin

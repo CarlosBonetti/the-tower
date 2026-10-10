@@ -171,10 +171,14 @@ function ceiling(p: Plan, h: number, color: THREE.ColorRepresentation) {
   return c
 }
 
+/** Where a level's ceiling panels hang: a grid from (x0, z0) to (x1, z1), `dx` and `dz` apart. */
+export const panelGrid = (p: Plan) => ({ x0: -p.width / 2 + 4, x1: p.width / 2 - 4, dx: 5.8, z0: coreFront(p) + 2, z1: p.depth / 2 - 2, dz: 4.8 })
+
 function ceilingLights(p: Plan, h: number, color: THREE.ColorRepresentation) {
   const panels: THREE.BufferGeometry[] = []
-  for (let x = -p.width / 2 + 4; x <= p.width / 2 - 4; x += 5.8) {
-    for (let z = coreFront(p) + 2; z <= p.depth / 2 - 2; z += 4.8) {
+  const grid = panelGrid(p)
+  for (let x = grid.x0; x <= grid.x1; x += grid.dx) {
+    for (let z = grid.z0; z <= grid.z1; z += grid.dz) {
       const panel = new THREE.BoxGeometry(2.2, 0.04, 0.6)
       panel.translate(x, h - 0.03, z)
       panels.push(panel)

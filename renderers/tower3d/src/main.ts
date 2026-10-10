@@ -63,7 +63,7 @@ import type { FloorCollection, FloorItem } from '../../../src/bridge/board.ts'
 import { camera, canvas, flyPlane, orbit, renderer, scene, tickOutside } from './stage.ts'
 import { s, type GamePanel, type Panel, type Spot, type Standing, type Threads } from './state.ts'
 import { aim, fall, jump, look, walk, type Walker } from './walker.ts'
-import { boardFace, buildWorld, paintDirectory, setDoors, setLimits, setShellTitles } from './world.ts'
+import { boardFace, buildWorld, paintDirectory, panelGrid, setDoors, setLimits, setShellTitles } from './world.ts'
 
 const $ = (id: string) => document.getElementById(id)!
 const show = (id: string, on: boolean) => $(id).classList.toggle('hidden', !on)
@@ -1334,7 +1334,7 @@ const covered = () => s.panel?.kind === 'desk' || s.panel?.kind === 'shell' || s
 function render() {
   if (s.board && s.world) paintScreens(s.simNow, screenDistance)
   showLevels(levelsShown(s))
-  if (PROC.has('rig')) rigFrame(scene, { ...s.plan, top: s.plan.levels.at(-1)?.y ?? 0, y: s.plan.levels[s.me.level]?.y ?? 0, height: levelHeight(s.me.level), whole: !handsShown() })
+  if (PROC.has('rig')) rigFrame(scene, { ...s.plan, top: s.plan.levels.at(-1)?.y ?? 0, y: s.plan.levels[s.me.level]?.y ?? 0, height: levelHeight(s.me.level), whole: !handsShown(), panels: panelGrid(s.plan) })
   else if (PROC.has('look')) shadowEverything(scene)
   if (PROC.size) (renderer.info.autoReset = false), renderer.info.reset()
   if (PROC.has('contact')) contactShadows(renderer, scene, standingOn(), { ...s.plan, y: s.plan.levels[s.me.level]?.y ?? 0 })
