@@ -186,3 +186,10 @@ export function rigFrame(scene: THREE.Scene, at: { width: number; depth: number;
   const [cols, rows] = INTERIOR.lamps.count
   lamps.forEach((l, i) => l.position.set(((i % cols) + 0.5) * (at.width / cols) - at.width / 2, at.y + at.height - 0.6, (Math.floor(i / cols) + 0.5) * (at.depth / rows) - at.depth / 2))
 }
+
+/** Turns the interior's light off until the answer is called: for a pass that draws only what glows. */
+export function interiorOff() {
+  const was = uniforms.interiorLight.value.clone()
+  uniforms.interiorLight.value.setScalar(0)
+  return () => uniforms.interiorLight.value.copy(was)
+}
