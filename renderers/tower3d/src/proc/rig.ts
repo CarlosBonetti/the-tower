@@ -27,6 +27,24 @@ const ROOF_LIT = 8
 /** Shadow map texels, how far past the building the sun's view reaches (m), and frames between two redraws of the map (at once when the view or the sun moves). */
 const SHADOW = { size: 2048, margin: 6, every: 2 }
 
+/**
+ * The toon ramp under the rig, by the cosine between a face and its light: turned away (below −0.15) the dark band,
+ * grazing the middle one, facing it (over 0.4) the lit one. Wider and darker than the default's thirds, so a box under
+ * a low sun shows all three.
+ */
+const BANDS = [{ until: -0.15, value: 0.32 }, { until: 0.4, value: 0.68 }, { until: 1, value: 1 }]
+
+export function rigRamp() {
+  const n = 40
+  const data = new Uint8Array(n * 4)
+  for (let i = 0; i < n; i++) {
+    const cos = ((i + 0.5) / n) * 2 - 1
+    const v = Math.round(BANDS.find((b) => cos <= b.until)!.value * 255)
+    data.set([v, v, v, 255], i * 4)
+  }
+  return new THREE.DataTexture(data, n, 1, THREE.RGBAFormat)
+}
+
 /** Where the sun is at `hours`, toward it, and how much of the day's light it gives (0 under the horizon). */
 export function sunAt(hours: number) {
   const k = (hours - DAY.rise) / (DAY.set - DAY.rise)

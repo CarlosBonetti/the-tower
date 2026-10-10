@@ -1,10 +1,12 @@
 import * as THREE from 'three'
 import { type } from '../../../src/shared/design.ts'
 import { WORLD } from './cards.ts'
+import { PROC } from './proc/flag.ts'
+import { rigRamp } from './proc/rig.ts'
 
 /** A three-step ramp: MeshToonMaterial's flat cartoon banding. */
 const RAMP = (() => {
-  const t = new THREE.DataTexture(new Uint8Array([95, 95, 95, 255, 180, 180, 180, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat)
+  const t = PROC.has('rig') ? rigRamp() : new THREE.DataTexture(new Uint8Array([95, 95, 95, 255, 180, 180, 180, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat)
   t.minFilter = t.magFilter = THREE.NearestFilter
   t.needsUpdate = true
   return t
