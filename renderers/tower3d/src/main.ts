@@ -30,6 +30,7 @@ import { PROC } from './proc/flag.ts'
 import { shadowEverything } from './proc/look.ts'
 import { contactShadows } from './proc/contact.ts'
 import { occlude } from './proc/post.ts'
+import { rigFrame } from './proc/rig.ts'
 import { fillLayer, loadKit, zonesPlaced, type Kit, type Placed } from './kit.ts'
 import { hangOn, levelsShown, onLevel, showLevels } from './levels.ts'
 import { THEMES, bare, dress, itemOf, type Placement } from './dress.ts'
@@ -1333,7 +1334,8 @@ const covered = () => s.panel?.kind === 'desk' || s.panel?.kind === 'shell' || s
 function render() {
   if (s.board && s.world) paintScreens(s.simNow, screenDistance)
   showLevels(levelsShown(s))
-  if (PROC.has('look')) shadowEverything(scene)
+  if (PROC.has('rig')) rigFrame(scene, { ...s.plan, top: s.plan.levels.at(-1)?.y ?? 0, y: s.plan.levels[s.me.level]?.y ?? 0, height: levelHeight(s.me.level), whole: !handsShown() })
+  else if (PROC.has('look')) shadowEverything(scene)
   if (PROC.size) (renderer.info.autoReset = false), renderer.info.reset()
   if (PROC.has('contact')) contactShadows(renderer, scene, standingOn(), { ...s.plan, y: s.plan.levels[s.me.level]?.y ?? 0 })
   renderer.render(scene, camera)

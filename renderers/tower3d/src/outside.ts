@@ -5,6 +5,7 @@ import { pick, roll } from './avatar.ts'
 import { random } from './random.ts'
 import { PROC } from './proc/flag.ts'
 import { LOOK, castShadows } from './proc/look.ts'
+import { riseRig, rigHour } from './proc/rig.ts'
 import { LAYERS, skyline, type Layer } from './proc/skyline.ts'
 
 /** The city around the tower: sky, lights, the street and a city of windows, lit by the viewer's clock. Built once. */
@@ -455,7 +456,9 @@ export function outside(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
     cars.lamps.color.setScalar(THREE.MathUtils.clamp(2 - look.light, 0.15, 1))
     field.ground.color.setScalar(0.55 + 0.45 * day)
     field.lights.color.setScalar(THREE.MathUtils.clamp(2 - look.light, 0.15, 1))
+    if (PROC.has('rig')) rigHour(hours, look)
   }
-  if (PROC.has('look')) castShadows(renderer, sun)
+  if (PROC.has('rig')) riseRig(scene, renderer, { hemi, sun, ambient })
+  else if (PROC.has('look')) castShadows(renderer, sun)
   return { setHour, tick, fly }
 }
