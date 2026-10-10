@@ -16,7 +16,10 @@ import { instance, type Models } from './models.ts'
 import { buildParty, type Party } from './party.ts'
 import { floorPalette, tintOf } from './palette.ts'
 import { buildRoom, shellTag, shellTitle, type Bookcase } from './room.ts'
-import { block, dispose, glowing, mesh, plate, sprite, toon } from './toon.ts'
+import { block, dispose, glowing, mesh, plate, sprite, toon, toonPainted } from './toon.ts'
+import { PROC } from './proc/flag.ts'
+import { FINISHES, roofPlant, type Finish } from './proc/roof.ts'
+import { frame, parapet as procParapet, spandrel as procSpandrel } from './proc/shell.ts'
 import { screenMaterial } from './tv.ts'
 import { LOBBY_BAND, paintSign, signOf, signPlate } from './sign.ts'
 
@@ -71,9 +74,12 @@ function facade(p: Plan, height: number) {
       mullions.push(m)
     }
   }
+  if (PROC.has('shell')) return g.add(new THREE.Mesh(frame(p, height, PANE), toonPainted(SHELL.mullion)))
   g.add(new THREE.Mesh(mergeGeometries(mullions), toon('#1d2433')))
   return g
 }
+
+const SHELL = { mullion: '#4a5672', coping: '#4a5672' }
 
 /**
  * A level's foot on the outside: the spandrel round its slab and a strip in its colour, the roof's slab, or the
@@ -91,7 +97,11 @@ function foot(p: Plan, level: Level) {
     g.add(block(p.width + 0.3, h, 0.3, mat, 0, y, d), block(p.width + 0.3, h, 0.3, mat, 0, y, -d))
     g.add(block(0.3, h, p.depth + 0.3, mat, w, y, 0), block(0.3, h, p.depth + 0.3, mat, -w, y, 0))
   }
-  band(-SLAB, SLAB + 0.3, toon(spandrel))
+  if (PROC.has('shell')) {
+    const made = procSpandrel(p, SLAB, 0.3, PANE)
+    g.add(new THREE.Mesh(made.panel, toonPainted(spandrel)), new THREE.Mesh(made.trim, toonPainted(SHELL.mullion)))
+  }
+  else band(-SLAB, SLAB + 0.3, toon(spandrel))
   band(-0.06, 0.05, glowing(tint))
   return g
 }
@@ -267,12 +277,47 @@ function lobbyLevel(p: Plan, directory: World['directory'], models: Models, pick
   return g
 }
 
+/** Metal that catches the sun: a lit colour with a tight highlight, flat per facet like the toon materials. */
+const metal = (color: string, specular: string) => new THREE.MeshPhongMaterial({ color, specular, shininess: 48, vertexColors: true })
+const ROOF_FINISH: Record<Finish, THREE.Material> = {
+  steel: metal('#9aa3b2', '#e8eef8'),
+  bronze: metal('#a8743f', '#ffd7a0'),
+  concrete: toonPainted('#4a5266'),
+  dark: toonPainted('#141a26'),
+  glow: glowing('#ff3b3b'),
+}
+for (const m of Object.values(ROOF_FINISH)) m.userData.shared = true
+
+/** The roof plant of src/proc/roof.ts: plant on the shaft's cap, a water tank, AC units and a pipe run at the back. */
+function procRoof(p: Plan) {
+  const cap = STOREY + 0.4
+  const core = (-p.depth / 2 + coreFront(p)) / 2
+  const d = p.depth / 2
+  const made = roofPlant([
+    { piece: 'ac', at: [-1.1, cap, core - 0.6], turn: Math.PI / 2 },
+    { piece: 'vent', at: [1.5, cap, core - 1.2], turn: 0 },
+    { piece: 'vent', at: [1.5, cap, core + 0.1], turn: 0.4 },
+    { piece: 'antenna', at: [1.4, cap, core + 1.3], turn: 0 },
+    { piece: 'tank', at: [-6, 0, -d + 2.2], turn: 0 },
+    { piece: 'ac', at: [6, 0, -d + 3.2], turn: 0 },
+    { piece: 'ac', at: [9, 0, -d + 3.2], turn: 0 },
+    { piece: 'pipes', at: [4, 0, -d + 0.9], turn: 0 },
+  ])
+  return new THREE.Group().add(...FINISHES.map((k) => new THREE.Mesh(made[k], ROOF_FINISH[k])))
+}
+
 function roofLevel(p: Plan, level: Extract<Level, { kind: 'roof' }>, hostUp: boolean) {
   const g = new THREE.Group()
   g.add(block(p.width - 0.4, 0.02, p.depth - 0.4, toon('#2b313d'), 0, 0, 0))
   const parapet = toon('#141a26')
-  g.add(block(p.width + 0.3, 1.05, 0.3, parapet, 0, 0, p.depth / 2), block(p.width + 0.3, 1.05, 0.3, parapet, 0, 0, -p.depth / 2))
-  g.add(block(0.3, 1.05, p.depth, parapet, p.width / 2, 0, 0), block(0.3, 1.05, p.depth, parapet, -p.width / 2, 0, 0))
+  if (PROC.has('shell')) {
+    const made = procParapet(p, 1.1, PANE)
+    g.add(new THREE.Mesh(made.panel, toonPainted('#141a26')), new THREE.Mesh(made.trim, toonPainted(SHELL.coping)))
+  } else {
+    g.add(block(p.width + 0.3, 1.05, 0.3, parapet, 0, 0, p.depth / 2), block(p.width + 0.3, 1.05, 0.3, parapet, 0, 0, -p.depth / 2))
+    g.add(block(0.3, 1.05, p.depth, parapet, p.width / 2, 0, 0), block(0.3, 1.05, p.depth, parapet, -p.width / 2, 0, 0))
+  }
+  if (PROC.has('roof')) g.add(procRoof(p))
   const crown = brandPlate(1.6)
   crown.position.set(0, STOREY + 1.3, coreFront(p) + WALL + 0.05)
   g.add(crown)

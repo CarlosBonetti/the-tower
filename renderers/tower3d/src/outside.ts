@@ -3,6 +3,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { skyAt, type Sky } from '../../../src/shared/design.ts'
 import { pick, roll } from './avatar.ts'
 import { random } from './random.ts'
+import { PROC } from './proc/flag.ts'
+import { LOOK, castShadows } from './proc/look.ts'
+import { LAYERS, skyline, type Layer } from './proc/skyline.ts'
 
 /** The city around the tower: sky, lights, the street and a city of windows, lit by the viewer's clock. Built once. */
 
@@ -38,10 +41,9 @@ function paintSky(cv: HTMLCanvasElement, look: Sky) {
 /** The ground the airfield keeps clear of buildings, its approach and its climb-out: east of the ring road. */
 const FIELD_CLEAR = { minX: 58, maxX: 88, minZ: -100, maxZ: 100 }
 
-function city() {
-  const group = new THREE.Group()
-  const textures = [1, 2, 3, 4].map((i) => windowTexture(i * 7919))
-  const byTexture: THREE.BufferGeometry[][] = textures.map(() => [])
+/** Where the city's buildings stand: footprint `w` square and height `h`, clear of the airfield. */
+function sites() {
+  const list: { i: number; x: number; z: number; w: number; h: number }[] = []
   for (let i = 0; i < 90; i++) {
     const angle = (i / 90) * Math.PI * 2 + Math.sin(i * 12.9) * 0.2
     const dist = 95 + ((i * 37) % 80)
@@ -49,17 +51,47 @@ function city() {
     const h = 16 + ((i * 29) % 70)
     const [x, z] = [Math.cos(angle) * dist, Math.sin(angle) * dist]
     if (x + w / 2 > FIELD_CLEAR.minX && x - w / 2 < FIELD_CLEAR.maxX && z + w / 2 > FIELD_CLEAR.minZ && z - w / 2 < FIELD_CLEAR.maxZ) continue
+    list.push({ i, x, z, w, h })
+  }
+  return list
+}
+
+/** The city as boxes papered with window textures. */
+function boxes(group: THREE.Group) {
+  const textures = [1, 2, 3, 4].map((i) => windowTexture(i * 7919))
+  const byTexture: THREE.BufferGeometry[][] = textures.map(() => [])
+  for (const { i, x, z, w, h } of sites()) {
     const geo = new THREE.BoxGeometry(w, h, w)
     const uv = geo.getAttribute('uv') as THREE.BufferAttribute
     for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * (w / 8), uv.getY(k) * (h / 16))
     geo.translate(x, h / 2, z)
     byTexture[i % 4].push(geo)
   }
-  const windows = byTexture.map((geos, i) => {
+  return byTexture.map((geos, i) => {
     const mat = new THREE.MeshLambertMaterial({ color: '#2a3550', emissive: '#ffffff', emissiveMap: textures[i], emissiveIntensity: 0.5 })
     group.add(new THREE.Mesh(mergeGeometries(geos), mat))
     return mat
   })
+}
+
+/** The city as src/proc/skyline.ts generates it at load: one mesh per material, lit like the boxes are. */
+function procedural(group: THREE.Group) {
+  const stone = new THREE.MeshLambertMaterial({ color: '#2a3550', vertexColors: true, flatShading: true })
+  const trim = new THREE.MeshLambertMaterial({ color: '#2a3550', vertexColors: true, flatShading: true })
+  const glass = new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#1c2640', vertexColors: true, flatShading: true })
+  const warm = new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#ffd27a', vertexColors: true, flatShading: true })
+  const cool = new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#8ec9ff', vertexColors: true, flatShading: true })
+  const byLayer: Record<Layer, THREE.Material> = { stone, trim, glass, warm, cool }
+  const city = skyline(sites())
+  for (const k of LAYERS) group.add(new THREE.Mesh(city.geometries[k], byLayer[k]))
+  console.info(`proc skyline: ${city.triangles} triangles in ${city.ms.toFixed(1)} ms`)
+  return { day: [{ m: stone, lift: 1 }, { m: trim, lift: 1 }], glass: [glass, warm, cool], night: [glass, warm, cool] }
+}
+
+function city() {
+  const group = new THREE.Group()
+  const windows = PROC.has('skyline') ? [] : boxes(group)
+  const built = PROC.has('skyline') ? procedural(group) : { day: [], glass: [], night: [] }
   const pts: number[] = []
   for (let i = 0; i < 900; i++) {
     const a = random() * Math.PI * 2
@@ -70,7 +102,7 @@ function city() {
   stars.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3))
   const starMaterial = new THREE.PointsMaterial({ color: '#b8c8f0', size: 1.1, sizeAttenuation: false, fog: false, transparent: true })
   group.add(new THREE.Points(stars, starMaterial))
-  return { group, windows, stars: starMaterial }
+  return { group, windows, built, stars: starMaterial }
 }
 
 function street() {
@@ -363,15 +395,15 @@ function flight(model: THREE.Group) {
   return { plane, tick }
 }
 
-const NIGHT = { stone: new THREE.Color('#2a3550'), ground: new THREE.Color('#10141e') }
-const DAY = { stone: new THREE.Color('#8f9bb5'), ground: new THREE.Color('#3a4150') }
+const NIGHT = { stone: new THREE.Color('#2a3550'), ground: new THREE.Color('#10141e'), glass: new THREE.Color('#141b2c') }
+const DAY = { stone: new THREE.Color('#8f9bb5'), ground: new THREE.Color('#3a4150'), glass: new THREE.Color('#56698e') }
 
 /**
  * Builds the outside into the scene: `setHour` sets it to an hour of the day (0–24), `tick` moves what drives and
  * flies around it to sim time `t` (seconds), and `fly` puts the plane (models/plane.py) on the airfield once the
  * models are loaded.
  */
-export function outside(scene: THREE.Scene) {
+export function outside(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
   const sky = Object.assign(document.createElement('canvas'), { width: 4, height: 256 })
   const background = new THREE.CanvasTexture(sky)
   background.colorSpace = THREE.SRGBColorSpace
@@ -381,7 +413,12 @@ export function outside(scene: THREE.Scene) {
   const hemi = new THREE.HemisphereLight('#b9c8ff', '#2a2430', 1.9)
   const sun = new THREE.DirectionalLight('#dfe6ff', 1.6)
   sun.position.set(-40, 80, 60)
-  scene.add(hemi, sun, new THREE.AmbientLight('#ffffff', 0.35))
+  const ambient = new THREE.AmbientLight('#ffffff', 0.35)
+  const balance = PROC.has('look') ? LOOK : { sun: 1, hemi: 1, ambient: 1, fog: { near: 120, far: 420 } }
+  fog.near = balance.fog.near
+  fog.far = balance.fog.far
+  ambient.intensity *= balance.ambient
+  scene.add(hemi, sun, ambient)
   const town = city()
   const road = street()
   const curve = ringRoad()
@@ -404,17 +441,21 @@ export function outside(scene: THREE.Scene) {
     paintSky(sky, look)
     background.needsUpdate = true
     fog.color.set(look.mid)
-    hemi.intensity = 1.9 * look.light
-    sun.intensity = 1.6 * look.light
+    hemi.intensity = 1.9 * look.light * balance.hemi
+    sun.intensity = 1.6 * look.light * balance.sun
     sun.color.set(look.stars > 0.5 ? '#dfe6ff' : '#fff1dc')
     town.stars.opacity = look.stars
     const day = THREE.MathUtils.clamp(look.light - 1, 0, 1)
     for (const w of town.windows) (w.emissiveIntensity = look.windows, w.color.copy(NIGHT.stone).lerp(DAY.stone, day))
+    for (const { m, lift } of town.built.day) m.color.copy(NIGHT.stone).lerp(DAY.stone, day).multiplyScalar(lift)
+    for (const m of town.built.glass) m.color.copy(NIGHT.glass).lerp(DAY.glass, day)
+    for (const m of town.built.night) m.emissiveIntensity = look.windows
     road.ground.color.copy(NIGHT.ground).lerp(DAY.ground, day)
     ring.material.color.setScalar(0.55 + 0.45 * day)
     cars.lamps.color.setScalar(THREE.MathUtils.clamp(2 - look.light, 0.15, 1))
     field.ground.color.setScalar(0.55 + 0.45 * day)
     field.lights.color.setScalar(THREE.MathUtils.clamp(2 - look.light, 0.15, 1))
   }
+  if (PROC.has('look')) castShadows(renderer, sun)
   return { setHour, tick, fly }
 }

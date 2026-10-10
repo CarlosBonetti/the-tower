@@ -12,7 +12,7 @@ export const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
 renderer.toneMapping = THREE.ACESFilmicToneMapping
 export const scene = new THREE.Scene()
-const city = outside(scene)
+const city = outside(scene, renderer)
 /** Moves the traffic and the plane outside to sim time `t` (seconds). */
 export const tickOutside = city.tick
 /** Puts the plane on the airfield. */

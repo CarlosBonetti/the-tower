@@ -26,6 +26,8 @@ import { PET_IN, PET_MS, dropHearts, makeHearts, petProgress, petSpot, placeHear
 import { idle, sharing, startShare, stopShare } from './tv.ts'
 import { CABINET, DESK, EYE, bigScreens, cabinetOf, carBox, colliders, coreFront, deskOf, loungeSpots, deskSpot, inside, kioskOf, levelHeight, levelOfCard, levelOfShell, levelY, plan, type Box, type Plan } from './layout.ts'
 import { loadModels } from './models.ts'
+import { PROC } from './proc/flag.ts'
+import { shadowEverything } from './proc/look.ts'
 import { fillLayer, loadKit, zonesPlaced, type Kit, type Placed } from './kit.ts'
 import { hangOn, levelsShown, onLevel, showLevels } from './levels.ts'
 import { THEMES, bare, dress, itemOf, type Placement } from './dress.ts'
@@ -1329,6 +1331,7 @@ const covered = () => s.panel?.kind === 'desk' || s.panel?.kind === 'shell' || s
 function render() {
   if (s.board && s.world) paintScreens(s.simNow, screenDistance)
   showLevels(levelsShown(s))
+  if (PROC.has('look')) shadowEverything(scene)
   renderer.render(scene, camera)
   Object.assign(s.meter, { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles })
   if (s.hands && handsShown()) drawHands(renderer, s.hands)

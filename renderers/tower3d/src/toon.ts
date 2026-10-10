@@ -111,3 +111,17 @@ export function dispose(root: THREE.Object3D, keep: (t: THREE.Texture) => boolea
     }
   })
 }
+
+const painted = new Map<string, THREE.MeshToonMaterial>()
+
+/** A toon material over vertex colours: what src/proc's geometry is drawn in. */
+export function toonPainted(color: THREE.ColorRepresentation) {
+  const key = new THREE.Color(color).getHexString()
+  let m = painted.get(key)
+  if (!m) {
+    m = new THREE.MeshToonMaterial({ color, gradientMap: RAMP, vertexColors: true })
+    m.userData.shared = true
+    painted.set(key, m)
+  }
+  return m
+}
