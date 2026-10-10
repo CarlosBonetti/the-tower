@@ -4,7 +4,7 @@ import type { Model, Pack } from '../../kaykit/src/catalog.ts'
 import { itemMatrix, nodeMatrices } from '../../kaykit/src/draw.ts'
 import { meshesFrom, type ModelMesh } from '../../kaykit/src/meshes.ts'
 import type { ModelItem, Theme } from '../../kaykit/src/scene.ts'
-import { toonMapped, toonOwn } from './toon.ts'
+import { glows, toonMapped, toonOwn } from './toon.ts'
 import packed from '../out/kaykit/kit.kaykit'
 import { kitLayout, type KitFile } from './kitfile.ts'
 import type { Level } from './layout.ts'
@@ -73,7 +73,7 @@ function materialFor(kit: Kit, key: string) {
       const [pack, atlas, swaps] = JSON.parse(key) as [Pack, string, NonNullable<Theme['swaps']>[Pack]]
       const toon = toonMapped(atlasTexture(kit.atlases, pack, { atlas: { [pack]: atlas }, swaps: { [pack]: swaps } }))
       const lit = glowTexture(pack, kit.atlases.get(`${pack}/base`)!)
-      if (lit) Object.assign(toon, { emissiveMap: lit, emissive: new THREE.Color('#ffffff'), emissiveIntensity: glow * GLOW })
+      if (lit) glows(Object.assign(toon, { emissiveMap: lit, emissive: new THREE.Color('#ffffff'), emissiveIntensity: glow * GLOW }))
       m = toon
     }
     materials.set(key, m)

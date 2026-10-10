@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { random } from './random.ts'
+import { glows } from './toon.ts'
 
 /**
  * Fireworks: a rocket climbs from the roof, bursts into sparks in its color, and the sparks fall and fade. Each
@@ -34,7 +35,7 @@ export function launch(scene: THREE.Scene, from: THREE.Vector3, color: THREE.Col
   for (let i = 0; i < SPARKS; i++) positions.set([from.x, from.y, from.z], i * 3)
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-  const material = new THREE.PointsMaterial({ color: new THREE.Color(color).multiplyScalar(1.6), size: 0.4, map: SPARK, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false })
+  const material = glows(new THREE.PointsMaterial({ color: new THREE.Color(color).multiplyScalar(1.6), size: 0.4, map: SPARK, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false }))
   const points = new THREE.Points(geometry, material)
   points.frustumCulled = false
   scene.add(points)

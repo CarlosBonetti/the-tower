@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { type } from '../../../src/shared/design.ts'
 import { WORLD } from './cards.ts'
-import { loadFaces } from './toon.ts'
+import { glows, loadFaces } from './toon.ts'
 
 /**
  * The building's big screens: one picture on all of them, a placard until you share a screen, a window or a tab
@@ -21,7 +21,7 @@ texture.colorSpace = THREE.SRGBColorSpace
 texture.anisotropy = 8
 
 /** Every big screen's face: shared, never disposed with a building. */
-export const screenMaterial = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false })
+export const screenMaterial = glows(new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }))
 screenMaterial.userData.shared = true
 
 let share: { stream: MediaStream; video: HTMLVideoElement } | undefined

@@ -33,8 +33,14 @@ export const toonOwn = (color: THREE.ColorRepresentation) => new THREE.MeshToonM
 /** A toon material over a texture: a KayKit pack's atlas, shared by every model of the pack. */
 export const toonMapped = (map: THREE.Texture) => new THREE.MeshToonMaterial({ map, gradientMap: RAMP })
 
+/** Marks a material as a light of its own (a lamp, neon, a screen, a lit window): what the night's bloom blooms. */
+export function glows<M extends THREE.Material>(m: M) {
+  m.userData.glow = true
+  return m
+}
+
 /** Lit by nothing: screens, lamps, neon. */
-export const glowing = (color: THREE.ColorRepresentation) => new THREE.MeshBasicMaterial({ color, toneMapped: false })
+export const glowing = (color: THREE.ColorRepresentation) => glows(new THREE.MeshBasicMaterial({ color, toneMapped: false }))
 
 export function mesh<G extends THREE.BufferGeometry, M extends THREE.Material>(geo: G, mat: M, x = 0, y = 0, z = 0) {
   const m = new THREE.Mesh(geo, mat)

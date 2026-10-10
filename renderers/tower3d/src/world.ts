@@ -16,7 +16,7 @@ import { instance, type Models } from './models.ts'
 import { buildParty, type Party } from './party.ts'
 import { floorPalette, tintOf } from './palette.ts'
 import { buildRoom, shellTag, shellTitle, type Bookcase } from './room.ts'
-import { block, dispose, glowing, mesh, plate, sprite, toon, toonPainted } from './toon.ts'
+import { block, dispose, glowing, glows, mesh, plate, sprite, toon, toonPainted } from './toon.ts'
 import { PROC } from './proc/flag.ts'
 import { FINISHES, roofPlant, type Finish } from './proc/roof.ts'
 import { frame, parapet as procParapet, spandrel as procSpandrel } from './proc/shell.ts'
@@ -252,7 +252,11 @@ function lounge(p: Plan, models: Models, pickables: THREE.Object3D[]) {
 }
 
 /** "The Tower" in display caps on an enamel plate: the building's name, its only mark. */
-const brandPlate = (height: number) => plate('THE TOWER', height, { color: WORLD.panel, bg: WORLD.enamel, px: 96, weight: 900, shape: 'card', tracking: 0.06 })
+const brandPlate = (height: number) => {
+  const p = plate('THE TOWER', height, { color: WORLD.panel, bg: WORLD.enamel, px: 96, weight: 900, shape: 'card', tracking: 0.06 })
+  glows(p.material)
+  return p
+}
 
 function lobbyLevel(p: Plan, directory: World['directory'], models: Models, pickables: THREE.Object3D[]) {
   const g = new THREE.Group()

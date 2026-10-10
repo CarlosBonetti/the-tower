@@ -3,6 +3,7 @@ import { projectTones, type } from '../../../src/shared/design.ts'
 import { WORLD } from './cards.ts'
 import type { Level } from './layout.ts'
 import { cssHex } from './palette.ts'
+import { glows } from './toon.ts'
 
 /** A floor sign's facts: the key on its tile (a level's number, R for the roof), the name, the project colour. */
 export type Sign = { key: string; name: string; band: string }
@@ -105,5 +106,5 @@ export function signPlate(sign: Sign, height: number) {
   const tex = new THREE.CanvasTexture(cv)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = 8
-  return new THREE.Mesh(new THREE.PlaneGeometry((height * cv.width) / px, height), new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false }))
+  return new THREE.Mesh(new THREE.PlaneGeometry((height * cv.width) / px, height), glows(new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false })))
 }

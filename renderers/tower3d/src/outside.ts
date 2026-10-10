@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { skyAt, type Sky } from '../../../src/shared/design.ts'
 import { pick, roll } from './avatar.ts'
 import { random } from './random.ts'
+import { glows } from './toon.ts'
 import { PROC } from './proc/flag.ts'
 import { LOOK, castShadows } from './proc/look.ts'
 import { riseRig, rigHour } from './proc/rig.ts'
@@ -69,7 +70,7 @@ function boxes(group: THREE.Group) {
     byTexture[i % 4].push(geo)
   }
   return byTexture.map((geos, i) => {
-    const mat = new THREE.MeshLambertMaterial({ color: '#2a3550', emissive: '#ffffff', emissiveMap: textures[i], emissiveIntensity: 0.5 })
+    const mat = glows(new THREE.MeshLambertMaterial({ color: '#2a3550', emissive: '#ffffff', emissiveMap: textures[i], emissiveIntensity: 0.5 }))
     group.add(new THREE.Mesh(mergeGeometries(geos), mat))
     return mat
   })
@@ -80,8 +81,8 @@ function procedural(group: THREE.Group) {
   const stone = new THREE.MeshLambertMaterial({ color: '#2a3550', vertexColors: true, flatShading: true })
   const trim = new THREE.MeshLambertMaterial({ color: '#2a3550', vertexColors: true, flatShading: true })
   const glass = new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#1c2640', vertexColors: true, flatShading: true })
-  const warm = new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#ffd27a', vertexColors: true, flatShading: true })
-  const cool = new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#8ec9ff', vertexColors: true, flatShading: true })
+  const warm = glows(new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#ffd27a', vertexColors: true, flatShading: true }))
+  const cool = glows(new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#8ec9ff', vertexColors: true, flatShading: true }))
   const byLayer: Record<Layer, THREE.Material> = { stone, trim, glass, warm, cool }
   const city = skyline(sites())
   for (const k of LAYERS) group.add(new THREE.Mesh(city.geometries[k], byLayer[k]))

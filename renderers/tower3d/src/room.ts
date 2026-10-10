@@ -8,7 +8,7 @@ import { ROOM, SLAB, STOREY, WALL, consoleSpot, roomBox, roomDoor, shelfX, video
 import { instance, type Models } from './models.ts'
 import { tintOf, type FloorPalette } from './palette.ts'
 import { OFFLINE, screenTexture } from './screens.ts'
-import { block, glowing, mesh, plate, sprite, toon } from './toon.ts'
+import { block, glowing, glows, mesh, plate, sprite, toon } from './toon.ts'
 
 /**
  * A floor's control room, in level space (src/layout.ts places it): the walls, the console, the shell bench and the
@@ -100,7 +100,7 @@ export function shellTag(shell: Shell, tint: string) {
 function kiosk(shell: Shell, tint: string, models: Models, pickables: THREE.Object3D[]) {
   const g = new THREE.Group()
   g.add(instance(models.kiosk).root)
-  g.add(mesh(new THREE.PlaneGeometry(1.4, 0.86), new THREE.MeshBasicMaterial({ map: screenTexture(`shell/${shell.id}`), toneMapped: false }), 0, 1.62, 0.16))
+  g.add(mesh(new THREE.PlaneGeometry(1.4, 0.86), glows(new THREE.MeshBasicMaterial({ map: screenTexture(`shell/${shell.id}`), toneMapped: false })), 0, 1.62, 0.16))
   g.add(shellTag(shell, tint))
   return act(g, { kind: 'shell', id: shell.id }, pickables)
 }
@@ -197,7 +197,7 @@ export function buildVideoWall(p: Plan, level: FloorLevel): VideoWall {
     const material = glowing(statusColor(c))
     frames.push({ id: c.id, material })
     tile.add(mesh(new THREE.PlaneGeometry(t.w + 0.08, t.h + 0.08), material, 0, 0, -0.01))
-    tile.add(mesh(new THREE.PlaneGeometry(t.w, t.h), new THREE.MeshBasicMaterial({ map: live ? screenTexture(`screen/${c.id}`) : OFFLINE, toneMapped: false })))
+    tile.add(mesh(new THREE.PlaneGeometry(t.w, t.h), glows(new THREE.MeshBasicMaterial({ map: live ? screenTexture(`screen/${c.id}`) : OFFLINE, toneMapped: false }))))
     const label = plate(`${c.callsign}  ·  ${statusName(c)}`, Math.min(0.16, t.h * 0.12), { color: onStatusColor(c), bg: statusColor(c), px: 44 })
     label.position.set(0, -t.h / 2 + Math.min(0.16, t.h * 0.12) / 2 + 0.03, 0.01)
     tile.add(label)

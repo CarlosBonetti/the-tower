@@ -7,7 +7,7 @@ import { walkPose, type GuestPlace } from './life.ts'
 import { DANCE_TILE, STRING_ROWS, partySpots, type DanceFloor, type Plan } from './layout.ts'
 import { instance, type Models } from './models.ts'
 import { tintOf } from './palette.ts'
-import { block, sprite, toon } from './toon.ts'
+import { block, glows, sprite, toon } from './toon.ts'
 
 /**
  * The roof party: a puff on the decks, a bar and string lights, built with the roof (`buildParty`); a dance floor per
@@ -36,7 +36,7 @@ function stringLights(p: Plan) {
     for (const x of [-ends, ends]) poles.add(block(0.08, 3.4, 0.08, toon('#2a3142'), x, 0, z))
     for (let x = -ends; x <= ends; x += 0.9) bulbs.push(new THREE.Vector3(x, 3.3 - 0.9 * (1 - (x / ends) ** 2), z))
   }
-  const lights = new THREE.InstancedMesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshBasicMaterial({ toneMapped: false }), bulbs.length)
+  const lights = new THREE.InstancedMesh(new THREE.SphereGeometry(0.05, 8, 6), glows(new THREE.MeshBasicMaterial({ toneMapped: false })), bulbs.length)
   const warm = new THREE.Color('#ffd9a0')
   bulbs.forEach((b, i) => {
     lights.setMatrixAt(i, new THREE.Matrix4().makeTranslation(b))
@@ -76,7 +76,7 @@ export type DanceFloors = { group: THREE.Group; tiles: THREE.InstancedMesh; colo
 export function buildDanceFloors(floors: DanceFloor[]): DanceFloors {
   const group = new THREE.Group()
   const count = floors.reduce((n, f) => n + f.columns * f.rows, 0)
-  const tiles = new THREE.InstancedMesh(new THREE.BoxGeometry(DANCE_TILE - 0.06, TILE, DANCE_TILE - 0.06), new THREE.MeshBasicMaterial({ toneMapped: false }), count)
+  const tiles = new THREE.InstancedMesh(new THREE.BoxGeometry(DANCE_TILE - 0.06, TILE, DANCE_TILE - 0.06), glows(new THREE.MeshBasicMaterial({ toneMapped: false })), count)
   const plinths = new THREE.InstancedMesh(new THREE.BoxGeometry(1, PLINTH, 1), toon('#0b0f18'), floors.length)
   const colors: THREE.Color[][] = []
   floors.forEach((f, k) => {

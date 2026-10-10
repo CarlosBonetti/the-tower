@@ -7,7 +7,7 @@ import { FIXTURE, FIXTURE_GAMES } from './fixtures.ts'
 import { GAMES, gamePath } from './games.ts'
 import { CABINET } from './layout.ts'
 import { picture } from './room.ts'
-import { block, glowing, mesh, toon } from './toon.ts'
+import { block, glowing, glows, mesh, toon } from './toon.ts'
 
 /**
  * A floor's arcade (src/layout.ts places it): a cabinet per game, its marquee titled by the game's `<title>` and its
@@ -51,7 +51,7 @@ function screenTexture(tag: string, tint: string) {
   g.fillText(tag, cv.width / 2, cv.height / 2 + 64, cv.width - 40)
   const tex = new THREE.CanvasTexture(cv)
   tex.colorSpace = THREE.SRGBColorSpace
-  return new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })
+  return glows(new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }))
 }
 
 /** A game's cabinet: the title, tint and keeper it was drawn with, so a change draws it anew. */

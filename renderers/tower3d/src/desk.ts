@@ -8,7 +8,7 @@ import { ASLEEP, OFFLINE, OPEN_DESK, screenTexture } from './screens.ts'
 import { avatar, lookOf, type Avatar, type Look } from './avatar.ts'
 import { instance, type Models } from './models.ts'
 import { posterOf, shownKey, type Shown } from './showing.ts'
-import { block, dispose, glowing, mesh, sprite, toon } from './toon.ts'
+import { block, dispose, glowing, glows, mesh, sprite, toon } from './toon.ts'
 
 /**
  * A desk and the worker at it, in desk space: the desk centered on the origin, its monitor at the far edge (+z)
@@ -109,7 +109,7 @@ function furniture(models: Models) {
   group.add(model.root)
   const strip = glowing('#ffffff')
   group.add(mesh(new THREE.BoxGeometry(DESK.width - 0.1, 0.025, 0.02), strip, 0, DESK.height - 0.04, -DESK.depth / 2 - 0.005))
-  const screen = mesh(new THREE.PlaneGeometry(SCREEN.width, SCREEN.height), new THREE.MeshBasicMaterial({ toneMapped: false }), 0, SCREEN.y, SCREEN.z)
+  const screen = mesh(new THREE.PlaneGeometry(SCREEN.width, SCREEN.height), glows(new THREE.MeshBasicMaterial({ toneMapped: false })), 0, SCREEN.y, SCREEN.z)
   screen.rotation.y = Math.PI
   screen.userData.screen = true
   group.add(screen)
@@ -124,7 +124,7 @@ function sideMonitor() {
   group.add(block(SIDE.width + 0.05, SIDE.height + 0.05, 0.04, dark, 0, SIDE.y - DESK.height - SIDE.height / 2 - 0.025, 0))
   group.add(block(0.05, neck, 0.04, dark, 0, 0, 0.03))
   group.add(block(0.26, 0.02, 0.18, dark, 0, 0, 0.03))
-  const screen = mesh(new THREE.PlaneGeometry(SIDE.width, SIDE.height), new THREE.MeshBasicMaterial({ toneMapped: false }), 0, SIDE.y - DESK.height, -0.021)
+  const screen = mesh(new THREE.PlaneGeometry(SIDE.width, SIDE.height), glows(new THREE.MeshBasicMaterial({ toneMapped: false })), 0, SIDE.y - DESK.height, -0.021)
   screen.rotation.y = Math.PI
   const ribbon = sprite('NEW', 0.085, { color: '#fff', bg: WORLD.accent, px: 44 })
   ribbon.position.set(SIDE.width / 2 - 0.06, SIDE.y - DESK.height + SIDE.height / 2 + 0.07, -0.05)
@@ -252,7 +252,7 @@ function notebook() {
   lid.position.set(0, 0.02, NOTEBOOK.depth / 2)
   lid.rotation.x = NOTEBOOK.tilt
   lid.add(block(NOTEBOOK.width, NOTEBOOK.lid, 0.016, shell, 0, 0, 0))
-  const screen = mesh(new THREE.PlaneGeometry(NOTEBOOK.width - 0.04, NOTEBOOK.screen), new THREE.MeshBasicMaterial({ toneMapped: false }), 0, NOTEBOOK.lid / 2, -0.009)
+  const screen = mesh(new THREE.PlaneGeometry(NOTEBOOK.width - 0.04, NOTEBOOK.screen), glows(new THREE.MeshBasicMaterial({ toneMapped: false })), 0, NOTEBOOK.lid / 2, -0.009)
   screen.rotation.y = Math.PI
   screen.userData.screen = true
   lid.add(screen)

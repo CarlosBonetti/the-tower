@@ -13,7 +13,7 @@ import { PROC } from './flag.ts'
  * them, tone mapped, and each pass then works on the canvas, so what is drawn `toneMapped: false` (screens, neon)
  * keeps its colour. Ambient occlusion multiplies the frame by how enclosed each pixel is (three's GTAO, over a normal
  * and depth render of the opaque scene); `?proc=ao,aoview` draws the occlusion alone. Bloom (`?proc=bloom`) draws the scene
- * again with every light off, so only what glows of itself is left, blooms it over three's mip chain and adds it to
+ * again with every light off and only what is marked to glow lit, blooms it over three's mip chain and adds it to
  * the canvas, as strong as the night is dark: it only ever adds light to the frame ACES made.
  */
 
@@ -83,7 +83,7 @@ export function occlude(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camer
 }
 
 /** Bloom at full night: how strong, how wide, and the glow (linear, before tone mapping) a pixel blooms from. */
-const BLOOM = { strength: 0.6, radius: 0.45, threshold: 0.55 }
+const BLOOM = { strength: 0.6, radius: 0.45, threshold: 0.15 }
 
 const add = new THREE.ShaderMaterial({
   uniforms: { tDiffuse: { value: null } },
@@ -103,15 +103,44 @@ function nightNow() {
   return skyAt(now.getHours() + now.getMinutes() / 60).stars
 }
 
+const black = new THREE.MeshBasicMaterial({ color: 0x000000 })
+const blackBothSides = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
+
+const tagged = (m: THREE.Material | THREE.Material[]) => (Array.isArray(m) ? m : [m]).some((x) => x.userData.glow)
+
 /**
- * Draws `scene` with every light off into `target`: what is left is what glows of itself (screens, neon, lamps, lit
- * windows, the kit's emissive parts), occluded by everything else, which draws black.
+ * Leaves lit only what is marked to glow (`glows` in toon.ts): every other opaque mesh draws black, to occlude, and
+ * every other transparent mesh, label, line or point is hidden. Answers how to undo it.
+ */
+function onlyGlows(scene: THREE.Scene) {
+  const swapped: [THREE.Mesh, THREE.Material | THREE.Material[]][] = []
+  const hidden: THREE.Object3D[] = []
+  scene.traverseVisible((o) => {
+    const material = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined
+    if (!material || tagged(material)) return
+    const first = Array.isArray(material) ? material[0] : material
+    if (o instanceof THREE.Mesh && !first.transparent) {
+      swapped.push([o, material])
+      o.material = first.side === THREE.FrontSide ? black : blackBothSides
+    } else hidden.push(o)
+  })
+  for (const o of hidden) o.visible = false
+  return () => {
+    for (const [o, m] of swapped) o.material = m
+    for (const o of hidden) o.visible = true
+  }
+}
+
+/**
+ * Draws `scene` into `target` with every light off and only what glows left lit: screens, neon, lamps, signs, lit
+ * windows and the kit's emissive parts, occluded by everything else.
  */
 function glowing(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, target: THREE.WebGLRenderTarget) {
   const lights: [THREE.Light, number][] = []
   scene.traverse((o) => o instanceof THREE.Light && lights.push([o, o.intensity]))
   for (const [l] of lights) l.intensity = 0
   const interior = interiorOff()
+  const restore = onlyGlows(scene)
   const fog = scene.fog as THREE.Fog | null
   const fogColor = fog?.color.clone()
   fog?.color.setScalar(0)
@@ -123,6 +152,7 @@ function glowing(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THRE
   renderer.render(scene, camera)
   scene.background = background
   if (fog) fog.color.copy(fogColor!)
+  restore()
   interior()
   for (const [l, i] of lights) l.intensity = i
 }
