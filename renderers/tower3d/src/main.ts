@@ -29,6 +29,7 @@ import { loadModels } from './models.ts'
 import { PROC } from './proc/flag.ts'
 import { shadowEverything } from './proc/look.ts'
 import { contactShadows } from './proc/contact.ts'
+import { occlude } from './proc/post.ts'
 import { fillLayer, loadKit, zonesPlaced, type Kit, type Placed } from './kit.ts'
 import { hangOn, levelsShown, onLevel, showLevels } from './levels.ts'
 import { THEMES, bare, dress, itemOf, type Placement } from './dress.ts'
@@ -1336,6 +1337,7 @@ function render() {
   if (PROC.size) (renderer.info.autoReset = false), renderer.info.reset()
   if (PROC.has('contact')) contactShadows(renderer, scene, standingOn(), { ...s.plan, y: s.plan.levels[s.me.level]?.y ?? 0 })
   renderer.render(scene, camera)
+  if (PROC.has('ao') && handsShown()) occlude(renderer, scene, camera)
   Object.assign(s.meter, { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles })
   if (s.hands && handsShown()) drawHands(renderer, s.hands)
 }
