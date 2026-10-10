@@ -12,6 +12,14 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.20.1
+
+Tower 3D's floor signs read at night again. No host restart, no config change, the renderer API is unchanged.
+Rebuild Tower 3D (`npm run tower3d`) and reload it.
+
+- With the lighting on, the night's bloom spread over each landing's floor sign (the level's number and the project's
+  name) and washed the lettering out. Signs are printed plates, not lights, so they no longer bloom.
+
 ## v1.20.0
 
 Tower 3D's new look: a procedural city and shell, and a sun that follows the clock. No host restart, no config change,
