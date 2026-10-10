@@ -12,6 +12,21 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.20.0
+
+Tower 3D's new look: a procedural city and shell, and a sun that follows the clock. No host restart, no config change,
+the renderer API is unchanged. Rebuild Tower 3D (`npm run tower3d`) and reload it.
+
+- The city around the tower is generated at load: tiered towers with windows, bands, cornices and roof plant. The
+  building's shell has capped mullions, panelled spandrels and a coped parapet, and its roof carries plant in steel
+  and bronze. These replace the box city and the old shell.
+- Lighting, a new setting in Tower 3D's settings popover, on by default: the sun follows the clock, casts shadows and
+  sets the toon bands, the interior keeps its own ceiling light, contact shadows ground what stands on your level,
+  and at night what glows blooms. It costs GPU time (the night overview takes 11.9 ms against 7.8 ms without it), so
+  Off lights everything with Tower 3D's old even light. It is kept in `tower.store` and applies on reload; a fixture
+  page takes `?lighting=off` (decision `tower3d-look`).
+- Known: shadows can reappear late after a dialog closes.
+
 ## v1.19.0
 
 Workers keep their callsigns, new workers don't repeat the name of one on duty, and 74 more names. No host restart, no
