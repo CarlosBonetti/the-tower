@@ -22,6 +22,8 @@ let drawn = { frame: 0, y: NaN }
 
 /** The camera sits this far over the floor: over the carpet and rugs, under what stands on them. */
 const LIFT = 0.03
+/** What lies lower than this over the floor (m) is flat on it, a rug or a runner, and shades nothing: the camera starts seeing above it. */
+const FLAT = 0.08
 
 const depth = new THREE.MeshDepthMaterial({ side: THREE.DoubleSide })
 depth.onBeforeCompile = (shader) => {
@@ -32,7 +34,7 @@ const target = () => new THREE.WebGLRenderTarget(1, 1, { depthBuffer: true })
 const shot = target()
 const blurred = target()
 blurred.depthBuffer = false
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, REACH - LIFT)
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, FLAT - LIFT, REACH - LIFT)
 camera.rotation.x = Math.PI / 2
 const horizontal = new THREE.ShaderMaterial(HorizontalBlurShader)
 const vertical = new THREE.ShaderMaterial(VerticalBlurShader)
@@ -47,6 +49,7 @@ const floorGeometry = new THREE.PlaneGeometry(1, 1)
 const floor = new THREE.Mesh(floorGeometry, new THREE.MeshBasicMaterial({ map: shot.texture, transparent: true, depthWrite: false, opacity: DARK, fog: false }))
 floor.rotation.x = -Math.PI / 2
 floor.renderOrder = -1
+Object.assign(floor.material, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 })
 floor.userData.post = true
 
 const unshaded = (o: THREE.Object3D) => o instanceof THREE.Sprite || o instanceof THREE.Points || o instanceof THREE.Line
