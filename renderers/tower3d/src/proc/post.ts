@@ -44,6 +44,9 @@ void main() {
   blendDst: THREE.ZeroFactor,
 })
 
+/** The occlusion buffer's size against the canvas: the blur under it hides the lower resolution. */
+const AO_SCALE = 0.5
+
 let ao: GTAOPass | undefined
 const quad = new FullScreenQuad()
 const size = new THREE.Vector2()
@@ -52,7 +55,7 @@ const sized = new THREE.Vector2()
 const opaque = (m: THREE.Mesh) => !(Array.isArray(m.material) ? m.material[0] : m.material).transparent
 
 export function occlude(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
-  renderer.getDrawingBufferSize(size)
+  renderer.getDrawingBufferSize(size).multiplyScalar(AO_SCALE).floor()
   if (!ao) {
     ao = new GTAOPass(scene, camera, size.x, size.y)
     ao.updateGtaoMaterial(AO)
