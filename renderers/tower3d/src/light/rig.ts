@@ -1,9 +1,8 @@
 import * as THREE from 'three'
 import type { Sky } from '../../../../src/shared/design.ts'
-import { PROC } from './flag.ts'
 
 /**
- * A light rig that follows the clock, drawn only with `?proc=rig`.
+ * A light rig that follows the clock, drawn while the lighting setting is on (setting.ts).
  *
  * - The key is the sun: it rises in the east (−x), stands in the south (+z) at half past noon and sets in the west,
  *   warm when low, near white when high. At night it is a dim, cool moon. It casts over everything the building is
@@ -11,7 +10,7 @@ import { PROC } from './flag.ts'
  * - The fill is the sky: a cool hemisphere, tinted by the horizon, never darker than a clear night's.
  * - Interiors have their own light from the ceiling: every lit material adds it inside the building's volume (under
  *   the party's lights over the roof, within the plan), banded by the toon ramp by how much a face looks up. The city
- *   never sees it. It pools under each ceiling panel, from the grid the panels hang on. With `?proc=rig,lamps` a few unshadowed point lights over your level light it instead, for comparison.
+ *   never sees it. It pools under each ceiling panel, from the grid the panels hang on.
  */
 
 /** Hours the sun is up, and its highest elevation (radians). */
@@ -20,7 +19,7 @@ const SUN = { low: new THREE.Color('#ffa860'), high: new THREE.Color('#fff2e0'),
 const MOON = { color: new THREE.Color('#9fb4ff'), intensity: 1.1, direction: new THREE.Vector3(0.45, 0.8, -0.4).normalize() }
 const SKY_FILL = { day: 1.5, night: 1.4, color: new THREE.Color('#b8c6ff'), tint: 0.3, ground: new THREE.Color('#3a3036') }
 /** The interior's ceiling light: as strong at every hour, so a room never gets darker than its lamps. */
-const INTERIOR = { color: new THREE.Color('#fff0dc'), strength: 1.7, lamps: { count: [4, 2], intensity: 9, distance: 11, decay: 1, share: 0.35 } }
+const INTERIOR = { color: new THREE.Color('#fff0dc'), strength: 1.7 }
 /** How high over the roof the building's own light reaches (m): the party's lights, so the roof reads at night as well as a room. */
 const ROOF_LIT = 8
 
@@ -130,7 +129,7 @@ function enlist(scene: THREE.Object3D) {
 }
 
 type Lights = { hemi: THREE.HemisphereLight; sun: THREE.DirectionalLight; ambient: THREE.AmbientLight }
-let rig: (Lights & { lamps: THREE.PointLight[]; toward: THREE.Vector3; renderer: THREE.WebGLRenderer; frame: number; seen: string }) | undefined
+let rig: (Lights & { toward: THREE.Vector3; renderer: THREE.WebGLRenderer; frame: number; seen: string }) | undefined
 
 /** Takes over the outside's lights and the renderer's shadows. */
 export function riseRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, lights: Lights) {
@@ -144,12 +143,7 @@ export function riseRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, light
   sun.shadow.normalBias = 0.03
   scene.add(sun.target)
   lights.ambient.intensity = 0
-  const [cols, rows] = INTERIOR.lamps.count
-  const lamps = PROC.has('lamps')
-    ? Array.from({ length: cols * rows }, () => new THREE.PointLight(INTERIOR.color, INTERIOR.lamps.intensity, INTERIOR.lamps.distance, INTERIOR.lamps.decay))
-    : []
-  if (lamps.length) scene.add(...lamps)
-  rig = { ...lights, lamps, toward: new THREE.Vector3(0, 1, 0), renderer, frame: 0, seen: '' }
+  rig = { ...lights, toward: new THREE.Vector3(0, 1, 0), renderer, frame: 0, seen: '' }
 }
 
 /** Sets the rig to `hours`, under `sky`. */
@@ -171,15 +165,15 @@ export function rigHour(hours: number, sky: Sky) {
   hemi.color.copy(SKY_FILL.color).lerp(new THREE.Color(sky.horizon), SKY_FILL.tint)
   hemi.groundColor.copy(SKY_FILL.ground)
   hemi.intensity = THREE.MathUtils.lerp(SKY_FILL.night, SKY_FILL.day, day.up)
-  uniforms.interiorLight.value.copy(INTERIOR.color).multiplyScalar(INTERIOR.strength * (rig!.lamps.length ? 1 - INTERIOR.lamps.share : 1))
+  uniforms.interiorLight.value.copy(INTERIOR.color).multiplyScalar(INTERIOR.strength)
 }
 
 /**
  * Each frame: enlists what is new, fits the sun's shadow to what is seen (your level while walking, the whole building
- * from outside), sets the interior's box to the building, and hangs the lamps over your level.
+ * from outside) and sets the interior's box to the building.
  */
 export function rigFrame(scene: THREE.Scene, at: { width: number; depth: number; top: number; y: number; height: number; whole: boolean; panels: { x0: number; x1: number; dx: number; z0: number; z1: number; dz: number } }) {
-  const { sun, lamps, toward } = rig!
+  const { sun, toward } = rig!
   enlist(scene)
   uniforms.interiorMin.value.set(-at.width / 2 + 0.1, -0.5, -at.depth / 2 + 0.1)
   uniforms.interiorMax.value.set(at.width / 2 - 0.1, at.top + ROOF_LIT, at.depth / 2 - 0.1)
@@ -197,8 +191,6 @@ export function rigFrame(scene: THREE.Scene, at: { width: number; depth: number;
   const seen = `${low}|${high}|${toward.toArray()}`
   rig!.renderer.shadowMap.needsUpdate = rig!.frame++ % SHADOW.every === 0 || seen !== rig!.seen
   rig!.seen = seen
-  const [cols, rows] = INTERIOR.lamps.count
-  lamps.forEach((l, i) => l.position.set(((i % cols) + 0.5) * (at.width / cols) - at.width / 2, at.y + at.height - 0.6, (Math.floor(i / cols) + 0.5) * (at.depth / rows) - at.depth / 2))
 }
 
 /** Turns the interior's light off until the answer is called: for a pass that draws only what glows. */

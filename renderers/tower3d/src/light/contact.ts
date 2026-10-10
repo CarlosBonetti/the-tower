@@ -4,7 +4,7 @@ import { HorizontalBlurShader } from 'three/examples/jsm/shaders/HorizontalBlurS
 import { VerticalBlurShader } from 'three/examples/jsm/shaders/VerticalBlurShader.js'
 
 /**
- * Contact shadows, drawn only with `?proc=contact`: the level you stand on is seen from just under its floor by an
+ * Contact shadows, drawn while the lighting setting is on (setting.ts): the level you stand on is seen from just under its floor by an
  * orthographic camera looking up, everything within REACH of the floor drawn darker the lower it stands, blurred, and
  * laid on the floor. Only your level's own things are in that view, so nothing from the floors above reaches it, and
  * people, carts and cats ground themselves as they move. A light-free shadow: it holds at every hour.
@@ -56,9 +56,9 @@ const unshaded = (o: THREE.Object3D) => o instanceof THREE.Sprite || o instanceo
 
 /**
  * Hides everything in `scene` but `roots` and the groups holding them, and in them what has no surface (labels, lines,
- * points) and the meshes `keep` turns down; answers how to undo it.
+ * points); answers how to undo it.
  */
-export function isolate(scene: THREE.Object3D, roots: THREE.Object3D[], keep: (m: THREE.Mesh) => boolean = () => true) {
+function isolate(scene: THREE.Object3D, roots: THREE.Object3D[]) {
   const hidden: THREE.Object3D[] = []
   const hide = (o: THREE.Object3D) => (hidden.push(o), (o.visible = false))
   const paths = new Set<THREE.Object3D>()
@@ -66,7 +66,7 @@ export function isolate(scene: THREE.Object3D, roots: THREE.Object3D[], keep: (m
   const walk = (o: THREE.Object3D) => {
     for (const c of o.children) {
       if (!c.visible) continue
-      if (roots.includes(c)) c.traverseVisible((d) => (unshaded(d) || (d instanceof THREE.Mesh && !keep(d))) && hide(d))
+      if (roots.includes(c)) c.traverseVisible((d) => unshaded(d) && hide(d))
       else if (paths.has(c)) walk(c)
       else hide(c)
     }

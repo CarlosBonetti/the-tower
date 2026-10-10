@@ -6,7 +6,7 @@
   "in": "web-tower",
   "status": "accepted",
   "date": "2026-10-06",
-  "reviewed": "2026-10-08",
+  "reviewed": "2026-10-10",
   "refs": [
     "hub/scripts/tower3d-kit.ts",
     "hub/renderers/tower3d/src/kitfile.ts#KitFile",

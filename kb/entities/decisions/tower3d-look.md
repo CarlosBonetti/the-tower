@@ -1,0 +1,84 @@
+---
+{
+  "type": "decision",
+  "name": "Tower 3D's look: a procedural city and shell, and lighting as a setting",
+  "summary": "The city, the building's shell and its roof plant are geometry generated in TypeScript at load (exterior/), always drawn. The lighting (a sun that follows the clock and casts shadows with the interior's own ceiling light, contact shadows under your level, and the night's bloom on what is tagged to glow) is one setting in Tower 3D's settings popover, on by default, kept in tower.store and read before the page loads, so a change applies on reload. Off, the building and city are lit by the outside's hemisphere, sun and ambient alone.",
+  "in": "web-tower",
+  "status": "accepted",
+  "date": "2026-10-10",
+  "reviewed": "2026-10-10",
+  "refs": [
+    "hub/renderers/tower3d/src/boot.ts",
+    "hub/renderers/tower3d/src/light/setting.ts#startLighting",
+    "hub/renderers/tower3d/src/light/setting.ts#LIGHTING_KEY",
+    "hub/renderers/tower3d/src/light/setting.ts#lightingSection",
+    "hub/renderers/tower3d/src/light/rig.ts#riseRig",
+    "hub/renderers/tower3d/src/light/rig.ts#rigFrame",
+    "hub/renderers/tower3d/src/light/rig.ts#rigRamp",
+    "hub/renderers/tower3d/src/light/contact.ts#contactShadows",
+    "hub/renderers/tower3d/src/light/bloom.ts#bloom",
+    "hub/renderers/tower3d/src/toon.ts#glows",
+    "hub/renderers/tower3d/src/main.ts#lightFrame",
+    "hub/renderers/tower3d/src/exterior/geo.ts",
+    "hub/renderers/tower3d/src/exterior/skyline.ts#skyline",
+    "hub/renderers/tower3d/src/exterior/shell.ts#frame",
+    "hub/renderers/tower3d/src/exterior/roof.ts#roofPlant",
+    "hub/renderers/tower3d/src/outside.ts#buildings",
+    "hub/renderers/tower3d/src/world.ts#plantOnRoof"
+  ]
+}
+---
+**Problem.** Tower 3D's outside was boxes papered with a window texture, its shell plain mullions, bands and a
+block parapet, all under one flat light that never changed through the day. Two spikes on 2026-10-10 built a
+procedural city and shell, and a light rig with contact shadows and a night bloom, all behind `?proc=` URL
+flags. The user picked a lead (`skyline,shell,roof,rig,contact,bloom`) to ship. The lighting costs GPU time: the
+night overview takes 11.9 ms against 7.8 ms without it, under the 16.6 ms of a 60 fps frame in every view
+measured. So anyone it annoys, or whose machine it slows, needs a way to turn it off.
+
+**How.**
+- *The exterior is always drawn.* [`exterior/`](ref:hub/renderers/tower3d/src/exterior/geo.ts) is geometry as
+  plain data, built by pure functions and turned into one BufferGeometry per material. The city
+  ([`skyline`](ref:hub/renderers/tower3d/src/exterior/skyline.ts#skyline), drawn by
+  [`buildings`](ref:hub/renderers/tower3d/src/outside.ts#buildings)) is tiered towers with windows, bands, cornices
+  and roof plant, seeded per site. The shell ([`frame`](ref:hub/renderers/tower3d/src/exterior/shell.ts#frame),
+  `spandrel`, `parapet`) is capped mullions, panelled spandrels and a coping. The roof plant
+  ([`roofPlant`](ref:hub/renderers/tower3d/src/exterior/roof.ts#roofPlant), placed by
+  [`plantOnRoof`](ref:hub/renderers/tower3d/src/world.ts#plantOnRoof)) is in steel and bronze. The box city and the
+  old shell are deleted, so there is one implementation of each.
+- *The lighting is one setting.* [`startLighting`](ref:hub/renderers/tower3d/src/light/setting.ts#startLighting)
+  reads `tower.store` under [`LIGHTING_KEY`](ref:hub/renderers/tower3d/src/light/setting.ts#LIGHTING_KEY) (on
+  unless `false`) in [`boot.ts`](ref:hub/renderers/tower3d/src/boot.ts), the bundle's entry, and only then loads
+  `main.ts`. Every lighting path reads that one value, `LIT`:
+  - [`riseRig`](ref:hub/renderers/tower3d/src/light/rig.ts#riseRig) takes over the outside's lights and turns on a
+    2048² sun shadow map. Each frame, [`rigFrame`](ref:hub/renderers/tower3d/src/light/rig.ts#rigFrame) fits it to
+    what is seen, and the interior's ceiling light is patched into every lit material's shader. The toon ramp is
+    [`rigRamp`](ref:hub/renderers/tower3d/src/light/rig.ts#rigRamp)'s, wider and darker, so a low sun shows all
+    three bands.
+  - [`contactShadows`](ref:hub/renderers/tower3d/src/light/contact.ts#contactShadows) draws your level from under its
+    floor, blurred, onto the floor.
+  - [`bloom`](ref:hub/renderers/tower3d/src/light/bloom.ts#bloom) draws only what is tagged with
+    [`glows`](ref:hub/renderers/tower3d/src/toon.ts#glows) and adds it to the canvas, as strong as the night is dark.
+
+  [`lightFrame`](ref:hub/renderers/tower3d/src/main.ts#lightFrame) runs the passes before the scene is drawn.
+- *It applies on reload.* The ramp and the shader patches are fixed as materials are made, and the shadow map is
+  renderer state. The popover's section
+  ([`lightingSection`](ref:hub/renderers/tower3d/src/light/setting.ts#lightingSection)) stores the choice and offers
+  "Reload to apply" while the page draws something other than what was chosen. A fixture page (`?board=`) reads no
+  store and takes `?lighting=off`. The lab never starts the lighting.
+- *Off draws the exterior under today's light*: the outside's hemisphere, sun and ambient at the strengths Tower 3D
+  always had, and the three-step toon ramp.
+
+**Alternatives considered.**
+- *Each `?proc=` piece as its own setting*: the assets have no cheaper form worth keeping, and the lighting's parts
+  were tuned together (the bloom turns the rig's interior light off for its glow pass). One switch is what a viewer
+  wants.
+- *Switching live*: contact shadows and the bloom could, the rig can't without rebuilding every material. Half a
+  switch that works live is worse than an honest reload.
+- *The renderer's config `settings`* (as the cats' names are): no UI, so only someone who edits the config could
+  turn it off. A viewer's choice about how the page draws is view state, and that goes through `tower.store`.
+- *The experiments not picked*: `look` (one fixed sun with prop shadows), screen-space AO (a lot of GPU time for
+  a subtle effect) and point lamps over your level. All were measured and deleted.
+
+**Impact.** Tower 3D's frames on the fixture boards are the new look. `npm run tool:frames` records them with the
+lighting on, and the setting off draws byte for byte what `?proc=skyline,shell,roof` drew on the spike. Shadows
+reappearing late after a dialog closes is known and not fixed (draft `ivory-lynx`).

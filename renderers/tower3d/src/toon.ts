@@ -1,12 +1,12 @@
 import * as THREE from 'three'
 import { type } from '../../../src/shared/design.ts'
 import { WORLD } from './cards.ts'
-import { PROC } from './proc/flag.ts'
-import { rigRamp } from './proc/rig.ts'
+import { rigRamp } from './light/rig.ts'
+import { LIT } from './light/setting.ts'
 
 /** A three-step ramp: MeshToonMaterial's flat cartoon banding. */
 const RAMP = (() => {
-  const t = PROC.has('rig') ? rigRamp() : new THREE.DataTexture(new Uint8Array([95, 95, 95, 255, 180, 180, 180, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat)
+  const t = LIT ? rigRamp() : new THREE.DataTexture(new Uint8Array([95, 95, 95, 255, 180, 180, 180, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat)
   t.minFilter = t.magFilter = THREE.NearestFilter
   t.needsUpdate = true
   return t
@@ -122,7 +122,7 @@ export function dispose(root: THREE.Object3D, keep: (t: THREE.Texture) => boolea
 
 const painted = new Map<string, THREE.MeshToonMaterial>()
 
-/** A toon material over vertex colours: what src/proc's geometry is drawn in. */
+/** A toon material over vertex colours: what the exterior's geometry (exterior/) is drawn in. */
 export function toonPainted(color: THREE.ColorRepresentation) {
   const key = new THREE.Color(color).getHexString()
   let m = painted.get(key)

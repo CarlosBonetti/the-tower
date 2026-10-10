@@ -1,4 +1,4 @@
-import { box, geometry, mesh, noBottom, place, poly, prism, rng, triangles, vertices, type Mesh, type Paint, type Skip, type V } from './geo.ts'
+import { box, geometry, mesh, noBottom, place, poly, prism, rng, vertices, type Mesh, type Paint, type Skip, type V } from './geo.ts'
 
 /**
  * The city's buildings, generated at load from their sites and a seed: up to three tiers set back one over another,
@@ -161,16 +161,13 @@ function building(L: Layers, site: Site) {
   clutter(L, paint, spec, w, d, y + 0.6, r)
 }
 
-/** Every site's building, turned a quarter at a time and placed: one geometry per layer, with what it cost. */
+/** Every site's building, turned a quarter at a time and placed: one geometry per layer. */
 export function skyline(sites: Site[]) {
-  performance.mark('proc skyline')
   const L = Object.fromEntries(LAYERS.map((k) => [k, mesh()])) as Layers
   for (const site of sites) {
     const from = Object.fromEntries(LAYERS.map((k) => [k, vertices(L[k])])) as Record<Layer, number>
     building(L, site)
     for (const k of LAYERS) place(L[k], from[k], ((site.i * 7) % 4) * (Math.PI / 2), [site.x, 0, site.z])
   }
-  const geometries = Object.fromEntries(LAYERS.map((k) => [k, geometry(L[k])])) as Record<Layer, ReturnType<typeof geometry>>
-  const ms = performance.measure('proc skyline', 'proc skyline').duration
-  return { geometries, triangles: LAYERS.reduce((n, k) => n + triangles(L[k]), 0), ms }
+  return { geometries: Object.fromEntries(LAYERS.map((k) => [k, geometry(L[k])])) as Record<Layer, ReturnType<typeof geometry>> }
 }

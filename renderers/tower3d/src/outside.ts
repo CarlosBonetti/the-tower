@@ -4,31 +4,11 @@ import { skyAt, type Sky } from '../../../src/shared/design.ts'
 import { pick, roll } from './avatar.ts'
 import { random } from './random.ts'
 import { glows } from './toon.ts'
-import { PROC } from './proc/flag.ts'
-import { LOOK, castShadows } from './proc/look.ts'
-import { riseRig, rigHour } from './proc/rig.ts'
-import { LAYERS, skyline, type Layer } from './proc/skyline.ts'
+import { LAYERS, skyline, type Layer } from './exterior/skyline.ts'
+import { riseRig, rigHour } from './light/rig.ts'
+import { LIT } from './light/setting.ts'
 
 /** The city around the tower: sky, lights, the street and a city of windows, lit by the viewer's clock. Built once. */
-
-function windowTexture(seed: number) {
-  const cv = Object.assign(document.createElement('canvas'), { width: 64, height: 128 })
-  const g = cv.getContext('2d')!
-  g.fillStyle = '#0a0e18'
-  g.fillRect(0, 0, 64, 128)
-  let s = seed
-  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647
-  for (let y = 4; y < 124; y += 8) for (let x = 4; x < 60; x += 8) {
-    const r = rnd()
-    g.fillStyle = r > 0.8 ? '#ffd27a' : r > 0.72 ? '#8ec9ff' : '#141b2c'
-    g.fillRect(x, y, 4, 5)
-  }
-  const tex = new THREE.CanvasTexture(cv)
-  tex.colorSpace = THREE.SRGBColorSpace
-  tex.magFilter = THREE.NearestFilter
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  return tex
-}
 
 function paintSky(cv: HTMLCanvasElement, look: Sky) {
   const g = cv.getContext('2d')!
@@ -58,26 +38,8 @@ function sites() {
   return list
 }
 
-/** The city as boxes papered with window textures. */
-function boxes(group: THREE.Group) {
-  const textures = [1, 2, 3, 4].map((i) => windowTexture(i * 7919))
-  const byTexture: THREE.BufferGeometry[][] = textures.map(() => [])
-  for (const { i, x, z, w, h } of sites()) {
-    const geo = new THREE.BoxGeometry(w, h, w)
-    const uv = geo.getAttribute('uv') as THREE.BufferAttribute
-    for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * (w / 8), uv.getY(k) * (h / 16))
-    geo.translate(x, h / 2, z)
-    byTexture[i % 4].push(geo)
-  }
-  return byTexture.map((geos, i) => {
-    const mat = glows(new THREE.MeshLambertMaterial({ color: '#2a3550', emissive: '#ffffff', emissiveMap: textures[i], emissiveIntensity: 0.5 }))
-    group.add(new THREE.Mesh(mergeGeometries(geos), mat))
-    return mat
-  })
-}
-
-/** The city as src/proc/skyline.ts generates it at load: one mesh per material, lit like the boxes are. */
-function procedural(group: THREE.Group) {
+/** The city as exterior/skyline.ts generates it at load: one mesh per material, its stone and glass lit by the hour. */
+function buildings(group: THREE.Group) {
   const stone = new THREE.MeshLambertMaterial({ color: '#2a3550', vertexColors: true, flatShading: true })
   const trim = new THREE.MeshLambertMaterial({ color: '#2a3550', vertexColors: true, flatShading: true })
   const glass = new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#1c2640', vertexColors: true, flatShading: true })
@@ -86,14 +48,12 @@ function procedural(group: THREE.Group) {
   const byLayer: Record<Layer, THREE.Material> = { stone, trim, glass, warm, cool }
   const city = skyline(sites())
   for (const k of LAYERS) group.add(new THREE.Mesh(city.geometries[k], byLayer[k]))
-  console.info(`proc skyline: ${city.triangles} triangles in ${city.ms.toFixed(1)} ms`)
-  return { day: [{ m: stone, lift: 1 }, { m: trim, lift: 1 }], glass: [glass, warm, cool], night: [glass, warm, cool] }
+  return { day: [stone, trim], glass: [glass, warm, cool] }
 }
 
 function city() {
   const group = new THREE.Group()
-  const windows = PROC.has('skyline') ? [] : boxes(group)
-  const built = PROC.has('skyline') ? procedural(group) : { day: [], glass: [], night: [] }
+  const built = buildings(group)
   const pts: number[] = []
   for (let i = 0; i < 900; i++) {
     const a = random() * Math.PI * 2
@@ -104,7 +64,7 @@ function city() {
   stars.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3))
   const starMaterial = new THREE.PointsMaterial({ color: '#b8c8f0', size: 1.1, sizeAttenuation: false, fog: false, transparent: true })
   group.add(new THREE.Points(stars, starMaterial))
-  return { group, windows, built, stars: starMaterial }
+  return { group, built, stars: starMaterial }
 }
 
 function street() {
@@ -416,10 +376,6 @@ export function outside(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
   const sun = new THREE.DirectionalLight('#dfe6ff', 1.6)
   sun.position.set(-40, 80, 60)
   const ambient = new THREE.AmbientLight('#ffffff', 0.35)
-  const balance = PROC.has('look') ? LOOK : { sun: 1, hemi: 1, ambient: 1, fog: { near: 120, far: 420 } }
-  fog.near = balance.fog.near
-  fog.far = balance.fog.far
-  ambient.intensity *= balance.ambient
   scene.add(hemi, sun, ambient)
   const town = city()
   const road = street()
@@ -443,23 +399,20 @@ export function outside(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
     paintSky(sky, look)
     background.needsUpdate = true
     fog.color.set(look.mid)
-    hemi.intensity = 1.9 * look.light * balance.hemi
-    sun.intensity = 1.6 * look.light * balance.sun
+    hemi.intensity = 1.9 * look.light
+    sun.intensity = 1.6 * look.light
     sun.color.set(look.stars > 0.5 ? '#dfe6ff' : '#fff1dc')
     town.stars.opacity = look.stars
     const day = THREE.MathUtils.clamp(look.light - 1, 0, 1)
-    for (const w of town.windows) (w.emissiveIntensity = look.windows, w.color.copy(NIGHT.stone).lerp(DAY.stone, day))
-    for (const { m, lift } of town.built.day) m.color.copy(NIGHT.stone).lerp(DAY.stone, day).multiplyScalar(lift)
-    for (const m of town.built.glass) m.color.copy(NIGHT.glass).lerp(DAY.glass, day)
-    for (const m of town.built.night) m.emissiveIntensity = look.windows
+    for (const m of town.built.day) m.color.copy(NIGHT.stone).lerp(DAY.stone, day)
+    for (const m of town.built.glass) (m.color.copy(NIGHT.glass).lerp(DAY.glass, day), (m.emissiveIntensity = look.windows))
     road.ground.color.copy(NIGHT.ground).lerp(DAY.ground, day)
     ring.material.color.setScalar(0.55 + 0.45 * day)
     cars.lamps.color.setScalar(THREE.MathUtils.clamp(2 - look.light, 0.15, 1))
     field.ground.color.setScalar(0.55 + 0.45 * day)
     field.lights.color.setScalar(THREE.MathUtils.clamp(2 - look.light, 0.15, 1))
-    if (PROC.has('rig')) rigHour(hours, look)
+    if (LIT) rigHour(hours, look)
   }
-  if (PROC.has('rig')) riseRig(scene, renderer, { hemi, sun, ambient })
-  else if (PROC.has('look')) castShadows(renderer, sun)
+  if (LIT) riseRig(scene, renderer, { hemi, sun, ambient })
   return { setHour, tick, fly }
 }

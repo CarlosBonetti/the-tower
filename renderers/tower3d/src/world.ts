@@ -17,9 +17,8 @@ import { buildParty, type Party } from './party.ts'
 import { floorPalette, tintOf } from './palette.ts'
 import { buildRoom, shellTag, shellTitle, type Bookcase } from './room.ts'
 import { block, dispose, glowing, glows, mesh, plate, sprite, toon, toonPainted } from './toon.ts'
-import { PROC } from './proc/flag.ts'
-import { FINISHES, roofPlant, type Finish } from './proc/roof.ts'
-import { frame, parapet as procParapet, spandrel as procSpandrel } from './proc/shell.ts'
+import { FINISHES, roofPlant, type Finish } from './exterior/roof.ts'
+import { frame, parapet as shellParapet, spandrel as shellSpandrel } from './exterior/shell.ts'
 import { screenMaterial } from './tv.ts'
 import { LOBBY_BAND, paintSign, signOf, signPlate } from './sign.ts'
 
@@ -56,27 +55,18 @@ const PANE = 3
 const glass = new THREE.MeshPhysicalMaterial({ color: '#9cc4ff', transparent: true, opacity: 0.14, roughness: 0.05, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide })
 glass.userData.shared = true
 
-/** The curtain wall round a level: glass and mullions every PANE. */
+/** The curtain wall round a level: glass, and the shell's mullions every PANE. */
 function facade(p: Plan, height: number) {
   const g = new THREE.Group()
   const w = p.width / 2
   const d = p.depth / 2
   const sides: [number, number, number, number][] = [[0, d, p.width, 0], [0, -d, p.width, Math.PI], [w, 0, p.depth, Math.PI / 2], [-w, 0, p.depth, -Math.PI / 2]]
-  const mullions: THREE.BufferGeometry[] = []
   for (const [x, z, len, rot] of sides) {
     const pane = mesh(new THREE.PlaneGeometry(len, height - 0.6), glass, x, 0.3 + (height - 0.6) / 2, z)
     pane.rotation.y = rot
     g.add(pane)
-    const along = new THREE.Vector3(Math.cos(rot), 0, -Math.sin(rot))
-    for (let u = -len / 2; u <= len / 2 + 0.01; u += PANE) {
-      const m = new THREE.BoxGeometry(0.08, height, 0.12)
-      m.translate(x + along.x * u, height / 2, z + along.z * u)
-      mullions.push(m)
-    }
   }
-  if (PROC.has('shell')) return g.add(new THREE.Mesh(frame(p, height, PANE), toonPainted(SHELL.mullion)))
-  g.add(new THREE.Mesh(mergeGeometries(mullions), toon('#1d2433')))
-  return g
+  return g.add(new THREE.Mesh(frame(p, height, PANE), toonPainted(SHELL.mullion)))
 }
 
 const SHELL = { mullion: '#4a5672', coping: '#4a5672' }
@@ -97,11 +87,8 @@ function foot(p: Plan, level: Level) {
     g.add(block(p.width + 0.3, h, 0.3, mat, 0, y, d), block(p.width + 0.3, h, 0.3, mat, 0, y, -d))
     g.add(block(0.3, h, p.depth + 0.3, mat, w, y, 0), block(0.3, h, p.depth + 0.3, mat, -w, y, 0))
   }
-  if (PROC.has('shell')) {
-    const made = procSpandrel(p, SLAB, 0.3, PANE)
-    g.add(new THREE.Mesh(made.panel, toonPainted(spandrel)), new THREE.Mesh(made.trim, toonPainted(SHELL.mullion)))
-  }
-  else band(-SLAB, SLAB + 0.3, toon(spandrel))
+  const made = shellSpandrel(p, SLAB, 0.3, PANE)
+  g.add(new THREE.Mesh(made.panel, toonPainted(spandrel)), new THREE.Mesh(made.trim, toonPainted(SHELL.mullion)))
   band(-0.06, 0.05, glowing(tint))
   return g
 }
@@ -296,8 +283,8 @@ const ROOF_FINISH: Record<Finish, THREE.Material> = {
 }
 for (const m of Object.values(ROOF_FINISH)) m.userData.shared = true
 
-/** The roof plant of src/proc/roof.ts: plant on the shaft's cap, a water tank, AC units and a pipe run at the back. */
-function procRoof(p: Plan) {
+/** The roof plant of exterior/roof.ts: plant on the shaft's cap, a water tank, AC units and a pipe run at the back. */
+function plantOnRoof(p: Plan) {
   const cap = STOREY + 0.4
   const core = (-p.depth / 2 + coreFront(p)) / 2
   const d = p.depth / 2
@@ -317,15 +304,9 @@ function procRoof(p: Plan) {
 function roofLevel(p: Plan, level: Extract<Level, { kind: 'roof' }>, hostUp: boolean) {
   const g = new THREE.Group()
   g.add(block(p.width - 0.4, 0.02, p.depth - 0.4, toon('#2b313d'), 0, 0, 0))
-  const parapet = toon('#141a26')
-  if (PROC.has('shell')) {
-    const made = procParapet(p, 1.1, PANE)
-    g.add(new THREE.Mesh(made.panel, toonPainted('#141a26')), new THREE.Mesh(made.trim, toonPainted(SHELL.coping)))
-  } else {
-    g.add(block(p.width + 0.3, 1.05, 0.3, parapet, 0, 0, p.depth / 2), block(p.width + 0.3, 1.05, 0.3, parapet, 0, 0, -p.depth / 2))
-    g.add(block(0.3, 1.05, p.depth, parapet, p.width / 2, 0, 0), block(0.3, 1.05, p.depth, parapet, -p.width / 2, 0, 0))
-  }
-  if (PROC.has('roof')) g.add(procRoof(p))
+  const parapet = shellParapet(p, 1.1, PANE)
+  g.add(new THREE.Mesh(parapet.panel, toonPainted('#141a26')), new THREE.Mesh(parapet.trim, toonPainted(SHELL.coping)))
+  g.add(plantOnRoof(p))
   const crown = brandPlate(1.6)
   crown.position.set(0, STOREY + 1.3, coreFront(p) + WALL + 0.05)
   g.add(crown)

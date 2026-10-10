@@ -55,7 +55,7 @@ export function hudHtml(board: Board, here: Level, { music, sharing, fresh, wait
   const state = hostState(board)
   const host = `<span class="hud-host ${HOST_ATTENTION[state]}" data-tip="${esc(HOST_MEANS[state])}"><span class="lamp"></span>${state === 'up' ? '' : HOST_NAME[state]}</span>`
   const tune = `<button class="icon-btn hud-music${music ? ' on' : ''}" data-music aria-label="music" aria-pressed="${music}" data-tip="music ${music ? 'on' : 'off'} (B)">${music ? ICON.music : ICON.silent}</button>`
-  const gear = `<button class="icon-btn" popovertarget="settings" aria-label="settings" data-tip="settings: sound and theme">${ICON.settings}</button>`
+  const gear = `<button class="icon-btn" popovertarget="settings" aria-label="settings" data-tip="settings: sound, theme and lighting">${ICON.settings}</button>`
   const tally = (['ready', 'working', 'quiet', 'broken'] as const).filter((a) => count(a))
     .map((a) => `<span class="${a}" data-tip="${esc(`${count(a)} ${ATTENTION_NAME[a]}: ${ATTENTION_MEANS[a]}\n\n${ON_DUTY_MEANS}`)}"><span class="lamp"></span><b>${count(a)}</b></span>`)
   const shells = board.shells.length ? [`<span data-tip="${board.shells.length} shells running"><b>${board.shells.length}</b> shells</span>`] : []

@@ -154,7 +154,6 @@ export function place(m: Mesh, from: number, turn: number, to: V) {
 }
 
 export const vertices = (m: Mesh) => m.pos.length / 3
-export const triangles = (m: Mesh) => m.idx.length / 3
 
 export function geometry(m: Mesh) {
   const g = new THREE.BufferGeometry()

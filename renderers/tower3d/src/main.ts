@@ -26,11 +26,10 @@ import { PET_IN, PET_MS, dropHearts, makeHearts, petProgress, petSpot, placeHear
 import { idle, sharing, startShare, stopShare } from './tv.ts'
 import { CABINET, DESK, EYE, bigScreens, cabinetOf, carBox, colliders, coreFront, deskOf, loungeSpots, deskSpot, inside, kioskOf, levelHeight, levelOfCard, levelOfShell, levelY, plan, type Box, type Plan } from './layout.ts'
 import { loadModels } from './models.ts'
-import { PROC } from './proc/flag.ts'
-import { shadowEverything } from './proc/look.ts'
-import { contactShadows } from './proc/contact.ts'
-import { bloom, occlude } from './proc/post.ts'
-import { rigFrame } from './proc/rig.ts'
+import { bloom } from './light/bloom.ts'
+import { contactShadows } from './light/contact.ts'
+import { rigFrame } from './light/rig.ts'
+import { chooseLighting, LIT, lightingSection } from './light/setting.ts'
 import { fillLayer, loadKit, zonesPlaced, type Kit, type Placed } from './kit.ts'
 import { hangOn, levelsShown, onLevel, showLevels } from './levels.ts'
 import { THEMES, bare, dress, itemOf, type Placement } from './dress.ts'
@@ -1123,7 +1122,7 @@ function chooseRing(ring: Ring) {
 }
 
 /**
- * The settings popover: how waits ring and the viewer's appearance. Notifications are the tower page's, so it offers none. It
+ * The settings popover: how waits ring, the viewer's appearance and the building's lighting. Notifications are the tower page's, so it offers none. It
  * stands by the button that opened it, in the HUD or on the pause card.
  */
 let settingsDrawn = ''
@@ -1131,7 +1130,7 @@ let settingsBy: Element = $('hud')
 const settingsEl = $('settings')
 const drawSettings = () => settingsEl.matches(':popover-open') && paintSettings()
 function paintSettings() {
-  const html = settingsHtml([soundSection(s.ring), ...prefSections(tower.prefs.get(), faceInstalled), markdownSection(s.briefMarkdown)])
+  const html = settingsHtml([soundSection(s.ring), ...prefSections(tower.prefs.get(), faceInstalled), markdownSection(s.briefMarkdown), lightingSection(s.lighting)])
   if (html !== settingsDrawn) settingsEl.innerHTML = settingsDrawn = html
 }
 placeOnOpen(settingsEl, () => settingsBy)
@@ -1140,8 +1139,10 @@ $('watch-close').innerHTML = ICON.close
 settingsEl.addEventListener('beforetoggle', (e) => (e as ToggleEvent).newState === 'open' && paintSettings())
 document.addEventListener('click', (e) => (settingsBy = (e.target as Element).closest('[popovertarget="settings"]') ?? settingsBy), true)
 settingsEl.addEventListener('click', (e) => {
-  const el = (e.target as Element).closest<HTMLElement>('[data-ring-choice], [data-sound-play]')
+  const el = (e.target as Element).closest<HTMLElement>('[data-ring-choice], [data-sound-play], [data-lighting], [data-lighting-reload]')
   if (!el) return
+  if (el.dataset.lighting) return (chooseLighting((s.lighting = el.dataset.lighting === 'true')), drawSettings())
+  if (el.hasAttribute('data-lighting-reload')) return location.reload()
   if (el.dataset.ringChoice) return chooseRing(el.dataset.ringChoice as Ring)
   ring(el.dataset.soundPlay as Sound)
 })
@@ -1334,15 +1335,20 @@ const covered = () => s.panel?.kind === 'desk' || s.panel?.kind === 'shell' || s
 function render() {
   if (s.board && s.world) paintScreens(s.simNow, screenDistance)
   showLevels(levelsShown(s))
-  if (PROC.has('rig')) rigFrame(scene, { ...s.plan, top: s.plan.levels.at(-1)?.y ?? 0, y: s.plan.levels[s.me.level]?.y ?? 0, height: levelHeight(s.me.level), whole: !handsShown(), panels: panelGrid(s.plan) })
-  else if (PROC.has('look')) shadowEverything(scene)
-  if (PROC.size) (renderer.info.autoReset = false), renderer.info.reset()
-  if (PROC.has('contact')) contactShadows(renderer, scene, standingOn(), { ...s.plan, y: s.plan.levels[s.me.level]?.y ?? 0 })
+  if (LIT) lightFrame()
   renderer.render(scene, camera)
-  if (PROC.has('ao') && handsShown()) occlude(renderer, scene, camera)
-  if (PROC.has('bloom')) bloom(renderer, scene, camera)
+  if (LIT) bloom(renderer, scene, camera)
   Object.assign(s.meter, { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles })
   if (s.hands && handsShown()) drawHands(renderer, s.hands)
+}
+
+/** The lighting's passes before the scene is drawn: the rig fitted to what is seen, and the contact shadows under your level, all counted on the meter. */
+function lightFrame() {
+  const y = s.plan.levels[s.me.level]?.y ?? 0
+  rigFrame(scene, { ...s.plan, top: s.plan.levels.at(-1)?.y ?? 0, y, height: levelHeight(s.me.level), whole: !handsShown(), panels: panelGrid(s.plan) })
+  renderer.info.autoReset = false
+  renderer.info.reset()
+  contactShadows(renderer, scene, standingOn(), { ...s.plan, y })
 }
 
 /** What stands on your level and its own part of the building, while you are on one: walking or petting, not riding or flying. */
