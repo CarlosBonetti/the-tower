@@ -11,11 +11,11 @@ import { VerticalBlurShader } from 'three/examples/jsm/shaders/VerticalBlurShade
  */
 
 /** How high over the floor a thing still darkens it (m). */
-const REACH = 1.4
+const REACH = 2
 /** Floor metres per shadow texel. */
 const TEXEL = 0.05
 /** How dark a shadow under something resting on the floor is. */
-const DARK = 0.85
+const DARK = 0.95
 /** Frames between two redraws of the shadows: what moves on a floor moves a few cm in that time, under the blur. */
 const EVERY = 3
 let drawn = { frame: 0, y: NaN }
@@ -25,7 +25,7 @@ const LIFT = 0.03
 
 const depth = new THREE.MeshDepthMaterial({ side: THREE.DoubleSide })
 depth.onBeforeCompile = (shader) => {
-  shader.fragmentShader = shader.fragmentShader.replace('vec4( vec3( 1.0 - fragCoordZ ), opacity )', 'vec4( vec3( 0.0 ), pow( 1.0 - fragCoordZ, 1.3 ) )')
+  shader.fragmentShader = shader.fragmentShader.replace('vec4( vec3( 1.0 - fragCoordZ ), opacity )', 'vec4( vec3( 0.0 ), pow( 1.0 - fragCoordZ, 0.7 ) )')
 }
 
 const target = () => new THREE.WebGLRenderTarget(1, 1, { depthBuffer: true })
@@ -116,8 +116,8 @@ export function contactShadows(renderer: THREE.WebGLRenderer, scene: THREE.Scene
   scene.overrideMaterial = null
   scene.background = background
   restore()
-  blur(renderer, 1.5)
-  blur(renderer, 0.6)
+  blur(renderer, 1)
+  blur(renderer, 0.4)
   renderer.setRenderTarget(null)
   renderer.setClearColor(clear, alpha)
 }
