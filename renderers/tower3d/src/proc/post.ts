@@ -93,7 +93,9 @@ const add = new THREE.ShaderMaterial({
   depthWrite: false,
   blending: THREE.AdditiveBlending,
 })
-let glow: { pass: UnrealBloomPass; lit: THREE.WebGLRenderTarget } | undefined
+/** Frames between two glow passes: the bloom is soft enough that a frame-old one doesn't show. */
+const GLOW_EVERY = 2
+let glow: { pass: UnrealBloomPass; lit: THREE.WebGLRenderTarget; frame: number } | undefined
 
 /** How dark the sky is at the wall clock's hour: its stars, 0 by day, 1 at full night. */
 function nightNow() {
@@ -132,14 +134,16 @@ export function bloom(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera:
   renderer.getDrawingBufferSize(size)
   const half = size.clone().multiplyScalar(0.5).floor()
   if (!glow || glow.lit.width !== half.x || glow.lit.height !== half.y) {
-    glow = { pass: new UnrealBloomPass(half, BLOOM.strength, BLOOM.radius, BLOOM.threshold), lit: new THREE.WebGLRenderTarget(half.x, half.y, { type: THREE.HalfFloatType }) }
+    glow = { pass: new UnrealBloomPass(half, BLOOM.strength, BLOOM.radius, BLOOM.threshold), lit: new THREE.WebGLRenderTarget(half.x, half.y, { type: THREE.HalfFloatType }), frame: 0 }
   }
   const { pass, lit } = glow
   const clear = renderer.getClearColor(new THREE.Color())
   const alpha = renderer.getClearAlpha()
-  glowing(renderer, scene, camera, lit)
-  pass.strength = BLOOM.strength * night
-  pass.render(renderer, null as never, lit, 0, false)
+  if (glow.frame++ % GLOW_EVERY === 0) {
+    glowing(renderer, scene, camera, lit)
+    pass.strength = BLOOM.strength * night
+    pass.render(renderer, null as never, lit, 0, false)
+  }
   add.uniforms.tDiffuse.value = pass.renderTargetsHorizontal[0].texture
   quad.material = add
   renderer.setRenderTarget(null)
