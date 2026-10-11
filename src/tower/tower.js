@@ -95,8 +95,8 @@
   const pinned = document.currentScript && new URL(document.currentScript.src).searchParams.get('v')
   if (pinned && !serves(VERSION, pinned)) throw new Error(`tower.js: the tower speaks version ${VERSION}, this page was written against ${pinned}`)
   /** Relayed: framed at an origin of its own, as the tower frames a shelf page. A frame at the tower's origin calls the routes itself. */
-  const framed = window.parent !== window && self.origin !== new URL(document.currentScript.src).origin
-  if (!framed && self.origin === 'null') throw new Error('tower.js: open this page from its shelf inside the tower, at /run/<project>/<n>, or declare it as a renderer')
+  const framed = window.parent !== window && window.origin !== new URL(document.currentScript.src).origin
+  if (!framed && window.origin === 'null') throw new Error('tower.js: open this page from its shelf inside the tower, at /run/<project>/<n>, or declare it as a renderer')
 
   const LOST = 'The tower stopped answering: reconnecting as soon as it is back (tower up starts it).'
   /** How long to wait before opening a stream the browser gave up on, as it does when the tower answers with an error. */
