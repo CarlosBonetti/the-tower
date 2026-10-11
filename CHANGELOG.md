@@ -12,6 +12,14 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.21.1
+
+Tower 3D's landing rugs show whole again. No host restart, no config change, the renderer API is unchanged. Rebuild
+Tower 3D (`npm run tower3d`) and reload it.
+
+- The rug before each floor's elevator, with the floor's number, ran under the first row's desk rugs, which were drawn
+  over it. It now ends before them, its number a little smaller to fit.
+
 ## v1.21.0
 
 The tower reads your quota while no session runs, Tower 3D starts under a loading screen, and fixes across both
