@@ -18,6 +18,7 @@ import { floorPalette, tintOf } from './palette.ts'
 import { buildRoom, shellTag, shellTitle, type Bookcase } from './room.ts'
 import { block, dispose, glowing, glows, mesh, plate, sprite, toon, toonPainted } from './toon.ts'
 import { FINISHES, roofPlant, type Finish } from './exterior/roof.ts'
+import { mastLight } from './exterior/beacons.ts'
 import { frame, parapet as shellParapet, spandrel as shellSpandrel } from './exterior/shell.ts'
 import { screenMaterial } from './tv.ts'
 import { LOBBY_BAND, paintSign, signOf, signPlate } from './sign.ts'
@@ -280,7 +281,7 @@ const ROOF_FINISH: Record<Finish, THREE.Material> = {
   bronze: metal('#a8743f', '#ffd7a0'),
   concrete: toonPainted('#4a5266'),
   dark: toonPainted('#141a26'),
-  glow: glowing('#ff3b3b'),
+  glow: mastLight,
 }
 for (const m of Object.values(ROOF_FINISH)) m.userData.shared = true
 

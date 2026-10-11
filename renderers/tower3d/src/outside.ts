@@ -7,6 +7,7 @@ import { glows } from './toon.ts'
 import { LAYERS, skyline, type Layer } from './exterior/skyline.ts'
 import { inNeighbourhood, neighbourhood } from './exterior/neighbourhood.ts'
 import { keepHours, keepsHours, windowsAt } from './exterior/windows.ts'
+import { beacons } from './exterior/beacons.ts'
 import { riseRig, rigHour } from './light/rig.ts'
 import { LIT } from './light/setting.ts'
 
@@ -53,7 +54,7 @@ function buildings(group: THREE.Group) {
   keepHours(city.geometries.warm)
   keepHours(city.geometries.cool)
   for (const k of LAYERS) group.add(new THREE.Mesh(city.geometries[k], byLayer[k]))
-  return { day: [stone, trim], glass: [glass, warm, cool] }
+  return { day: [stone, trim], glass: [glass, warm, cool], tops: city.tops }
 }
 
 function city() {
@@ -390,7 +391,8 @@ export function outside(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
   cars.tick(0)
   const field = airfield()
   const homes = neighbourhood(curve, ROAD.width / 2, (x) => x < FIELD_CLEAR.minX - 6)
-  scene.add(road.group, town.group, ring.mesh, cars.group, field.group, homes.group)
+  const lights = beacons(town.built.tops)
+  scene.add(road.group, town.group, ring.mesh, cars.group, field.group, homes.group, lights.mesh)
   let flying: ReturnType<typeof flight> | undefined
   const fly = (model: THREE.Group) => {
     flying = flight(model)
@@ -399,6 +401,7 @@ export function outside(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
   const tick = (t: number) => {
     cars.tick(t)
     flying?.tick(t)
+    lights.tick(t)
   }
   const setHour = (hours: number) => {
     const look = skyAt(hours)
@@ -420,6 +423,7 @@ export function outside(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
     field.lights.color.setScalar(THREE.MathUtils.clamp(2 - look.light, 0.15, 1))
     const night = Math.min(1, look.stars * 2)
     windowsAt(hours, night)
+    lights.setNight(night)
     if (LIT) rigHour(hours, look)
   }
   if (LIT) riseRig(scene, renderer, { hemi, sun, ambient })

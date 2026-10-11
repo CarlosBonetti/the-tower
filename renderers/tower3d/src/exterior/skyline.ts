@@ -175,15 +175,21 @@ function building(L: Layers, site: Site) {
     y += h
   }
   clutter(L, paint, spec, w, d, y + 0.6, r)
+  return { y, w, d }
 }
 
-/** Every site's building, turned a quarter at a time and placed: one geometry per layer. */
+/**
+ * Every site's building, turned a quarter at a time and placed: one geometry per layer, and each building's top tier
+ * (where its roof is, its size and its turn).
+ */
 export function skyline(sites: Site[]) {
   const L = Object.fromEntries(LAYERS.map((k) => [k, mesh()])) as Layers
-  for (const site of sites) {
+  const tops = sites.map((site) => {
     const from = Object.fromEntries(LAYERS.map((k) => [k, vertices(L[k])])) as Record<Layer, number>
-    building(L, site)
-    for (const k of LAYERS) place(L[k], from[k], ((site.i * 7) % 4) * (Math.PI / 2), [site.x, 0, site.z])
-  }
-  return { geometries: Object.fromEntries(LAYERS.map((k) => [k, geometry(L[k])])) as Record<Layer, ReturnType<typeof geometry>> }
+    const top = building(L, site)
+    const turn = ((site.i * 7) % 4) * (Math.PI / 2)
+    for (const k of LAYERS) place(L[k], from[k], turn, [site.x, 0, site.z])
+    return { ...top, x: site.x, z: site.z, turn }
+  })
+  return { geometries: Object.fromEntries(LAYERS.map((k) => [k, geometry(L[k])])) as Record<Layer, ReturnType<typeof geometry>>, tops }
 }
