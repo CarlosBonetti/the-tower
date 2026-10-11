@@ -2197,21 +2197,17 @@ $('desk-head').addEventListener('click', (e) => {
 $('doc-head').addEventListener('click', (e) => {
   const button = (e.target as HTMLElement).closest<HTMLElement>('[data-act]')
   const what = button?.dataset.act
+  if (what === 'close') return (closeDoc(), lock())
   if (s.panel?.kind === 'picture') {
     if (openOut(e)) return
-    if (what === 'close') return (closeDoc(), lock())
     if (what === 'desk') return goShown(s.panel.id, s.panel.target)
   }
-  if (s.panel?.kind === 'stats' && what === 'close') return (closeDoc(), lock())
   if (s.panel?.kind === 'kept') {
     const kept = s.panel
     if (openOut(e)) return
-    if (what === 'close') return (closeDoc(), lock())
     if (what === 'delete') return confirmed(`kept ${kept.id}`) && pressing(button!, () => deleteKept(kept))
   }
-  if (s.panel?.kind !== 'doc') return
-  if (what === 'close') return (closeDoc(), lock())
-  if (what === 'tower') return tower.ui('shelf', { project: s.panel.project, n: s.panel.n })
+  if (s.panel?.kind === 'doc' && what === 'tower') return tower.ui('shelf', { project: s.panel.project, n: s.panel.n })
 })
 $('game-head').addEventListener('click', (e) => {
   if (openOut(e)) return
