@@ -146,7 +146,8 @@ unlanded work, sometimes pointing at code. Building that primitive covers all of
   checkout isn't, and the shared Reviews panel marks nothing new on a settled thread, so no renderer tallies notes new to
   a worker on landed work. Rejected: an ahead count against the
   base (0 for landed work and for none alike), and a recorded cut commit (absent on every branch cut before it).
-- *Workers*: `tower thread [checkout]` prints the file and the notes new to you; `tower note [on <checkout>] [re n<k>]
+- *Workers*: `tower thread [checkout]` prints the file, the notes new to you and the repos an anchor on that checkout
+  can name; `tower note [on <checkout>] [re n<k>]
   [repo:path:lines …]` appends under your callsign with the body on stdin, quoting each anchor from the checkout's
   copy of the repo as it is now, or from your own when your worktree is a fork of that checkout: the version a
   [[reviewer]] read. `on` lets a reviewer working elsewhere write on another checkout; `tower send <CALLSIGN>` is Send

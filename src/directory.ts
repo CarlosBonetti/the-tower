@@ -398,6 +398,10 @@ const noteArgs = (args: string[]): NoteArgs => {
   return note
 }
 
+/** The repos a note's anchors on `checkout` name, as `tower note` takes them. */
+const anchorLine = (floor: Floor, checkout: string): string =>
+  `A note's anchors name one of the checkout's repos: ${checkoutDirs(floor, checkout).map((d) => `${repoName(d)}:<path>:<from>-<to>`).join(', ')}.`
+
 /** An anchor with its lines, read from the checkout's copy of the repo. */
 const quoted = (floor: Floor, checkout: string, anchor: Omit<Anchor, 'quote'>): Anchor => {
   const dirs = checkoutDirs(floor, checkout)
@@ -583,11 +587,13 @@ switch (verb) {
     const text = await readThread(floor, checkout)
     if (text === undefined) {
       console.log(`No notes on checkout ${checkout} yet. \`tower note\` writes the first.`)
+      console.log(anchorLine(floor, checkout))
       break
     }
     const unseen = unseenBy(parseThread(text), card.callsign)
     process.stdout.write(text.endsWith('\n') ? text : `${text}\n`)
     console.log(`\n(${collectionOf(floor, REVIEWS).dir}/${threadId(checkout)}) ${unseen.length ? `New to you since your last note: ${unseen.map((m) => `n${m.n}`).join(', ')}.` : 'Nothing new to you since your last note.'}`)
+    console.log(anchorLine(floor, checkout))
     break
   }
   case 'note': {
