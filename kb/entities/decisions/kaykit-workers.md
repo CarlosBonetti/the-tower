@@ -66,7 +66,9 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   one time in five; else an adventurer's body, sometimes repainted in another's atlas, a head that may be another's
   (the rogue's hooded too), maybe a helm, a cape, gear in hand while standing, the old wear (hats, glasses), and a
   skin and hair colour, which a shader multiplies into the atlas's first two swatches. The record is what a
-  wardrobe will supply later.
+  wardrobe will supply later. KayKit's heads share one width and one eye line, so the old wear hangs where it would on
+  the Knight's head, the one parts are made on, whichever head is worn, drawn at the size that makes its beanie's and
+  cap's domes as wide as that head (`models/wear.py` made them 0.56 across).
 - Draw calls. The skinned parts of one atlas merge into one mesh per worker (geometry cached per combination);
   the bot's rigid parts (`models/bot.py`, built in the rig's rest pose, a pivot per bone) are skinned to their bones
   at load, one mesh per material ([`wearModel`](ref:hub/renderers/tower3d/src/rig.ts#wearModel)). Each worker
@@ -116,6 +118,9 @@ keep theirs, whatever the order of the GLB's names. Bots don't wear
 - *A `none` candidate in each slot's rendezvous* (TURING-72's first suggestion): at equal weight the bare share
   shrinks with every part added (1 in N+1); weighted to hold it, its weight changes with N and moves workers. A roll
   of its own for wearing keeps both stable.
+- *Fitting the old wear to each worn head's bounding box* (the bean's rule): beards and hair stretch the box, so
+  pieces sank or floated per head, and it assumed a 0.36 head where the pieces fit a 0.56 one, so on KayKit heads
+  everything worn was drawn nearly twice its size.
 - *Picking by index into the pool* (the first cut): every part added re-dressed most of a slot's wearers.
 - *Blender's export as the runtime's file*: its skin orders joints its own way; normalizing keeps one skeleton and
   lets skinned made parts merge with the pack's into one mesh.

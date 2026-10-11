@@ -118,22 +118,33 @@ function tinted(atlas: THREE.Texture, skin: string, hair: string) {
   return m
 }
 
-/** Where an adventurer's head is, in its head bone's space: its top and its face's front, measured from its mesh. */
-function headSpace(cast: Cast, rig: Rig, head: string) {
-  const box = cast.parts.get(head)!.mesh.geometry.boundingBox ?? (cast.parts.get(head)!.mesh.geometry.computeBoundingBox(), cast.parts.get(head)!.mesh.geometry.boundingBox!)
+/**
+ * The head every head part is made on (parts/parts.blend's stage). KayKit's heads share its width and its eyes, so
+ * what fits it fits them all, wherever their hair or beard reaches.
+ */
+const MADE_ON = 'Knight_Head'
+
+/** How wide a head the pieces of models/wear.py fit: their beanie's and cap's domes, 0.28 in radius. */
+const WEAR_HEAD = 0.56
+
+/**
+ * Where an adventurer wears things, the same on every head, in its head bone's space: the top and the face (its front,
+ * at eye height) of the head parts are made on; and how much bigger the pieces of models/wear.py are drawn there.
+ */
+function wearingOn(cast: Cast, rig: Rig) {
+  const { geometry } = cast.parts.get(MADE_ON)!.mesh
+  if (!geometry.boundingBox) geometry.computeBoundingBox()
+  const box = geometry.boundingBox!
   const bone = rig.bone('head')
   rig.root.updateMatrixWorld(true)
   const local = (v: THREE.Vector3) => bone.worldToLocal(rig.root.localToWorld(v))
-  const width = box.max.x - box.min.x
   return {
     top: local(new THREE.Vector3(0, box.max.y, 0)),
     face: local(new THREE.Vector3(0, box.min.y + (box.max.y - box.min.y) * 0.42, box.max.z)),
-    width,
+    fits: (box.max.x - box.min.x) / WEAR_HEAD,
   }
 }
 
-/** How wide a head the pieces of models/wear.py were made for, in meters. */
-const WEAR_HEAD = 0.36
 /** How far above its head (or what it wears there) a worker's status light floats, rig units. */
 const BULB_LIFT = 0.42
 
@@ -162,16 +173,14 @@ function adventurer(models: Models, rig: Rig, look: Extract<Look, { species: 'ad
     if (soft.length) wearSkinned(cast, rig, soft, materialOf(atlas))
     for (const n of names.filter((n) => !skinned(cast, n))) wearRigid(cast, rig, n, materialOf(atlas))
   }
-  const head = look.parts.find((p) => cast.slots.Head.includes(p.name))!.name
-  const space = headSpace(cast, rig, head)
-  const fits = space.width / WEAR_HEAD
+  const space = wearingOn(cast, rig)
   const helmed = look.parts.some((p) => cast.slots.Helm.includes(p.name))
   const bulb = glowing('#ffffff')
   const light = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8), bulb)
   light.position.copy(space.top).add(new THREE.Vector3(0, helmed ? BULB_LIFT * 1.6 : BULB_LIFT, 0))
   rig.bone('head').add(light)
   const gear = look.gear === undefined ? undefined : wearRigid(cast, rig, look.gear, materialOf(cast.parts.get(look.gear)!.atlas))
-  return { hat: anchor(rig.bone('head'), space.top, fits), face: anchor(rig.bone('head'), space.face, fits), bulb, gear }
+  return { hat: anchor(rig.bone('head'), space.top, space.fits), face: anchor(rig.bone('head'), space.face, space.fits), bulb, gear }
 }
 
 /**
