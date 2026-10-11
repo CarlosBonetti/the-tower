@@ -136,6 +136,9 @@ export type Rig = {
   skeleton: THREE.Skeleton
   /** The actions the last pose played, by clip. */
   playing: Map<ClipKey, THREE.AnimationAction>
+  /** The last pose set, and the one it is fading in from since `at` (sim seconds), while the fade lasts. */
+  last?: Pose
+  fade?: { from: Pose; at: number }
 }
 
 export function rigOf(cast: Cast): Rig {
@@ -226,11 +229,29 @@ export type Pose = { layers: Layer[]; lean?: number }
 const leaning = new THREE.Quaternion()
 const X = new THREE.Vector3(1, 0, 0)
 
-/** Sets the rig to `pose`: every layer at its time, nothing else playing. */
-export function pose(cast: Cast, rig: Rig, { layers, lean = 0 }: Pose) {
-  const wanted = new Set(layers.map((l) => l.clip))
-  for (const [clip, action] of rig.playing) if (!wanted.has(clip)) (action.stop(), rig.playing.delete(clip))
-  for (const { clip, at, weight = 1 } of layers) {
+/** How long a new pose takes to fade in over the last one, seconds. */
+const FADE = 0.3
+
+const clipsOf = (p: Pose) => p.layers.map((l) => l.clip).join('|')
+
+/**
+ * Sets the rig to `next` at sim time `t`: every layer at its time, nothing else playing. A pose of other clips than
+ * the last fades in over `FADE`, the last one held where it stopped and fading out under it.
+ */
+export function pose(cast: Cast, rig: Rig, next: Pose, t: number) {
+  if (rig.last && clipsOf(rig.last) !== clipsOf(next)) rig.fade = { from: rig.fade && t - rig.fade.at < FADE ? rig.fade.from : rig.last, at: t }
+  rig.last = next
+  const k = rig.fade ? Math.min(1, (t - rig.fade.at) / FADE) : 1
+  const layers = new Map<ClipKey, { at: number; weight: number }>()
+  for (const { clip, at, weight = 1 } of next.layers) layers.set(clip, { at, weight: weight * k })
+  for (const { clip, at, weight = 1 } of k < 1 ? rig.fade!.from.layers : []) {
+    const held = layers.get(clip)
+    if (held) held.weight += weight * (1 - k)
+    else layers.set(clip, { at, weight: weight * (1 - k) })
+  }
+  if (k === 1) rig.fade = undefined
+  for (const [clip, action] of rig.playing) if (!layers.has(clip)) (action.stop(), rig.playing.delete(clip))
+  for (const [clip, { at, weight }] of layers) {
     let action = rig.playing.get(clip)
     if (!action) {
       action = rig.mixer.clipAction(cast.clips.get(clip)!).play()
@@ -240,5 +261,6 @@ export function pose(cast: Cast, rig: Rig, { layers, lean = 0 }: Pose) {
     action.weight = weight
   }
   rig.mixer.update(0)
+  const lean = (next.lean ?? 0) * k + (k < 1 ? (rig.fade?.from.lean ?? 0) * (1 - k) : 0)
   if (lean) rig.bone('chest').quaternion.multiply(leaning.setFromAxisAngle(X, lean))
 }

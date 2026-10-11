@@ -490,10 +490,15 @@ function seatedPose(card: Card, p: number, holding: boolean): Pose {
   return { layers: [{ clip: 'Sit_Chair_Idle', at: p }], lean }
 }
 
-/** Poses the worker for its status: typing, turned round to you, leaning back to watch, slumped, dozing. */
+/** Whether the worker holds a showing up over its head at `t`. */
+const holdingUp = (desk: Desk, t: number) => desk.raised !== undefined && t - desk.raised.start < RAISE.hold
+
+/**
+ * Moves the worker for its status: turned round to you while it asks or holds something up, hopping while it asks;
+ * its bubble, its light and its subagents' hops. Its bones are posed apart (`poseRigs`), only where it is seen.
+ */
 export function poseDesk(desk: Desk, t: number, dt: number) {
   const { card, avatar: a } = desk
-  const { cast } = desk.models
   const p = t + desk.phase
   const asks = card.status === 'needs_input' || card.status === 'blocked'
   const holding = poseRaised(desk, t, SEAT)
@@ -501,17 +506,18 @@ export function poseDesk(desk: Desk, t: number, dt: number) {
   desk.turn = ease(desk.turn, turnTo, dt * 5)
   a.body.rotation.y = desk.turn
   const hop = asks ? Math.max(0, Math.sin(p * 5)) * 0.08 : 0
-  a.body.position.y = seatedAt(cast, a, SEAT_Y) + hop
-  pose(cast, a.rig, seatedPose(card, p, holding))
-  if (desk.twin) {
-    const twin = desk.twin.avatar
-    twin.body.position.y = seatedAt(cast, twin, SEAT_Y / TWIN_SCALE)
-    pose(cast, twin.rig, { layers: [{ clip: 'Sit_Chair_Idle:rest', at: p + 1.3 }, { clip: 'Type', at: p + 1.3 }] })
-  }
-  desk.minis.avatars.forEach((m, i) => {
-    m.root.position.y = desk.marks.minis.y + Math.max(0, Math.sin(p * 6 + i * 1.7)) * 0.08
-    pose(cast, m.rig, { layers: [{ clip: 'Cheering', at: p + i * 0.4 }] })
-  })
+  a.body.position.y = seatedAt(desk.models.cast, a, SEAT_Y) + hop
+  if (desk.twin) desk.twin.avatar.body.position.y = seatedAt(desk.models.cast, desk.twin.avatar, SEAT_Y / TWIN_SCALE)
+  desk.minis.avatars.forEach((m, i) => (m.root.position.y = desk.marks.minis.y + Math.max(0, Math.sin(p * 6 + i * 1.7)) * 0.08))
   if (desk.bubble) desk.bubble.position.set(SEAT.x + 0.32, BUBBLE_Y + Math.sin(p * 3) * 0.05 + hop, SEAT.z)
   a.bulb.color.set(statusColor(card)).multiplyScalar(card.waiting ? 0.6 + Math.abs(Math.sin(p * 4)) * 0.6 : 1)
+}
+
+/** Poses the bones at a desk: the worker for its status (typing, waving you over, slumped, dozing), its twin typing, its subagents cheering. */
+export function poseRigs(desk: Desk, t: number) {
+  const { cast } = desk.models
+  const p = t + desk.phase
+  pose(cast, desk.avatar.rig, seatedPose(desk.card, p, holdingUp(desk, t)), t)
+  if (desk.twin) pose(cast, desk.twin.avatar.rig, { layers: [{ clip: 'Sit_Chair_Idle:rest', at: p + 1.3 }, { clip: 'Type', at: p + 1.3 }] }, t)
+  desk.minis.avatars.forEach((m, i) => pose(cast, m.rig, { layers: [{ clip: 'Cheering', at: p + i * 0.4 }] }, t))
 }

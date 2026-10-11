@@ -21,14 +21,15 @@ export function walkPose(models: Models, a: Avatar, t: number) {
   a.body.position.y = 0
   a.body.rotation.set(0, 0, 0)
   if (a.gear) a.gear.visible = true
-  pose(models.cast, a.rig, WALKING(t))
+  pose(models.cast, a.rig, WALKING(t), t)
 }
 const WALKING = (t: number): Pose => ({ layers: [{ clip: 'Walking_A', at: t }] })
 
-const standPose = (models: Models, a: Avatar, t: number) => {
+/** Standing about. */
+export function standPose(models: Models, a: Avatar, t: number) {
   a.body.position.y = 0
   a.body.rotation.set(0, 0, 0)
-  pose(models.cast, a.rig, { layers: [{ clip: 'Idle_A', at: t }] })
+  pose(models.cast, a.rig, { layers: [{ clip: 'Idle_A', at: t }] }, t)
 }
 
 const headingOf = (from: THREE.Vector3, to: THREE.Vector3) => Math.atan2(to.x - from.x, to.z - from.z)
@@ -52,8 +53,8 @@ export function arrival(p: Plan, desk: Desk): Arrival {
   return { desk, path: pathTo(p, desk.group.position).map((v) => v.sub(desk.group.position)), t: 0 }
 }
 
-/** Walks an arriving worker toward its seat; true once it sits. */
-export function walkIn(a: Arrival, dt: number, t: number) {
+/** Walks an arriving worker toward its seat; true once it sits. Its bones are posed apart (`walkPose`). */
+export function walkIn(a: Arrival, dt: number) {
   a.t += dt * WALK_SPEED
   const w = a.desk.avatar
   const step = along(a.path, a.t)
@@ -65,7 +66,6 @@ export function walkIn(a: Arrival, dt: number, t: number) {
   }
   w.root.position.copy(step.at)
   w.root.rotation.y = step.heading
-  walkPose(a.desk.models, w, t)
   return false
 }
 
@@ -89,20 +89,18 @@ const DOORS_AHEAD = 2.5
 export const boarded = (l: Leaver) => !along(l.path, l.t)
 export const nearDoors = (l: Leaver) => !along(l.path, l.t + DOORS_AHEAD)
 
-/** Walks a leaver into the elevator, where it turns to face the doors; true once it stands inside. */
-export function walkOut(l: Leaver, dt: number, t: number) {
+/** Walks a leaver into the elevator, where it turns to face the doors; true once it stands inside. Its bones are posed apart. */
+export function walkOut(l: Leaver, dt: number) {
   l.t += dt * WALK_SPEED
   const w = l.group.children[0]
   const step = along(l.path, l.t)
   if (!step) {
     w.position.copy(l.path.at(-1)!)
     w.rotation.y -= w.rotation.y * Math.min(1, dt * 6)
-    standPose(l.models, l.avatar, t)
     return true
   }
   w.position.copy(step.at)
   w.rotation.y = step.heading
-  walkPose(l.models, l.avatar, t)
   return false
 }
 

@@ -27,6 +27,9 @@ export function hangOn(index: number, o: THREE.Object3D) {
   if (o.parent !== group) group.add(o)
 }
 
+/** The level `o` stands on: whose root it hangs on. */
+export const levelOf = (o: THREE.Object3D) => s.levels.findIndex((root) => root.group === o.parent)
+
 /**
  * The levels drawn. The building is a box whose slabs close off each level, and a ray that leaves a box never comes
  * back in, so from inside only your own level can be seen; riding, the levels the car passes, whose landing doors go

@@ -20,8 +20,9 @@
     "hub/renderers/tower3d/src/contract.ts#ADVENTURER_PARTS",
     "hub/renderers/tower3d/models/bot.py",
     "hub/renderers/tower3d/src/desk.ts#poseDesk",
+    "hub/renderers/tower3d/src/desk.ts#poseRigs",
     "hub/renderers/tower3d/src/life.ts#walkPose",
-    "hub/renderers/tower3d/src/party.ts#placeGuest",
+    "hub/renderers/tower3d/src/party.ts#poseGuest",
     "hub/test/models.test.ts"
   ],
   "links": [
@@ -48,7 +49,10 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   the keyboard tapping, aimed from the seated clip's first frame) and cuts every clip to its arms (`:arms`) or the
   rest (`:rest`), so an upper-body clip plays over a seated or idle one. A worker is a copy of the bones and a mixer;
   [`pose`](ref:hub/renderers/tower3d/src/rig.ts#pose) sets it from layers, each a clip at a time and weight, every
-  frame: a pose is a function of sim time and the card, nothing carried between frames, so `?stepped` repeats.
+  frame: a pose is a function of sim time and the card. The one thing a rig carries is the pose before: a pose of
+  other clips fades in over it in 0.3 s of sim time (sitting down after walking in, turning from typing to waving,
+  a new dance move), eased like a desk's turn, so `?stepped` still repeats. Bones are posed only on the levels
+  drawn ([[tower3d-levels]]); everyone still moves where it goes on every level.
 - Looks are data ([`lookOf`](ref:hub/renderers/tower3d/src/avatar.ts#lookOf), hashed from the session id): a bot
   one time in five; else an adventurer's body, sometimes repainted in another's atlas, a head that may be another's
   (the rogue's hooded too), maybe a helm, a cape, gear in hand while standing, the old wear (hats, glasses), and a
@@ -72,8 +76,10 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
 - *Unmerged parts*: an adventurer was six skinned meshes; merged, the busy board draws no more calls than before.
 - *A far LOD (baked vertex animation)*: not needed at today's sizes (Impact).
 
-**Impact.** On `?board=busy&seed=1` (stepped, lit): draw calls 578 → 573 on a floor, 1272 → 1212 in the overview,
-468 → 465 on the roof; frame time +0.5 ms on a floor and on the roof, the same in the overview, mostly the mixers
-of every worker in the building. Every worker looks different from before, so `tool:frames` shows every stage with a worker
+**Impact.** On `?board=busy&seed=1` (stepped, lit): draw calls 578 → 574 on a floor, 1272 → 1212 in the overview,
+468 → 466 on the roof; frame time on a floor 3.5 → 4.4 ms (medians of three, the same afternoon), of which posing
+only the levels drawn won back 0.4 ms. A reviewer sits 1.2 m beside its author and a fork's twin 1.05 m, clear of
+the wider bodies; seated heads top 1.84 m, over the 1.6 m eye, so from behind a worker what lies in front of it on
+the desk is aimed past its head, not through it. Every worker looks different from before, so `tool:frames` shows every stage with a worker
 changed. `npm test` checks both GLBs hold the contract's parts, bones and clips. The repo grew by 1.1 MB (1.5 MB of
 characters in, the bean and the puff out).

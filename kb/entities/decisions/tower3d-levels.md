@@ -9,6 +9,7 @@
   "reviewed": "2026-10-11",
   "refs": [
     "hub/renderers/tower3d/src/levels.ts#levelsShown",
+    "hub/renderers/tower3d/src/levels.ts#levelOf",
     "hub/renderers/tower3d/src/levels.ts#showLevels",
     "hub/renderers/tower3d/src/levels.ts#onLevel",
     "hub/renderers/tower3d/src/levels.ts#hangOn",
@@ -47,6 +48,9 @@ landing doors of every level it passes go by.
   building-wide: the spandrel and colour strip that stand 15 cm out of the glass, the roof's slab, and the lobby's
   ground plinth. Looking up or down out of a window shows them from the next level. The city around the building
   (its ring road, cars, airfield and plane, `outside.ts`) stands in the scene itself, drawn from every level.
+- Workers' bones are posed only on the levels drawn ([[kaykit-workers]]): every desk, arrival, leaver and guest
+  still moves where it goes every frame, and its mixer runs only while its level is shown. A pose comes from the
+  sim time, so a level shown again is posed where it should be, fading in from where it stopped.
 - Picking already skipped what is hidden (`shown` in `main.ts`), so other levels cannot be aimed at, which they
   already could not be through a slab.
 - The door reports what the last frame drew ([`DoorState`](ref:hub/renderers/tower3d/src/door.ts#DoorState)

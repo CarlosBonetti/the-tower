@@ -118,16 +118,20 @@ export function animateDanceFloors(df: DanceFloors, beat: number) {
   df.tiles.instanceColor!.needsUpdate = true
 }
 
-/** The neon breathes and the DJ bobs and scratches, on the beat. */
+/** The neon breathes on the beat. */
 export function animateParty(party: Party, beat: number) {
   const pulse = 0.6 + 0.4 * Math.pow(1 - (beat % 1), 2)
   party.neon[0].color.copy(PARTY_COLORS[Math.floor(beat / 4) % PARTY_COLORS.length]).multiplyScalar(pulse)
   party.neon[1].color.set('#ff4fa3').multiplyScalar(0.7 + 0.3 * pulse)
+}
+
+/** The DJ bobs and scratches on the beat, at sim time `t`; the bartender waits behind the bar. */
+export function poseStaff(party: Party, beat: number, t: number) {
   const { dj, bartender, models } = party
   dj.body.position.y = Math.pow(1 - (beat % 1), 3) * 0.05
   dj.body.rotation.y = Math.sin(beat * Math.PI * 0.25) * 0.2
-  pose(models.cast, dj.rig, { layers: [{ clip: 'Idle_A:rest', at: beat }, onBeat(models.cast, Math.floor(beat / 8) % 2 ? 'Cheering:arms' : 'Working_A:arms', beat)] })
-  pose(models.cast, bartender.rig, { layers: [{ clip: 'Idle_B', at: beat / (BPM / 60) }] })
+  pose(models.cast, dj.rig, { layers: [{ clip: 'Idle_A:rest', at: beat }, onBeat(models.cast, Math.floor(beat / 8) % 2 ? 'Cheering:arms' : 'Working_A:arms', beat)] }, t)
+  pose(models.cast, bartender.rig, { layers: [{ clip: 'Idle_B', at: beat / (BPM / 60) }] }, t)
 }
 
 /** A clip played in time with the music: a whole number of beats to a loop, as near its own pace as that allows. */
@@ -176,51 +180,55 @@ export function makeGuest(card: Card, models: Models): Guest {
   return { card, group, models, avatar: w, mug: beer, phase: (card.startedAt % 997) / 997 }
 }
 
-/** A guest where its schedule has it at `y`'s level, posed for what it does there: walking, dancing, drinking or mingling. */
-export function placeGuest(g: Guest, at: GuestPlace, y: number, beat: number, t: number) {
+/** A guest where its schedule has it, at `y`'s level. */
+export function placeGuest(g: Guest, at: GuestPlace, y: number) {
   g.group.position.set(at.x, y + at.y, at.z)
   g.group.rotation.y = at.heading
+}
+
+/** Poses a guest for what it does where it is, at sim time `t`: walking, dancing, drinking or mingling. */
+export function poseGuest(g: Guest, at: GuestPlace, beat: number, t: number) {
   g.mug.visible = at.pose === 'drink'
   if (g.avatar.gear) g.avatar.gear.visible = at.pose !== 'drink'
   if (at.pose === 'walk') walkPose(g.models, g.avatar, t)
-  else if (at.pose === 'dance') dance(g, beat)
-  else if (at.pose === 'drink') drink(g, at.since)
-  else mingle(g, at.since)
+  else if (at.pose === 'dance') dance(g, beat, t)
+  else if (at.pose === 'drink') drink(g, at.since, t)
+  else mingle(g, at.since, t)
 }
 
 /** The moves a guest dances, a few bars of each, in its own order. */
 const MOVES: ClipKey[] = ['Cheering', 'Jump_Idle', 'Waving', 'Cheering:arms']
 
 /** Bounces on the beat and sways, changing moves every two bars. */
-function dance(g: Guest, at: number) {
+function dance(g: Guest, at: number, t: number) {
   const beat = at + g.phase
   const { body, rig } = g.avatar
   body.position.y = Math.abs(Math.sin(beat * Math.PI)) * 0.06
   body.rotation.set(0, Math.sin(beat * Math.PI * 0.25) * 0.5, 0)
   const move = MOVES[(Math.floor(beat / 8) + Math.floor(g.phase * MOVES.length)) % MOVES.length]
   const layers = move.endsWith(':arms') ? [{ clip: 'Jump_Idle:rest', at: beat } as const, onBeat(g.models.cast, move, beat)] : [onBeat(g.models.cast, move, beat)]
-  pose(g.models.cast, rig, { layers })
+  pose(g.models.cast, rig, { layers }, t)
 }
 
 /** How often a guest at the bar sips, give or take its own phase, and how long a sip takes. */
 const SIP = { every: 5, takes: 1.4 }
 
 /** Sits at the counter, and every few seconds lifts its beer for a sip. */
-function drink(g: Guest, since: number) {
+function drink(g: Guest, since: number, t: number) {
   const cycle = (since + g.phase * SIP.every) % (SIP.every + g.phase * 2)
   const lift = cycle < SIP.takes ? Math.sin((cycle / SIP.takes) * Math.PI) : 0
   const { body, rig } = g.avatar
   body.position.y = seatedAt(g.models.cast, g.avatar, 0)
   body.rotation.set(0, 0, 0)
-  pose(g.models.cast, rig, { layers: [{ clip: 'Sit_Chair_Idle:rest', at: since + g.phase * 3 }, { clip: 'Holding_A:arms', at: since, weight: 1 - lift }, { clip: 'Use_Item:arms', at: 0.6, weight: lift }] })
+  pose(g.models.cast, rig, { layers: [{ clip: 'Sit_Chair_Idle:rest', at: since + g.phase * 3 }, { clip: 'Holding_A:arms', at: since, weight: 1 - lift }, { clip: 'Use_Item:arms', at: 0.6, weight: lift }] }, t)
 }
 
 /** Chats: turns a little to the others and talks with its hands now and then. */
-function mingle(g: Guest, since: number) {
+function mingle(g: Guest, since: number, t: number) {
   const talk = Math.max(0, Math.sin(since * 0.9 + g.phase * 7))
   const { body, rig } = g.avatar
   body.position.y = 0
   body.rotation.set(0, Math.sin(since * 0.4 + g.phase * 5) * 0.25, 0)
   const at = since + g.phase * 4
-  pose(g.models.cast, rig, { layers: [{ clip: 'Idle_B:rest', at }, { clip: 'Idle_B:arms', at, weight: 1 - talk }, { clip: 'Interact:arms', at: since, weight: talk }] })
+  pose(g.models.cast, rig, { layers: [{ clip: 'Idle_B:rest', at }, { clip: 'Idle_B:arms', at, weight: 1 - talk }, { clip: 'Interact:arms', at: since, weight: talk }] }, t)
 }

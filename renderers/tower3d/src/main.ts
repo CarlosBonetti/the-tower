@@ -16,10 +16,10 @@ import { shelfFiles, shelfText, shelfUrl, tower, type Board, type Card, type Flo
 import { DISMISSED_KEY, REMIND_MS, boardErrorTitle, bubbleOf, claudeUntestedHtml, pictureOf, rendererUrl, renderersHtml, shelfKind, shelfPage, tidiedLine, RING_KEY, WORLD, ago, branchPlaceholder, cardsOf, dismissing, heededWaits, loudest, nextWait, ringing, soundOf, transitions, type Move, type Ring, type Sound, type SpawnForm, current, findCard, gistLine, wordsOf, neighbours, sendTarget, shownTitle, spawnCall, spawnDefaults, spawnForm, spawnFormHtml, spawnSummaryHtml, statusColor, onStatusColor, threadCheckoutOf, workerIn, can, landedRow, tagOf, letGoneLine, resumeStranded, shellWhere, strandedOf, WORKTREE_ASK, WORKTREE_DONE, discardedLine, keptLine, landingHtml, type DaemonVerb } from './cards.ts'
 import { hueOf } from './avatar.ts'
 import { drawCompass, pointers } from './compass.ts'
-import { dressBinder, dressPapers, dressSide, holdUp, monitorOf, poseDesk, showOnMonitor, type Desk } from './desk.ts'
+import { dressBinder, dressPapers, dressSide, holdUp, monitorOf, poseDesk, poseRigs, showOnMonitor, type Desk } from './desk.ts'
 import { launch, tickFireworks } from './fireworks.ts'
 import { beatAt, duck, pause, play, playing, setRoom } from './music.ts'
-import { CATS, CAT_SPEED, boarded, catAt, chase, deskPerch, followerOf, guestAt, keepEyeOn, keepUp, leanIn, makeCat, nearDoors, purr, ring, roam, steer, tada, tagAlong, walkIn, walkOut, watcherOf, type Cat, type CatName } from './life.ts'
+import { CATS, CAT_SPEED, boarded, catAt, chase, deskPerch, followerOf, guestAt, keepEyeOn, keepUp, leanIn, makeCat, nearDoors, purr, ring, roam, standPose, steer, tada, tagAlong, walkIn, walkOut, walkPose, watcherOf, type Cat, type CatName } from './life.ts'
 import { drawHands, fitHands, holdBeer, holdNote, makeHands, poseHands } from './hands.ts'
 import { tintOf } from './palette.ts'
 import { PET_IN, PET_MS, dropHearts, makeHearts, petProgress, petSpot, placeHearts, strokeAt } from './pet.ts'
@@ -31,10 +31,10 @@ import { contactShadows } from './light/contact.ts'
 import { rigFrame } from './light/rig.ts'
 import { chooseLighting, LIT, lightingSection } from './light/setting.ts'
 import { fillLayer, loadKit, zonesPlaced, type Kit, type Placed } from './kit.ts'
-import { hangOn, levelsShown, onLevel, showLevels } from './levels.ts'
+import { hangOn, levelOf, levelsShown, onLevel, showLevels } from './levels.ts'
 import { THEMES, bare, dress, itemOf, type Placement } from './dress.ts'
 import { cityModel, furnish } from './zones.ts'
-import { animateDanceFloors, animateParty, placeGuest } from './party.ts'
+import { animateDanceFloors, animateParty, placeGuest, poseGuest, poseStaff } from './party.ts'
 import { isScreenTexture, isStillScreen, keepScreens, paintScreens, replayTexture, screenPathOf } from './screens.ts'
 import { isMarkdown, isPosterTexture, isVideo, keepPosters, pictured, playFilms, shownHref, shownKey, type Shown } from './showing.ts'
 import { closeTerm, mountTerm, watchPanelSize } from './term.ts'
@@ -1576,10 +1576,22 @@ function tickHold() {
   run(a, verb)
 }
 
+/** Everyone moves where they go every frame; bones are posed only on the levels drawn (`levelsShown`). */
 function tickPeople({ dt, t }: Frame) {
+  const shown = levelsShown(s)
   for (const desk of s.desks.values()) poseDesk(desk, t, dt)
-  for (const [id, a] of s.arrivals) if (walkIn(a, dt, t)) s.arrivals.delete(id)
-  for (const l of s.leavers) if (walkOut(l, dt, t) && s.doorOpen.get(l.level) === 0) (s.leavers.delete(l), discard(l.group))
+  for (const [id, a] of s.arrivals) if (walkIn(a, dt)) s.arrivals.delete(id)
+  for (const desk of s.desks.values()) {
+    if (!shown(levelOf(desk.group))) continue
+    const arriving = s.arrivals.get(desk.card.id)
+    if (arriving) walkPose(s.models!, arriving.desk.avatar, t)
+    else poseRigs(desk, t)
+  }
+  for (const l of s.leavers) {
+    const inside = walkOut(l, dt)
+    if (shown(l.level)) (inside ? standPose : walkPose)(l.models, l.avatar, t)
+    if (inside && s.doorOpen.get(l.level) === 0) (s.leavers.delete(l), discard(l.group))
+  }
   tickCats(dt, t)
 }
 
@@ -1620,8 +1632,14 @@ function tickParty({ dt, t }: Frame) {
   duck(s.view === 'focus')
   const beat = beatAt(t)
   const roof = s.plan.levels.at(-1)!
-  for (const g of s.guests.values()) placeGuest(g, guestAt(g.card, t, s.plan), roof.y, beat, t)
+  const posing = levelsShown(s)(roof.index)
+  for (const g of s.guests.values()) {
+    const at = guestAt(g.card, t, s.plan)
+    placeGuest(g, at, roof.y)
+    if (posing) poseGuest(g, at, beat, t)
+  }
   animateParty(s.world!.party, beat)
+  if (posing) poseStaff(s.world!.party, beat, t)
   for (const df of s.dance.values()) animateDanceFloors(df, beat)
   tickFireworks(scene, dt)
 }
