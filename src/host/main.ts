@@ -11,6 +11,7 @@ import http from 'node:http'
 import net from 'node:net'
 import path from 'node:path'
 import * as pty from '@lydell/node-pty'
+import { endOnReadError } from '../shared/pty.ts'
 import { sessionDirs, type ClaudeHookInput, type Config, type LogEvent, type ModEvent, type SessionHeader } from '../shared/model.ts'
 import { configPath, sessionLogPath, systemPaths } from '../shared/paths.ts'
 import { checkSize, frame, HOST_PROTOCOL, jsonObject, onLines, type FromHost, type ToHost } from '../shared/protocol.ts'
@@ -77,6 +78,7 @@ function spawnSession({ id, project: projectId, cwd, args, cols, rows }: Extract
     proc.pause()
     log.once('drain', () => proc.resume())
   })
+  endOnReadError(proc, `session ${id}`)
   proc.onExit(({ exitCode }) => {
     live.delete(id)
     if (!log.destroyed) {
