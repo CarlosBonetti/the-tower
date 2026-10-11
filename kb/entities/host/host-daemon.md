@@ -4,7 +4,7 @@
   "name": "Host daemon",
   "summary": "The detached Node process that spawns Claude sessions in PTYs, relays control requests, and appends output, input, hooks and exits to each session's log.",
   "in": "host",
-  "reviewed": "2026-10-09",
+  "reviewed": "2026-10-11",
   "refs": ["hub/src/host/main.ts#spawnSession", "hub/src/host/main.ts#handle", "hub/src/host/main.ts#appendFact", "hub/src/host/session.ts#sessionArgv", "hub/src/shared/protocol.ts#ToHost", "hub/src/shared/protocol.ts#jsonObject", "hub/src/shared/protocol.ts#checkSize"],
   "links": [
     { "to": "claude-code", "verb": "triggers", "carries": "a PTY running config argv + --plugin-dir (the tower mod, which declares the hooks) + client args (its --settings among them), with the cwd checked by sessionDirs, with TOWER_SESSION_ID and TOWER_HOOKS_SOCKET in a scrubbed env" },
@@ -30,7 +30,7 @@
 
 Bad input costs a request, never the host: a control line that isn't a JSON object
 ([`jsonObject`](ref:hub/src/shared/protocol.ts#jsonObject)), a message of a `t` it doesn't know, or one whose
-handling throws is answered `error` with the reason, and the host keeps serving every session.
+handling throws is answered `error` with the reason, and the host keeps serving every session. A read error on a session's PTY master (node-pty rethrows any but EAGAIN and EIO, which would end the host) kills that session's child and ends it as an exit ([`endOnReadError`](ref:hub/src/shared/pty.ts#endOnReadError)).
 
 Every `write` and `resize` is logged once the PTY took it, in the same tick, before any output it causes, so the log
 replays exactly what the session saw. One the log or a screen couldn't take is answered `error` and never logged:
