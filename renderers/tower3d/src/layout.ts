@@ -567,39 +567,47 @@ function coreWalls(p: Plan): Box[] {
   ]
 }
 
-/** What a walker bumps into on a level: the outer walls, the core, the furniture. */
-export function colliders(p: Plan, level: Level): Box[] {
+/** What stands floor to ceiling on a level and neither walks nor aims through: the building's shell, the core, the control room's walls and the shared wall. */
+export function walls(p: Plan, level: Level): Box[] {
   const w = p.width / 2
   const d = p.depth / 2
-  const outer: Box[] = [
+  const shell: Box[] = [
     { minX: -w - 1, maxX: -w + WALL, minZ: -d - 1, maxZ: d + 1 },
     { minX: w - WALL, maxX: w + 1, minZ: -d - 1, maxZ: d + 1 },
     { minX: -w - 1, maxX: w + 1, minZ: -d - 1, maxZ: -d + WALL },
     { minX: -w - 1, maxX: w + 1, minZ: d - WALL, maxZ: d + 1 },
-    ...level.zones.flatMap((z) => z.boxes),
   ]
+  if (level.kind !== 'floor') return [...shell, ...coreWalls(p)]
+  return [
+    ...shell,
+    ...coreWalls(p),
+    ...roomWalls(p),
+    { minX: level.wall.minX, maxX: level.wall.maxX, minZ: level.wall.z - PARTITION.thick / 2, maxZ: level.wall.face + 0.1 },
+  ]
+}
+
+/** What a walker bumps into on a level: its walls and the furniture. */
+export function colliders(p: Plan, level: Level): Box[] {
+  const fixed = [...walls(p, level), ...level.zones.flatMap((z) => z.boxes)]
   if (level.kind === 'lobby') {
     const lounge = loungeSpots(p)
-    return [...outer, ...coreWalls(p), receptionBox(p), box(lounge.couch.x, lounge.couch.z, 2.8, 1), box(lounge.table.x, lounge.table.z, 1.8, 0.9)]
+    return [...fixed, receptionBox(p), box(lounge.couch.x, lounge.couch.z, 2.8, 1), box(lounge.table.x, lounge.table.z, 1.8, 0.9)]
   }
   if (level.kind === 'roof') {
     const party = partySpots(p)
     const jumbo = bigScreens(p)[1]
     return [
-      ...outer, ...coreWalls(p), ...rateLimitBoxes(p, level.limits.length), box(party.dj.x, party.dj.z, 4.2, 2.2), box(party.bar.x, party.bar.z - 0.15, 4.4, 2.5),
+      ...fixed, ...rateLimitBoxes(p, level.limits.length), box(party.dj.x, party.dj.z, 4.2, 2.2), box(party.bar.x, party.bar.z - 0.15, 4.4, 2.5),
       box(jumbo.x, jumbo.z, jumbo.w + 0.4, 0.5),
     ]
   }
   return [
-    ...outer,
-    ...coreWalls(p),
-    ...roomWalls(p),
+    ...fixed,
     box(consoleSpot(p).x, consoleSpot(p).z + 0.25, 2.6, 2.2),
     box(filingSpot(p).x, filingSpot(p).z, FILING.depth + 0.1, FILING.width + 0.1),
     ...[...level.desks.filter((d) => !d.beside), ...level.free].map((s) => box(s.x + RETURN.width / 2, s.z - 0.35, DESK.width + RETURN.width + 0.1, DESK.depth + 0.6 + SEAT_OFFSET)),
     ...level.kiosks.map((k) => box(k.x, k.z, 0.8, KIOSK_DEPTH)),
     ...level.shelf.map((s) => box(shelfX(p) - 0.25, s.z, 0.5, s.width)),
-    { minX: level.wall.minX, maxX: level.wall.maxX, minZ: level.wall.z - PARTITION.thick / 2, maxZ: level.wall.face + 0.1 },
     ...(level.pigeonhole ? [box(level.pigeonhole.x, level.pigeonhole.z, PIGEONHOLE.depth + 0.1, PIGEONHOLE.columns * PIGEONHOLE.cell + 0.2)] : []),
     ...(level.arcade?.cabinets ?? []).map((c) => box(c.x, c.z - 0.1, CABINET.width + 0.1, CABINET.depth + 0.3)),
   ]

@@ -24,7 +24,7 @@ import { drawHands, fitHands, holdBeer, holdNote, makeHands, poseHands } from '.
 import { tintOf } from './palette.ts'
 import { PET_IN, PET_MS, dropHearts, makeHearts, petProgress, petSpot, placeHearts, strokeAt } from './pet.ts'
 import { idle, sharing, startShare, stopShare } from './tv.ts'
-import { CABINET, DESK, EYE, bigScreens, cabinetOf, carBox, colliders, coreFront, deskOf, loungeSpots, deskSpot, inside, kioskOf, levelHeight, levelOfCard, levelOfShell, levelY, plan, type Box, type Plan } from './layout.ts'
+import { CABINET, DESK, EYE, bigScreens, cabinetOf, carBox, colliders, coreFront, deskOf, loungeSpots, deskSpot, inside, kioskOf, levelHeight, levelOfCard, levelOfShell, levelY, plan, walls, type Box, type Plan } from './layout.ts'
 import { loadModels } from './models.ts'
 import { bloom } from './light/bloom.ts'
 import { contactShadows } from './light/contact.ts'
@@ -1265,7 +1265,33 @@ const pickables = () => [
   ...[...s.cats.values()].map((c) => c.root),
 ]
 
-/** What's under the screen point (x, y in -1..1): within its reach and on your level while walking, anywhere from outside. */
+let occluders: { plan?: Plan; level: number; boxes: THREE.Box3[] } = { level: -1, boxes: [] }
+/** The level's walls as boxes from its floor to its ceiling, rebuilt when the plan or your level changes. */
+function occludersHere() {
+  if (occluders.plan === s.plan && occluders.level === s.me.level) return occluders.boxes
+  const y = levelY(s.me.level)
+  const boxes = walls(s.plan, here()).map((b) => new THREE.Box3(new THREE.Vector3(b.minX, y, b.minZ), new THREE.Vector3(b.maxX, y + levelHeight(s.me.level), b.maxZ)))
+  occluders = { plan: s.plan, level: s.me.level, boxes }
+  return boxes
+}
+
+/** Things hung on a wall stand within this of its face and still count as in front of it. */
+const ON_THE_WALL = 0.15
+const hitPoint = new THREE.Vector3()
+/** Whether a wall or a shut landing door stands between the ray's origin and `distance`. */
+function blocked(distance: number): boolean {
+  const doors = [...(s.world?.doors.values() ?? [])].flatMap((d) => [d.left, d.right])
+  const nearest = Math.min(
+    ...occludersHere().map((b) => (raycaster.ray.intersectBox(b, hitPoint) ? hitPoint.distanceTo(raycaster.ray.origin) : Infinity)),
+    ...raycaster.intersectObjects(doors.filter((d) => shown(d)), true).map((h) => h.distance),
+  )
+  return nearest < distance - ON_THE_WALL
+}
+
+/**
+ * What's under the screen point (x, y in -1..1): within its reach and on your level while walking, anywhere from outside.
+ * Walking, a wall or a shut door in front of it hides it; glass included.
+ */
 function pick(x: number, y: number): Act | undefined {
   raycaster.setFromCamera(new THREE.Vector2(x, y), camera)
   raycaster.far = s.view === 'overview' ? Infinity : 9
@@ -1275,7 +1301,8 @@ function pick(x: number, y: number): Act | undefined {
     return s.view === 'overview' || (h.point.y > floor - 0.2 && h.point.y < floor + levelHeight(s.me.level))
   })
   const a: Act | undefined = hit?.object.userData.act
-  return a && (s.view === 'overview' || hit!.distance <= reachOf(a)) ? a : undefined
+  if (!a || s.view === 'overview') return a
+  return hit!.distance <= reachOf(a) && !blocked(hit!.distance) ? a : undefined
 }
 
 /**
