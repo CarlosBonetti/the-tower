@@ -59,7 +59,7 @@ while walking or petting, never during a ride or a flight. They swing and bob wi
 mid-jump, all from how far you moved and turned this frame ([`poseHands`](ref:hub/renderers/tower3d/src/hands.ts#poseHands)).
 A note you carry is held low in both hands, tipped back, its title painted on paper as on the board
 ([`holdNote`](ref:hub/renderers/tower3d/src/hands.ts#holdNote)): it rises when taken and drops when put back or handed
-over, so it shows only where the hands do (not in the overview). Whatever you aim at lists what
+over, so it shows only where the hands do (not in the overview). Whatever you aim at (within reach, on your level, and not behind a wall, glass included, or a shut landing door: [`walls`](ref:hub/renderers/tower3d/src/layout.ts#walls), the same boxes you can't walk through; the overview aims through them) lists what
 it offers in the bottom-right corner, each verb on its own key ([[verb-prompts]]): E uses it (sit, open
 here, read, watch, open its panel), F goes on (resume, go to whoever resumed it, next waiting), Q looks
 closer (logbook, overview), G spawns, T at a console picks where a new shell starts (any floor's dirs and worktrees, `shellPlaces`), C opens the user's editor, and held X or Z ends something (send
