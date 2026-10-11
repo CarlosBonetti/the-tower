@@ -10,13 +10,13 @@
  *                                                      it against the catalogue first). --wardrobe serves and saves
  *                                                      another file, renderers/tower3d/wardrobe.json by default: a
  *                                                      copy, to try saving without touching the real one
- *   npm run tool:dresser -- shot <outfit|body|id|CALLSIGN> [--pose stand|sit|type|walk|wave|cheer|dance] [--at <s>]
- *                                [--view front|side|face|three-quarter] [--heads all] [--size 1200x900] [--out file.png]
+ *   npm run tool:dresser -- shot <outfit|body|id|CALLSIGN> [--wear part,…] [--pose stand|sit|type|walk|wave|cheer|dance]
+ *                                [--at <s>] [--view front|side|face|three-quarter] [--heads all] [--size 1200x900] [--out file.png]
  *                                                      a PNG of the look: an outfit of wardrobe.json, a body as it
  *                                                      starts (Knight, Mage, Rogue, Barbarian, bot), or a session id
  *                                                      hashed as Tower 3D hashes it (a callsign is read from
- *                                                      `tower agent`), posed at --at seconds; --heads all lines it up
- *                                                      on every head
+ *                                                      `tower agent`), wearing --wear's parts besides, posed at --at
+ *                                                      seconds; --heads all lines it up on every head
  *
  * Shots land in --out, else in $TMPDIR/dresser. Paths are printed, one per line.
  */
@@ -98,7 +98,7 @@ const size = (s: string) => {
   return { w, h }
 }
 
-async function shot(who: string, opts: { pose?: string; at?: string; view?: string; heads?: string; size?: string; out?: string }) {
+async function shot(who: string, opts: { wear?: string; pose?: string; at?: string; view?: string; heads?: string; size?: string; out?: string }) {
   build()
   const { server, url } = await serve(0, false)
   try {
@@ -106,6 +106,7 @@ async function shot(who: string, opts: { pose?: string; at?: string; view?: stri
       await page.eval('dresser.ready()')
       const spec = BODIES.includes(who) ? { body: who } : who in wardrobe().outfits ? { outfit: who } : { id: sessionOf(who) }
       await page.eval(`dresser.look(${JSON.stringify(spec)})`)
+      for (const part of opts.wear?.split(',') ?? []) await page.eval(`dresser.wear(${JSON.stringify(part.trim())})`)
       if (opts.heads === 'all') await page.eval('dresser.heads(true)')
       await page.eval(`dresser.pose(${JSON.stringify(opts.pose ?? 'stand')}, ${Number(opts.at ?? 0.5)})`)
       await page.eval(`dresser.view(${JSON.stringify(opts.view ?? 'three-quarter')})`)
@@ -125,7 +126,7 @@ async function main() {
   const { values, positionals } = parseArgs({
     args: rest,
     allowPositionals: true,
-    options: { port: { type: 'string' }, wardrobe: { type: 'string' }, pose: { type: 'string' }, at: { type: 'string' }, view: { type: 'string' }, heads: { type: 'string' }, size: { type: 'string' }, out: { type: 'string' } },
+    options: { port: { type: 'string' }, wardrobe: { type: 'string' }, wear: { type: 'string' }, pose: { type: 'string' }, at: { type: 'string' }, view: { type: 'string' }, heads: { type: 'string' }, size: { type: 'string' }, out: { type: 'string' } },
   })
   if (command === 'serve') {
     build()

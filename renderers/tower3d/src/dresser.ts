@@ -21,7 +21,7 @@ import { fitFrom, fitOf, formatWardrobe, lookNamed, lookOf, parseWardrobe, probl
  *   dresser.look('random' | { body } | { id } | { outfit } | { look })
  *                                               a random look, a body as it starts (Knight…, bot), a session id
  *                                               hashed, an outfit, or fields laid over the look on the stand
- *   dresser.head(name)                          make a head the one worn and fitted
+ *   dresser.head(name) · dresser.wear(part)     make a head the one worn and fitted; wear a part in its slot
  *   dresser.select(part) · dresser.fit(part, fit | null, key?)
  *                                               fit a piece: `key` is the head worn (or `bot`) unless named
  *   dresser.pose('sit', 1.2) · dresser.view('face') · dresser.heads(true)
@@ -257,6 +257,12 @@ function setHead(head: string) {
   if (!cat.slots.Head.includes(head)) throw new Error(`no head "${head}": ${cat.slots.Head.join(', ')}`)
   look = withPart(look, 'Head', head)
   redress()
+  return state()
+}
+
+function wear(part: string) {
+  if (!(part in cat.parts) || cat.parts[part].slot === 'Body') throw new Error(`no slot part "${part}"`)
+  change(withPart(look, cat.parts[part].slot as Slot, part))
   return state()
 }
 
@@ -785,6 +791,7 @@ declare global {
       ready(): Promise<void>
       look(spec: LookSpec): ReturnType<typeof state>
       head(name: string): ReturnType<typeof state>
+      wear(part: string): ReturnType<typeof state>
       pose(name: PoseName, at?: number): ReturnType<typeof state>
       fit(part: string, fit: Fit | null, key?: string): ReturnType<typeof state>
       outfit(name: string): ReturnType<typeof state>
@@ -808,6 +815,7 @@ window.dresser = {
   ready: () => ready.then(() => undefined),
   look: setLook,
   head: setHead,
+  wear,
   pose: setPose,
   fit: setFit,
   outfit: keepOutfit,

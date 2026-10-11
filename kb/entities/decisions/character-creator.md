@@ -84,8 +84,8 @@ to edit that data by eye, and the same surface for agents, so a fit is judged fr
   writes another file, a copy to try saving on. Served elsewhere (the tower, a shelf frame), the page has no server
   and copies the JSON instead. The serve rebuilds on each load of the page, and Tower 3D takes the file on its next
   `npm run tower3d`.
-- Agents: `window.dresser` (`ready · look · head · pose · fit · outfit · rename · unkeep · changes · save · heads ·
-  view · state · cost · where · shot`) and `npm run tool:dresser -- shot <outfit|body|id|CALLSIGN> [--pose] [--view]
+- Agents: `window.dresser` (`ready · look · head · wear · pose · fit · outfit · rename · unkeep · changes · save ·
+  heads · view · state · cost · where · shot`) and `npm run tool:dresser -- shot <outfit|body|id|CALLSIGN> [--wear] [--pose] [--view]
   [--heads all]`, a PNG through the same page in headless Chrome.
 
 **Alternatives considered.**
