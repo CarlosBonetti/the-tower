@@ -6,6 +6,7 @@ import { random } from './random.ts'
 import { glows } from './toon.ts'
 import { LAYERS, skyline, type Layer } from './exterior/skyline.ts'
 import { inNeighbourhood, neighbourhood } from './exterior/neighbourhood.ts'
+import { keepHours, keepsHours, windowsAt } from './exterior/windows.ts'
 import { riseRig, rigHour } from './light/rig.ts'
 import { LIT } from './light/setting.ts'
 
@@ -45,10 +46,12 @@ function buildings(group: THREE.Group) {
   const stone = new THREE.MeshLambertMaterial({ color: '#2a3550', vertexColors: true, flatShading: true })
   const trim = new THREE.MeshLambertMaterial({ color: '#2a3550', vertexColors: true, flatShading: true })
   const glass = new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#1c2640', vertexColors: true, flatShading: true })
-  const warm = glows(new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#ffd27a', vertexColors: true, flatShading: true }))
-  const cool = glows(new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#8ec9ff', vertexColors: true, flatShading: true }))
+  const warm = glows(keepsHours(new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#ffd27a', vertexColors: true, flatShading: true })))
+  const cool = glows(keepsHours(new THREE.MeshLambertMaterial({ color: '#141b2c', emissive: '#8ec9ff', vertexColors: true, flatShading: true })))
   const byLayer: Record<Layer, THREE.Material> = { stone, trim, glass, warm, cool }
   const city = skyline(sites())
+  keepHours(city.geometries.warm)
+  keepHours(city.geometries.cool)
   for (const k of LAYERS) group.add(new THREE.Mesh(city.geometries[k], byLayer[k]))
   return { day: [stone, trim], glass: [glass, warm, cool] }
 }
@@ -415,6 +418,8 @@ export function outside(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
     cars.lamps.color.setScalar(THREE.MathUtils.clamp(2 - look.light, 0.15, 1))
     field.ground.color.setScalar(0.55 + 0.45 * day)
     field.lights.color.setScalar(THREE.MathUtils.clamp(2 - look.light, 0.15, 1))
+    const night = Math.min(1, look.stars * 2)
+    windowsAt(hours, night)
     if (LIT) rigHour(hours, look)
   }
   if (LIT) riseRig(scene, renderer, { hemi, sun, ambient })
