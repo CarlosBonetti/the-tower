@@ -44,7 +44,8 @@ fixture). Facts go in a log ([[logs-are-facts]]); what they mean is folded.
   reader, an `every` under 60 s) is a config error, which `tower config check` prints at `probes`. The sandbox
   writes `{ "quota": { "off": true } }`, so a throwaway system never reads the real account. Top-level `probes` is
   the system's; a project's own probes will go under `projects.<p>.probes`, not built yet.
-- *Readers are code, a closed set.* `claude.usage` is the only one: `claude -p --input-format stream-json` with no
+- *Readers are code, a closed set.* `claude.usage` is the only one: the config's `argv` (the sessions' Claude,
+  through any wrapper) with `-p --input-format stream-json`, no
   tools, no setting sources, no MCP, no slash commands and nothing saved, run from the temp dir, its env the parent
   session scrubbed with the config's `env` merged ([[env-scrub]]), sent one line, the control request, and nothing
   else; killed by its pid at 30 s ([`runProbes`](ref:hub/src/probes.ts#runProbes)). The answer is taken from its stdout

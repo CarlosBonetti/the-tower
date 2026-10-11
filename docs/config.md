@@ -58,7 +58,7 @@ it is often a misspelled one. `tower doctor` runs the same check among its other
 
 A probe is a reader the core knows, run by the tower while due, each read appended to
 `streams/system/probe.<name>/YYYY-MM.jsonl` beside the config. The core declares `quota`: Claude's `/usage` data (the
-`get_usage` control request: no prompt, $0), read while no session's turn has reported the rate limits within
+`get_usage` control request to the `argv` sessions start with: no prompt, $0), read while no session's turn has reported the rate limits within
 `every`, so the board's limits and the weekly budget stay current while nobody works. Each key overrides the core's;
 a new name adds a probe. The tower reads the file again on every change.
 
