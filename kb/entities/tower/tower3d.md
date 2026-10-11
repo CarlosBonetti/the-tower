@@ -294,6 +294,7 @@ to judge a visual change. A fixture
 board opens no streams ([`watchStream`](ref:hub/renderers/tower3d/src/fixtures.ts#watchStream)): monitors stay blank and a desk panel stays open to be shot. Model names the renderer reads are data in
 [`CONTRACT`](ref:hub/renderers/tower3d/src/contract.ts#CONTRACT), checked against every `.glb` by `npm test`;
 `lab.html` ([`lab.ts`](ref:hub/renderers/tower3d/src/lab.ts), bundled as `out/lab.js`) shows one model on a stand
-with its draw calls, triangles and names, driven by `window.lab`.
+with its draw calls, triangles and names, driven by `window.lab`; `dresser.html` dresses, poses and fits one worker
+and saves the wardrobe ([[character-creator]]).
 
 The look (toon shading, bean workers) started from agent-office.
