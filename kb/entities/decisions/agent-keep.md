@@ -6,8 +6,8 @@
   "in": "tower",
   "status": "accepted",
   "date": "2026-10-05",
-  "reviewed": "2026-10-10",
-  "refs": ["hub/src/directory.ts#keepContent", "hub/src/directory.ts#keepArgs", "hub/src/directory.ts#collectionLine", "hub/src/directory.ts#collectionLines", "hub/src/shared/titles.ts#titleIn", "hub/src/bridge/facts.ts#Kept", "hub/src/bridge/facts.ts#factsAfter", "hub/src/bridge/board.ts#KeptBy", "hub/src/bridge/board.ts#keepers", "hub/src/shared/launch.ts#towerBrief", "hub/src/mod/skills/handbook/SKILL.md", "hub/renderers/page/index.html", "hub/renderers/tower3d/src/ui.ts#draftHeadHtml"]
+  "reviewed": "2026-10-11",
+  "refs": ["hub/src/directory.ts#keepContent", "hub/src/directory.ts#keepArgs", "hub/src/directory.ts#collectionLine", "hub/src/directory.ts#collectionLines", "hub/src/directory.ts#overviewLines", "hub/src/shared/titles.ts#titleIn", "hub/src/bridge/facts.ts#Kept", "hub/src/bridge/facts.ts#factsAfter", "hub/src/bridge/board.ts#KeptBy", "hub/src/bridge/board.ts#keepers", "hub/src/shared/launch.ts#towerBrief", "hub/src/mod/skills/handbook/SKILL.md", "hub/renderers/page/index.html", "hub/renderers/tower3d/src/ui.ts#draftHeadHtml"]
 }
 ---
 **Problem.** The user asks workers to leave prompts for a later session, and ideas come up mid-task that are worth
@@ -19,7 +19,8 @@ where, what was already there, or that the place existed; and an item said nothi
   `tower keep <collection> [file] [name <words>]` (a file, its extension the item's type, or markdown on stdin; the
   item's id carries a slug of `name`, else of the file's base name or the markdown's title, [[collections]]; `tower
   keep` alone lists the floor's collections with what each is for),
-  `tower kept [collection]` (each item's title, age, size and who kept it; tag and file since [[item-tags]]) and
+  `tower kept [collection]` (alone, each collection's item count and its latest five by edit time, so a floor with many
+  items costs a few lines; with a collection, every item: title, age, size and who kept it; tag and file since [[item-tags]]) and
   `tower read <id>`.
 - `keep` creates the item with the renderer API's `collection/create` ([[collections]]), then posts
   `{hook_event_name: 'tower.keep', project, collection, id}` to the host's hooks socket, as `tower.show` goes

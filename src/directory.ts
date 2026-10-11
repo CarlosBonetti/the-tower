@@ -15,7 +15,7 @@
  *   tower reveal <path>             show a file or folder to the user selected in a Finder window
  *   tower edit <path> [line]        open a file or folder in the user's editor, a file at `line` if given
  *   tower keep <collection> [file]  a new item in one of the floor's collections, from a file or stdin (markdown)
- *   tower kept [collection]         the floor's collections: each item's tag, title, age, size, keeper and file
+ *   tower kept [collection]         the floor's collections with their item counts and latest items, or every item of one: tag, title, age, size, keeper and file
  *   tower read <tag|id>             one item of the floor's collections, in full
  *   tower thread [checkout]         the review thread about this session's work (a reviewer's is its author's), or another, and what is new to you
  *   tower note [on <checkout>] [re n<k>] [repo:path:lines …]   a message on the thread, the body on stdin, each anchor's
@@ -168,7 +168,7 @@ const shelfLine = (floor: Floor): string =>
 
 const collectionsLines = (floor: Floor): string[] =>
   floor.collections.length
-    ? ["The floor's collections, files kept for later (`tower kept` lists their items):", ...floor.collections.map(collectionLine)]
+    ? ["The floor's collections, files kept for later (`tower kept` counts them and shows the latest of each):", ...floor.collections.map(collectionLine)]
     : ['The floor keeps no collections.']
 
 const worktreeLines = (floor: Floor, { name, branch, from }: NonNullable<Card['worktree']>): string[] => {
@@ -301,12 +301,27 @@ const itemLines = (collection: FloorCollection, item: FloorItem, title: string |
 export const collectionLine = (collection: FloorCollection): string =>
   `  ${[collection.id, collection.label, collection.description ?? '(no description)'].join('  ·  ')}`
 
-const collectionLines = async (floor: Floor, collection: FloorCollection, now: number): Promise<string[]> => {
-  const titles = await Promise.all(collection.items.map(async (i) => (titled(i.id) ? titleIn(i.id, await readItem(floor, collection.id, i.id)) : undefined)))
+const LATEST_KEPT = 5
+
+/** A collection's heading and the lines of `items`, the ones of it to show. */
+const collectionLines = async (floor: Floor, collection: FloorCollection, items: FloorItem[], now: number): Promise<string[]> => {
+  const titles = await Promise.all(items.map(async (i) => (titled(i.id) ? titleIn(i.id, await readItem(floor, collection.id, i.id)) : undefined)))
   return [
     `${collection.label} ("${collection.id}"): ${collection.items.length} item${collection.items.length === 1 ? '' : 's'}`,
     ...(collection.description ? [`  ${collection.description}`] : []),
-    ...collection.items.flatMap((item, n) => itemLines(collection, item, titles[n], now)),
+    ...items.flatMap((item, n) => itemLines(collection, item, titles[n], now)),
+  ]
+}
+
+const latestFirst = (items: FloorItem[]): FloorItem[] => [...items].sort((a, b) => b.modifiedAt - a.modifiedAt)
+
+/** Every collection with its count and its latest items, and how to list the rest of one. */
+const overviewLines = async (floor: Floor, now: number): Promise<string[]> => {
+  const sections = await Promise.all(floor.collections.map((c) => collectionLines(floor, c, latestFirst(c.items).slice(0, LATEST_KEPT), now)))
+  const more = floor.collections.filter((c) => c.items.length > LATEST_KEPT)
+  return [
+    sections.map((lines) => lines.join('\n')).join('\n\n'),
+    ...(more.length ? ['', `The latest ${LATEST_KEPT} of each. \`tower kept <collection>\` lists every item of one: ${more.map((c) => `${c.id} has ${c.items.length}`).join(', ')}.`] : []),
   ]
 }
 
@@ -446,7 +461,33 @@ const apiLines = (schema: ApiSchema): string[] => {
   ]
 }
 
+/** What each worker verb takes, one line each: `tower <verb> --help` prints it, and an unknown verb lists them. */
+const USAGES: Record<string, string> = {
+  whoami: 'whoami',
+  agents: 'agents [--all]',
+  agent: 'agent <CALLSIGN>',
+  show: 'show <file|url> [title]',
+  open: 'open <url> [title]',
+  reveal: 'reveal <path>',
+  edit: 'edit <path> [line]',
+  keep: 'keep [<collection> [file] [name <words>]]',
+  kept: 'kept [collection]',
+  read: 'read <tag|id>',
+  thread: 'thread [checkout]',
+  note: 'note [on <checkout>] [re n<k>] [repo:path:lines …]',
+  send: 'send <CALLSIGN>',
+  review: 'review <CALLSIGN> [tell]',
+  hire: 'hire [<tag|id>] […]',
+  home: 'home <CALLSIGN>',
+  'let-go': 'let-go <CALLSIGN>',
+  api: 'api [name]',
+}
+
 const [verb, flag, ...rest] = process.argv.slice(2)
+if (verb in USAGES && (flag === '--help' || flag === '-h')) {
+  console.log(`Usage: tower ${USAGES[verb]}`)
+  process.exit(0)
+}
 const me = process.env.TOWER_SESSION_ID
 const now = Date.now()
 
@@ -520,10 +561,11 @@ switch (verb) {
   }
   case 'kept': {
     const floor = ownFloor(await readBoard(), me)
-    const collections = flag ? [collectionOf(floor, flag)] : floor.collections
-    if (!collections.length) throw new CliError(`${floorTitle(floor)} keeps no collections`)
-    const sections = await Promise.all(collections.map((c) => collectionLines(floor, c, now)))
-    console.log(sections.map((lines) => lines.join('\n')).join('\n\n'))
+    if (!floor.collections.length) throw new CliError(`${floorTitle(floor)} keeps no collections`)
+    if (flag) {
+      const collection = collectionOf(floor, flag)
+      console.log((await collectionLines(floor, collection, collection.items, now)).join('\n'))
+    } else console.log((await overviewLines(floor, now)).join('\n'))
     break
   }
   case 'read': {
@@ -627,7 +669,7 @@ switch (verb) {
   }
   default:
     throw new CliError(
-      `Unknown command "${verb ?? ''}". The user's: init, doctor, config check, up, down, update, spawn, resume, submit, kill, live, ls, ps, reap, screen, attach, app. A worker's: whoami, agents [--all], agent <CALLSIGN>, show <file|url> [title], open <url> [title], reveal <path>, edit <path> [line], keep [<collection> [file] [name <words>]], kept [collection], read <tag|id>, thread [checkout], note [on <checkout>] [re n<k>] [repo:path:lines …], send <CALLSIGN>, review <CALLSIGN> [tell], hire [<tag|id>] […], home <CALLSIGN>, let-go <CALLSIGN>, api [name]`,
+      `Unknown command "${verb ?? ''}". The user's: init, doctor, config check, up, down, update, spawn, resume, submit, kill, live, ls, ps, reap, screen, attach, app. A worker's: ${Object.values(USAGES).join(', ')}`,
       'the tower:handbook skill says what each is for',
     )
 }

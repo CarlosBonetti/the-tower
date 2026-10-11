@@ -90,7 +90,7 @@ away. The shelf is not a collection, though an `item` entry shows one of a colle
 
 A collection is a kind of file a floor keeps in the system root, `collections/<project>/<collection>/<item>`, declared
 by id with a `label` (the name it is shown by) and an optional `description` (what it is for, in a sentence or two,
-shown to the user and the workers wherever it is listed). Workers add items with `tower keep <collection>` and list them with `tower kept`. Two ids mean
+shown to the user and the workers wherever it is listed). Workers add items with `tower keep <collection>` and see their counts and latest items with `tower kept`, and every item of one with `tower kept <collection>`. Two ids mean
 something to the tower: `drafts`, prompts waiting to start a worker or be sent to one, and `reviews`, one review
 thread per checkout, written only through `tower note`. A floor keeping `games` shows each item as an arcade cabinet in
 Tower 3D.
