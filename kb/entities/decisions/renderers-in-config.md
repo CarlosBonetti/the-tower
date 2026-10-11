@@ -6,7 +6,7 @@
   "in": "tower",
   "status": "accepted",
   "date": "2026-10-08",
-  "reviewed": "2026-10-10",
+  "reviewed": "2026-10-11",
   "refs": ["hub/src/shared/model.ts#ShelfEntry", "hub/src/renderers.ts#renderersOf", "hub/src/renderers.ts#defaultRenderer", "hub/src/renderers.ts#rendererFile", "hub/src/shared/model.ts#RendererConfig", "hub/src/tower/server.ts#rendered", "hub/src/tower/server.ts#home", "hub/src/tower/server.ts#renderersRead", "hub/src/tower/tower.js", "hub/src/shared/cards.ts#renderersHtml", "hub/renderers/tower3d/src/acts.ts#catName"]
 }
 ---
@@ -46,7 +46,7 @@ update of the core never touches it.
   `/r/<name>/` sandboxed, at an opaque origin, and relays the API over `postMessage` as for an `html` entry, so a
   renderer runs inside another with its `settings`, and the shelf names no path inside a hub or a build. Its new tab
   is `/r/<name>/`. Tower 3D stands one as a TV; framed it hands the entry to the tower's own view, on its own it opens
-  a new tab (it relays nothing to the pages it frames). An unbuilt or undeclared renderer frames the page that says so.
+  a new tab (it relays only the `html` entries it frames). An unbuilt or undeclared renderer frames the page that says so.
 
 **Alternatives considered.**
 - *Renderers on the board.* Rejected: they don't change with the system's sessions, and a read computed per request

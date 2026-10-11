@@ -734,8 +734,10 @@ export function pictureHeadHtml(worker: SessionRef, onDuty: boolean, sh: Shown, 
 }
 
 /** A shelf entry's body: a page in a frame, or a markdown collection's files beside the open one, rendered without scripts. */
-export function docHtml(doc: { frame: string } | { files: string[]; file?: string; text: string; url: string }, root: string) {
-  if ('frame' in doc) return `<iframe class="doc-frame" src="${esc(doc.frame)}" allow="clipboard-write"></iframe>`
+/** An `html` entry's frame, its page loaded by `tower.relay`. */
+export const relayedFrameHtml = '<iframe class="doc-frame" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-pointer-lock" allow="clipboard-write"></iframe>'
+
+export function docHtml(doc: { files: string[]; file?: string; text: string; url: string }, root: string) {
   const list = doc.files.map((f) => `<button class="doc-file${f === doc.file ? ' on' : ''}" data-file="${esc(f)}"${f === doc.file ? ' aria-current="true"' : ''} data-tip="${esc(f)}">${esc(base(f).replace(/\.md$/, ''))}</button>`).join('')
   return `<div class="doc-files">${list || '<i>no files</i>'}</div><iframe class="doc-frame" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="${esc(mdPage(doc.text, doc.url, root))}"></iframe>`
 }

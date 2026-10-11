@@ -41,7 +41,7 @@ import { closeTerm, mountTerm, watchPanelSize } from './term.ts'
 import { SHELL_SCROLLBACK } from '../../../src/shared/terms.ts'
 import { dispose, loadFaces } from './toon.ts'
 import { fillBooks } from './room.ts'
-import { activityHtml, keptFileHtml, keptHeadHtml, keptTextHtml, archiveListHtml, archiveSideHtml, askHtml, drawerSideHtml, logbookBriefHtml, logbookHeadHtml, logbookHtml, logbookTabsHtml, sessionsHtml, stampHtml, deskHeadHtml, detailsHtml, movesHtml, deskTabsHtml, directoryHtml, shellPickHtml, docHeadHtml, statsHeadHtml, docHtml, draftHeadHtml, draftNoteHtml, elevatorHtml, floorHtml, floorSignHtml, gameHeadHtml, gameHtml, hudHtml, levelForKey, pictureHeadHtml, promptHtml, shellHeadHtml, shownHtml, shownTab, threadHeadHtml, type LogbookTab } from './ui.ts'
+import { activityHtml, keptFileHtml, keptHeadHtml, keptTextHtml, archiveListHtml, archiveSideHtml, askHtml, drawerSideHtml, logbookBriefHtml, logbookHeadHtml, logbookHtml, logbookTabsHtml, sessionsHtml, stampHtml, deskHeadHtml, detailsHtml, movesHtml, deskTabsHtml, directoryHtml, shellPickHtml, docHeadHtml, statsHeadHtml, docHtml, relayedFrameHtml, draftHeadHtml, draftNoteHtml, elevatorHtml, floorHtml, floorSignHtml, gameHeadHtml, gameHtml, hudHtml, levelForKey, pictureHeadHtml, promptHtml, shellHeadHtml, shownHtml, shownTab, threadHeadHtml, type LogbookTab } from './ui.ts'
 import { commandOf, keymapSheetHtml, type Keys } from '../../../src/shared/keymap.ts'
 import { move, releaseKeys, takeTurn, type Turn } from './input.ts'
 import { random } from './random.ts'
@@ -604,6 +604,7 @@ function unfocus() {
 function closeDoc() {
   if (s.panel?.kind === 'logbook' && s.panel.tab === 'screen') closeTerm($('logbook-screen'))
   show('doc', false)
+  closeDocRelay()
   $('doc-body').innerHTML = ''
   delete $('doc-body').dataset.thread
   delete $('doc-body').dataset.stats
@@ -707,7 +708,7 @@ async function openShelf(project: string, n: number, file?: string) {
   show('paused', false)
   show('doc', true)
   renderPanel()
-  if (shelfKind(entry) === 'html') return ($('doc-body').innerHTML = docHtml({ frame: shelfUrl(project, n, shelfPage(entry)) }, tower.prefs.attributes()))
+  if (shelfKind(entry) === 'html') return relayDoc(shelfUrl(project, n, shelfPage(entry)), { project, n })
   const files = await shelfFiles(project, n).catch((err: Error) => (toast(err.message), []))
   const shown = file ?? files[0]
   const text = shown ? await shelfText(project, n, shown).catch((err: Error) => `*${err.message}*`) : ''
@@ -716,6 +717,18 @@ async function openShelf(project: string, n: number, file?: string) {
   $('doc-body').innerHTML = docHtml({ files, file: shown, text, url: shelfUrl(project, n, shown ?? '') }, tower.prefs.attributes())
 }
 onAppearance(() => s.panel?.kind === 'doc' && s.panel.file && openShelf(s.panel.project, s.panel.n, s.panel.file))
+
+/** The open `html` entry's page, given the board and the API. Tower 3D reads what it keeps in `tower.store` as it boots. */
+let docRelay: { close(): void } | undefined
+const closeDocRelay = () => (docRelay?.close(), (docRelay = undefined))
+function relayDoc(url: string, self: ShelfSelf) {
+  $('doc-body').innerHTML = relayedFrameHtml
+  docRelay = tower.relay($('doc-body').querySelector('iframe')!, url, {
+    self,
+    ui: { select: ({ id }) => goDesk(id), home: () => closePanels(), shelf: ({ project, n }) => openShelf(project, n) },
+    stored: () => {},
+  })
+}
 
 /** Opens a kept item where it lives: a draft in its editor, a game at its cabinet, anything else in the reader. */
 function openKept(k: { project: string; collection: string; id: string }) {

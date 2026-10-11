@@ -16,6 +16,9 @@ export type Shell = Board['shells'][number]
 export type Today = Board['today']
 export type { Stats }
 
+/** The verbs a framed page moves its framing page's own view with. */
+export type RelayedUi = { [V in 'select' | 'home' | 'shelf']: (fields: Extract<TowerVerb, { verb: V }>) => void }
+
 /** What a watch hands its callback: a stream's messages, or the error that ended it. */
 export type StreamMsg = ScreenMsg | TerminalMsg | ShellStream
 
@@ -45,6 +48,8 @@ export type Tower = {
   recall(): Promise<unknown>
   store: { set(key: string, value: unknown): void; get(key: string): Promise<unknown> }
   ui<V extends TowerVerb['verb']>(verb: V, fields?: Omit<Extract<TowerVerb, { verb: V }>, 'verb'>): void
+  /** A shelf page framed by this page, given the board and the API: `ui` is this page's own view, `stored` hears each key it sets in `store`. */
+  relay(frame: HTMLIFrameElement, url: string, opts: { self: ShelfSelf; ui: RelayedUi; stored(key: string): void }): { close(): void }
   /** The viewer's appearance, on the root before the page paints. */
   prefs: { get(): Prefs; set(patch: Partial<Prefs>): void; on(fn: (prefs: Prefs) => void): () => void; attributes(): string }
   scheme(): Scheme

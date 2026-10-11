@@ -195,7 +195,8 @@ const relay = tower.relay(frame, '/shelf/lab/0/index.html', {
 relay.close() // when the frame goes
 ```
 
-The tower page relays every page it frames; Tower 3D relays nothing to the pages it frames.
+The tower page relays every page it frames; Tower 3D relays the `html` entries it frames, and opens a `renderer` entry
+in the tower's own view when framed, else in a new tab.
 
 ## The API
 

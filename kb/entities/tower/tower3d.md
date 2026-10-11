@@ -115,9 +115,9 @@ back-left corner:
 - The floor's shells on a bench.
 - The shelf: a bookcase per markdown collection or markdown item (a book per file, E reads it), a TV per
   `html`/`url`/`renderer` entry or other item ([[shelf-items]]), a poster per `link`. A page never opens itself (`self` from the board). An `html` entry opens in a frame
-  in the page. A `url` opens in the tower's own view when framed, else in a new tab: a frame inside this
+  in the page, given the board and the API through `tower.relay`. A `url` opens in the tower's own view when framed, else in a new tab: a frame inside this
   page inherits the shelf sandbox (an opaque origin, no forms, no storage), so a web app's requests and
-  state break there. A `renderer` opens the same way: it reads the board, which only the framing tower relays.
+  state break there. A `renderer` opens the same way, framed by the tower page or in a new tab.
 - A couch facing the video wall from the front glass, and racks and a planter in the front corners where the bench
   and the shelf leave room (KayKit zones, [[office-kaykit]]); nothing stands before the video wall.
 - Outside it, against its outer wall between the back glass and the Running board, the filing cabinet: the floor's
