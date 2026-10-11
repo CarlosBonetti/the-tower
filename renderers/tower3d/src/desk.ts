@@ -7,6 +7,7 @@ import { DESK, SEAT_OFFSET } from './layout.ts'
 import { ASLEEP, OFFLINE, OPEN_DESK, screenTexture } from './screens.ts'
 import { avatar, seatedAt, type Avatar, type Look } from './avatar.ts'
 import { WARDROBE } from './closet.ts'
+import { CHAIR } from './chair.ts'
 import { instance, type Models } from './models.ts'
 import { lookOf } from './wardrobe.ts'
 import { pose, type Pose } from './rig.ts'
@@ -21,7 +22,6 @@ import { block, dispose, glowing, glows, mesh, sprite, toon } from './toon.ts'
  */
 
 const SCREEN = { width: 1.56, height: 0.98, y: 1.33, z: 0.32 }
-const SEAT_Y = 0.48
 const BUBBLE_Y = 1.8
 const TAG_Y = SCREEN.y + SCREEN.height / 2 + 0.36
 const GIST_Y = TAG_Y + 0.19
@@ -30,8 +30,6 @@ const SPEECH_LINE = 0.11
 const SPEECH_GAP = 0.04
 /** The worker's chair on the floor, at the keyboard. */
 const SEAT = new THREE.Vector3(0, 0, -SEAT_OFFSET)
-/** The chair's seat as its sitter's root sees it: its top, and its back rest's face (models/desk.py). */
-const CHAIR = { y: SEAT_Y, back: -0.34 }
 const Y = new THREE.Vector3(0, 1, 0)
 /** The second monitor, on the desk's left, turned toward the seat: what the worker last showed you. */
 export const SIDE = { width: 0.66, height: 0.41, x: -0.98, y: 1.07, z: 0.06, turn: -0.55 }

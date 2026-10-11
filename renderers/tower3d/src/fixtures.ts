@@ -563,11 +563,11 @@ export const FIXTURE_GAMES: Record<string, string> =
   FIXTURE === 'busy' ? Object.fromEntries(ALPHA_GAMES.map((g, n) => [`alpha/${gameId(n)}`, g.html])) : {}
 
 /** A fixture board has no host behind it: its streams are never opened, so monitors stay blank and desks stay open. */
-export const watchStream: typeof tower.watch = FIXTURE === undefined ? tower.watch : () => () => {}
+export const watchStream: typeof tower.watch = FIXTURE === undefined ? (...a) => tower.watch(...a) : () => () => {}
 
 /** A fixture board's files are read from no host: every video it shows is the same test pattern, every image the same plot. */
 export const readBlob: typeof tower.blob =
-  FIXTURE === undefined ? tower.blob : (path) => (path.endsWith('.webm') ? Promise.resolve(new Blob([FILM], { type: 'video/webm' })) : fixturePlot())
+  FIXTURE === undefined ? (path) => tower.blob(path) : (path) => (path.endsWith('.webm') ? Promise.resolve(new Blob([FILM], { type: 'video/webm' })) : fixturePlot())
 
 /** A floor's archive (`GET /archive/<project>`), read beside `board`: a fixture board's own on a fixture. */
 export const readArchive = (board: Board, project: string): Promise<Card[]> =>

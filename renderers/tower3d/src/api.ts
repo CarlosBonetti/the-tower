@@ -69,7 +69,7 @@ declare global {
 export const tower = window.tower
 
 /** `get` over a path its typed templates can't name: a shelf's file list (JSON) and a file's text. */
-const read = tower.get as (path: string) => Promise<unknown>
+const read = (path: string) => (tower.get as (path: string) => Promise<unknown>)(path)
 const filePath = (file: string) => file.split('/').map(encodeURIComponent).join('/')
 export const shelfFiles = (project: string, n: number) => read(`shelf/${project}/${n}`) as Promise<string[]>
 export const shelfText = (project: string, n: number, file: string) => read(`shelf/${project}/${n}/${filePath(file)}`) as Promise<string>
