@@ -3,7 +3,9 @@ import { box, geometry, mesh, noBottom, place, poly, prism, rng, vertices, type 
 /**
  * The city's buildings, generated at load from their sites and a seed: up to three tiers set back one over another,
  * each a chamfered core with windows between fins on every side, a band at every floor, a cornice and a parapet,
- * and roof plant on the top tier. One mesh per material for the whole city.
+ * and roof plant on the top tier. One mesh per material for the whole city. A building leaves out the detail too thin
+ * to span a pixel from the nearest a viewer comes to it (`finest`), a fin by its sides, half its width proud of the
+ * face: drawn thinner, it blinks as the view moves.
  */
 
 export type Site = { i: number; x: number; z: number; w: number; h: number }
@@ -11,7 +13,17 @@ export type Layer = 'stone' | 'trim' | 'glass' | 'warm' | 'cool'
 type Paints = Record<Layer | 'shadow', Paint>
 export const LAYERS: Layer[] = ['stone', 'trim', 'glass', 'warm', 'cool']
 
-type Spec = { width: number; depth: number; height: number; floor: number; bay: number; fin: number; band: number; tiers: number; setback: number; pane: number; lit: number; cool: number; clutter: number }
+type Spec = { width: number; depth: number; height: number; floor: number; bay: number; fin: number; band: number; tiers: number; setback: number; pane: number; lit: number; cool: number; clutter: number; finest: number }
+
+/** One pixel's width at a metre: the walking camera's 70° field of view on a canvas 800 px tall. */
+const PIXEL = (2 * Math.tan((35 * Math.PI) / 180)) / 800
+/** The farthest a viewer stands from the tower's centre: half its floor plate's width, at the glass. */
+const VIEWER = 20
+/** The thinnest detail that still spans a pixel on a site, from the nearest a viewer comes to it. */
+const finest = (site: Site) => (Math.hypot(site.x, site.z) - VIEWER) * PIXEL
+
+/** How tall a band is. */
+const BAND = 0.22
 
 const pick = <T>(r: () => number, xs: readonly T[]) => xs[Math.floor(r() * xs.length)]
 const between = (r: () => number, lo: number, hi: number) => lo + r() * (hi - lo)
@@ -33,6 +45,7 @@ function specOf(site: Site, r: () => number): Spec {
     lit: between(r, 0.15, 0.28),
     cool: 0.4,
     clutter: between(r, 0.5, 1),
+    finest: finest(site),
   }
 }
 
@@ -73,7 +86,7 @@ function tier(L: Layers, paint: Paints, spec: Spec, w: number, d: number, y0: nu
         poly(L[layer], [point(u - hu, y - hy, 0.03), point(u + hu, y - hy, 0.03), point(u + hu, y + hy, 0.03), point(u - hu, y + hy, 0.03)], out, paint[layer])
       }
     }
-    if (spec.fin) {
+    if (spec.fin / 2 >= spec.finest) {
       const skip: Skip = (o) => o[1] !== 0 || o[0] * out[0] + o[2] * out[2] < 0
       for (let b = 1; b < bays; b++) {
         const c = point(-span / 2 + b * bw, y0 + h / 2, 0)
@@ -82,9 +95,9 @@ function tier(L: Layers, paint: Paints, spec: Spec, w: number, d: number, y0: nu
     }
   }
   const ring = spec.band * 2
-  for (let f = 1; f < floors; f++) {
-    box(L.trim, [0, y0 + f * level, 0], [w + ring, 0.22, d + ring], paint.trim)
-    under(L.stone, paint.shadow, w, d, y0 + f * level - 0.11)
+  for (let f = 1; f < floors && BAND >= spec.finest; f++) {
+    box(L.trim, [0, y0 + f * level, 0], [w + ring, BAND, d + ring], paint.trim)
+    under(L.stone, paint.shadow, w, d, y0 + f * level - BAND / 2)
   }
   const top = y0 + h
   box(L.trim, [0, top + 0.35, 0], [w + 0.7, 0.55, d + 0.7], paint.trim, 0.1)
@@ -132,6 +145,8 @@ export const PIECES: Record<string, Piece> = {
 }
 
 const POOL = ['ac', 'ac', 'vent', 'vent', 'tank', 'hut', 'antenna']
+/** Each piece's thinnest part: a tank's legs, an antenna's mast. */
+const THINNEST: Record<string, number> = { ac: 0.9, vent: 0.7, tank: 0.2, hut: 0.9, antenna: 0.18 }
 
 function clutter(L: Layers, paint: Paints, spec: Spec, w: number, d: number, top: number, r: () => number) {
   const want = Math.min(7, Math.round(spec.clutter * (w - 3) * (d - 3) * 0.035))
@@ -140,7 +155,8 @@ function clutter(L: Layers, paint: Paints, spec: Spec, w: number, d: number, top
     const [x, z] = [between(r, -(w - 4) / 2, (w - 4) / 2), between(r, -(d - 4) / 2, (d - 4) / 2)]
     if (spots.every(([sx, sz]) => Math.hypot(sx - x, sz - z) > 3.2)) spots.push([x, z])
   }
-  for (const [x, z] of spots) PIECES[pick(r, POOL)](L, paint, [x, top, z], r)
+  const pool = POOL.filter((piece) => THINNEST[piece] >= spec.finest)
+  for (const [x, z] of spots) PIECES[pick(r, pool)](L, paint, [x, top, z], r)
 }
 
 /** A building on a site's origin. */

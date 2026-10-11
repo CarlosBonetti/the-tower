@@ -40,7 +40,11 @@ measured. So anyone it annoys, or whose machine it slows, needs a way to turn it
   plain data, built by pure functions and turned into one BufferGeometry per material. The city
   ([`skyline`](ref:hub/renderers/tower3d/src/exterior/skyline.ts#skyline), drawn by
   [`buildings`](ref:hub/renderers/tower3d/src/outside.ts#buildings)) is tiered towers with windows, bands, cornices
-  and roof plant, seeded per site. The shell ([`frame`](ref:hub/renderers/tower3d/src/exterior/shell.ts#frame),
+  and roof plant, seeded per site. A building leaves out what is thinner than a pixel from the nearest a viewer at
+  the glass comes to it (the walking camera's 70° on a canvas 800 px tall): fins whose sides stand less than a pixel
+  proud, bands, and the thin roof plant (a tank's legs, an antenna's mast). Drawn thinner, they blink as the view
+  moves; the far ring of the city keeps its windows, colours and silhouette without them.
+  The shell ([`frame`](ref:hub/renderers/tower3d/src/exterior/shell.ts#frame),
   `spandrel`, `parapet`) is capped mullions, panelled spandrels and a coping. The roof plant
   ([`roofPlant`](ref:hub/renderers/tower3d/src/exterior/roof.ts#roofPlant), placed by
   [`plantOnRoof`](ref:hub/renderers/tower3d/src/world.ts#plantOnRoof)) is in steel and bronze. The box city and the
