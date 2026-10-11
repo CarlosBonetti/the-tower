@@ -12,6 +12,17 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.23.0
+
+Tower 3D's city follows the clock through the night. No host restart, no config change, the renderer API is
+unchanged. Rebuild Tower 3D (`npm run tower3d`) and reload it.
+
+- The city's lit windows keep office hours: they come on through dusk and go dark through the evening, a few burning
+  all night and a few back on before dawn, each window by its own hours (on the GPU, the same frame for the same
+  hour). Daytime is unchanged.
+- Red warning lights flash on the parapets of the tallest towers, and the tower's own mast flashes with them.
+- A few soft clouds drift over the city, pink at dusk and grey-blue at night.
+
 ## v1.22.0
 
 Tower 3D's city has a neighbourhood. No host restart, no config change, the renderer API is unchanged. Rebuild
