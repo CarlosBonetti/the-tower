@@ -3,6 +3,24 @@
     "Face_RoundGlasses": {
       "*": {
         "at": [0, 0, -0.05]
+      },
+      "Mage_Head": {
+        "at": [0, -0.0477, -0.077]
+      },
+      "Rogue_Head": {
+        "at": [0, -0.0544, -0.05]
+      }
+    },
+    "Helm_Headset": {
+      "Rogue_Head": {
+        "at": [0, -0.1162, 0],
+        "scale": [1.029, 1, 1]
+      }
+    },
+    "Mug": {
+      "Barbarian_Head": {
+        "at": [-0.0112, 0.0343, 0.0291],
+        "turn": [2, -11.5, 8.1]
       }
     },
     "face_glasses": {
@@ -14,8 +32,7 @@
         "scale": 0.74
       },
       "bot": {
-        "at": [0, 0, 0],
-        "scale": 1
+        "at": [0, 0.02, 0.0289]
       }
     },
     "face_shades": {
@@ -118,7 +135,7 @@
         "at": [0, -0.258, 0]
       },
       "Mage_Head": {
-        "at": [0, -0.242, 0]
+        "at": [0, -0.1285, 0.0317]
       },
       "Rogue_Head": {
         "at": [0, -0.257, 0]
@@ -127,8 +144,8 @@
         "at": [0, -0.199, 0]
       },
       "bot": {
-        "at": [0, 0, 0],
-        "scale": 1
+        "at": [0, 0.052, 0],
+        "scale": 1.253
       }
     },
     "hat_flower": {
@@ -154,27 +171,6 @@
     }
   },
   "outfits": {
-    "bartender": {
-      "body": "Barbarian",
-      "paint": "Barbarian",
-      "skin": "#bd8259",
-      "hair": "#4a3021",
-      "wear": "#2b2d42",
-      "build": {
-        "width": 1.04,
-        "height": 1
-      },
-      "slots": {
-        "Head": "Barbarian_Head",
-        "Helm": null,
-        "Hat": "hat_cap",
-        "Face": null,
-        "Cape": null,
-        "Gear": "Mug",
-        "Prop": null,
-        "Outfit": null
-      }
-    },
     "dj": {
       "body": "Mage",
       "paint": "Rogue",
@@ -192,6 +188,48 @@
         "Face": "face_shades",
         "Cape": null,
         "Gear": null,
+        "Prop": null,
+        "Outfit": null
+      }
+    },
+    "test1": {
+      "body": "Mage",
+      "paint": "Knight",
+      "skin": "#bd8259",
+      "hair": "#f2efe9",
+      "wear": "#4cc9f0",
+      "build": {
+        "width": 0.9406595215015113,
+        "height": 0.9991459087934345
+      },
+      "slots": {
+        "Head": "Rogue_Head",
+        "Helm": "Helm_Headset",
+        "Hat": null,
+        "Face": "Face_RoundGlasses",
+        "Cape": null,
+        "Gear": "1H_Axe",
+        "Prop": null,
+        "Outfit": null
+      }
+    },
+    "test2": {
+      "body": "Mage",
+      "paint": "Barbarian",
+      "skin": "#bd8259",
+      "hair": "#e2c784",
+      "wear": "#b388ff",
+      "build": {
+        "width": 1.0315995078533888,
+        "height": 1.0196183418948204
+      },
+      "slots": {
+        "Head": "Mage_Head",
+        "Helm": null,
+        "Hat": "hat_crown",
+        "Face": "Face_RoundGlasses",
+        "Cape": "Knight_Cape",
+        "Gear": "Mug",
         "Prop": null,
         "Outfit": null
       }
@@ -214,7 +252,7 @@
     },
     "outfits": {
       "share": 0,
-      "except": ["bartender", "dj"]
+      "except": ["dj"]
     },
     "bodies": ["Knight", "Mage", "Rogue", "Barbarian"],
     "repaint": 0.3,
