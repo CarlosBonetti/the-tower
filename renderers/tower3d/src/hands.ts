@@ -39,6 +39,7 @@ export function makeHands(models: Models): Hands {
   })
   const holder = new THREE.Group()
   holder.rotation.x = NOTE_TIP
+  holder.position.copy(NOTE_AT).setY(NOTE_AT.y - NOTE_DROP)
   holder.visible = false
   const paper = new THREE.MeshBasicMaterial({ color: '#e8e2d2', toneMapped: false })
   const face = new THREE.Mesh(new THREE.PlaneGeometry(NOTE_SIZE, (NOTE_SIZE * NOTE_PX.height) / NOTE_PX.width), new THREE.MeshBasicMaterial({ toneMapped: false }))
@@ -56,6 +57,9 @@ export function makeHands(models: Models): Hands {
 /** A held note's width in metres, and how far it is tipped back so its front faces you. */
 const NOTE_SIZE = 0.18
 const NOTE_TIP = -0.35
+/** Where a held note rests in view, and how far below it a note not yet up sits. */
+const NOTE_AT = new THREE.Vector3(0, -0.13, -0.5)
+const NOTE_DROP = 0.3
 
 /**
  * Puts a note in both hands, or takes it away (`undefined`). It comes up from below on the next poses and, once
@@ -89,7 +93,8 @@ const STROKE_AT = new THREE.Vector3(0.02, -0.05, -0.42)
 /**
  * Poses the hands for one frame. From how far you moved and turned between `was` and `now`: the arms swing and bob
  * with your pace, lag behind a turn and lift while you're in the air; `stroke` reaches the right one out to pet a
- * cat. Each pivot eases toward its pose, so starting, stopping and letting go of the mouse never jump.
+ * cat. Each pivot and the note ease toward their poses, so starting, stopping and letting go of the mouse never jump,
+ * and a turn's speed, uneven from frame to frame as mouse events fall between them, never shakes them.
  */
 export function poseHands(h: Hands, was: Walker, now: Walker, stroke: Stroke | undefined, dt: number, t: number) {
   if (dt === 0) return
@@ -110,11 +115,10 @@ export function poseHands(h: Hands, was: Walker, now: Walker, stroke: Stroke | u
   beer.holder.visible = beer.k > 0
   const cycle = t % SIP.every
   const sip = cycle < SIP.takes ? Math.sin((cycle / SIP.takes) * Math.PI) * beer.k : 0
-  held.holder.position.set(swayX + step * 0.008 * pace, swayY + Math.sin(t * 1.7) * 0.004 + Math.abs(step) * 0.012 * pace + air * 0.04 - 0.13 - 0.3 * (1 - carry), -0.5)
+  const sway = new THREE.Vector3(swayX + step * 0.008 * pace, swayY + Math.sin(t * 1.7) * 0.004 + Math.abs(step) * 0.012 * pace + air * 0.04, 0)
+  held.holder.position.lerp(NOTE_AT.clone().add(sway).add(new THREE.Vector3(0, -NOTE_DROP * (1 - carry), 0)), ease)
   for (const { pivot, side, rest } of h.arms) {
-    const to = rest.clone()
-    to.x += swayX + step * 0.008 * pace
-    to.y += swayY + Math.sin(t * 1.7) * 0.004 + Math.abs(step) * 0.012 * pace + air * 0.04
+    const to = rest.clone().add(sway)
     to.z += side * step * 0.025 * pace
     const turn = new THREE.Euler(0.45 + air * 0.2, side * 0.55, side * -0.2)
     to.x -= side * 0.08 * carry
