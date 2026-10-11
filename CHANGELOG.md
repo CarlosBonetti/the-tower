@@ -12,6 +12,14 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.21.2
+
+The note you carry in Tower 3D stays steady while you turn. No host restart, no config change, the renderer API is
+unchanged. Rebuild Tower 3D (`npm run tower3d`) and reload it.
+
+- Turning the mouse with a draft in hand made the note flicker: it followed how fast you turned frame by frame, which
+  mouse events make uneven, while your hands smoothed it. The note now eases with your hands.
+
 ## v1.21.1
 
 Tower 3D's landing rugs show whole again. No host restart, no config change, the renderer API is unchanged. Rebuild
