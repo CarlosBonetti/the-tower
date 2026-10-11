@@ -90,6 +90,6 @@ artifacts refuse framing, so they go on the shelf as `link`, not `url`. An `item
 collection, alone ([[shelf-items]]).
 
 An open `html` entry is framed with scripts, popups and pointer lock allowed. It gets the board over
-`postMessage` and reaches every route through the page's relay;
+`postMessage` and reaches every route through the page's `tower.relay`;
 [`/run/<project>/<n>`](ref:hub/src/tower/server.ts#run) serves the same entry at the tower's origin, unsandboxed,
 as a renderer of its own; its redirect to the entry's page keeps the query (`?board=`, `?seed=`).

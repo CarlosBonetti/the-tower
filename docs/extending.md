@@ -182,9 +182,20 @@ The tower page frames each one sandboxed, at an opaque origin, and relays the bo
 `tower.prefs.on` read it, and `tower.prefs.set(patch)` asks the framing page to change it, for every page of the
 viewer's. A `url` entry's frame gets the colour scheme alone, as `{t: 'scheme', scheme}`.
 
-Relaying is the framing renderer's work, over the protocol in `src/shared/shelf-page.ts`. The tower page relays;
-Tower 3D relays nothing to the pages it frames. A renderer of yours frames shelf pages with the API by relaying the
-same messages, or opens them on their own.
+Relaying is `tower.relay`'s work, over the protocol in `src/shared/shelf-page.ts`. A renderer frames a page in an
+iframe sandboxed without `allow-same-origin` and hands it to the relay with what is its own: the entry the page is, its
+`select`, `home` and `shelf`, and what to do when the page sets a key in `tower.store`:
+
+```js
+const relay = tower.relay(frame, '/shelf/lab/0/index.html', {
+  self: { project: 'lab', n: 0 },
+  ui: { select: ({ id }) => openWorker(id), home: () => goHome(), shelf: ({ project, n }) => openShelf(project, n) },
+  stored: (key) => reread(key),
+})
+relay.close() // when the frame goes
+```
+
+The tower page relays every page it frames; Tower 3D relays nothing to the pages it frames.
 
 ## The API
 

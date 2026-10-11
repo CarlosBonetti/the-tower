@@ -34,6 +34,10 @@
  *   tower.keys(id, data) / tower.shellKeys(id, data)  keystrokes, delivered in order
  *   tower.watch('screen/<id>', (msg) => …)          a stream: `screen/<id>`, `terminal/<id>` or `shell/<id>`, ending at `x` or `error`; returns unwatch
  *   tower.ui('select', { id }) / ('home') / ('shelf', { project, n })   the framing tower's own view, when framed
+ *   tower.relay(frame, url, { self, ui, stored })   a shelf page framed by this page, given the board and the API: `frame` an
+ *                                                   iframe sandboxed without allow-same-origin, loaded with `url`; `self` the
+ *                                                   entry it is ({ project, n }); `ui` this page's `select`, `home` and `shelf`;
+ *                                                   `stored(key)` called on each key it sets in tower.store; returns { close }
  *   tower.prefs.get()                               the viewer's appearance (src/shared/prefs.ts): scheme, ui, display and mono
  *                                                   faces, termSize, motion, contrast, scale; on this page's root before it paints
  *   tower.prefs.set({ mono: 'Fira Code' })          change some of it, for every page of theirs, through the tower when framed
@@ -360,6 +364,88 @@
     return (id, data) => (queue = queue.then(() => api.call(verb, { id, data })).catch((err) => console.error(`tower.js ${verb}:`, err)))
   }
 
+  /**
+   * A shelf page framed by this page, given the board and the API over `postMessage` (src/shared/shelf-page.ts). The
+   * frame loads `url` with a token new to this relay, and the page sends it with every message: a document the frame
+   * navigates to never has it. Nothing is sent until the page says hello; a frame that loads without saying hello
+   * holds another document, and the relay pauses until one does. `self` is the entry the page is; `ui` moves this
+   * page's own view (`select`, `home`, `shelf`); `stored` hears each key the page sets in `tower.store`.
+   */
+  const relay = (frame, url, { self, ui, stored }) => {
+    const token = crypto.randomUUID()
+    let open = true
+    let paired = false
+    let helloSinceLoad = false
+    const watches = new Map()
+    const closeWatches = () => {
+      for (const unwatch of watches.values()) unwatch()
+      watches.clear()
+    }
+    const toPage = (msg) => open && paired && frame.contentWindow?.postMessage(msg, '*')
+    const sendBoard = () => {
+      if (!latest) return
+      const msg = { t: 'board', v: VERSION, self }
+      toPage(latest.error ? { ...msg, error: { code: latest.error.code, message: latest.error.message } } : { ...msg, board: latest.board })
+    }
+    const sendPrefs = () => toPage({ t: 'prefs', prefs })
+    /** Where the page's remembered value is kept: one per shelf entry. */
+    const memoryKey = `shelf-page:${self.project}/${self.n}`
+    const requests = {
+      call: ({ verb, body }) => api.call(verb, body),
+      get: ({ path }) => api.get(path),
+      text: ({ path }) => api.text(path),
+      blob: ({ path }) => api.blob(path),
+      recall: () => {
+        try { return JSON.parse(localStorage.getItem(memoryKey) ?? 'null') } catch { return null }
+      },
+      stored: ({ key }) => api.store.get(key),
+    }
+    const towerVerbs = {
+      ...ui,
+      prefs: ({ prefs }) => api.setPrefs(prefs),
+      /** @deprecated a page's tower.js asks with `prefs` */
+      scheme: ({ scheme }) => api.setPrefs({ scheme }),
+    }
+    const onLoad = () => {
+      if (!helloSinceLoad) (paired = false, closeWatches())
+      helloSinceLoad = false
+    }
+    const onMessage = async (e) => {
+      if (!e.source || e.source !== frame.contentWindow) return
+      const msg = e.data
+      if (msg?.token !== token) return
+      if (msg.t === 'hello') return ((paired = true), (helloSinceLoad = true), closeWatches(), sendPrefs(), sendBoard())
+      if (!paired) return
+      if (msg.t === 'tower') return towerVerbs[msg.verb](msg)
+      if (msg.t === 'remember') {
+        try { localStorage.setItem(memoryKey, JSON.stringify(msg.value)) } catch {}
+        return
+      }
+      if (msg.t === 'store') return (api.store.set(msg.key, msg.value), stored(msg.key))
+      if (msg.t === 'watch') return watches.set(msg.id, watch(msg.path, (data) => toPage({ t: 'event', id: msg.id, data })))
+      if (msg.t === 'unwatch') return (watches.get(msg.id)?.(), watches.delete(msg.id))
+      const answer = (reply) => toPage({ t: 'answer', id: msg.id, ...reply })
+      try {
+        answer({ data: await requests[msg.t](msg) })
+      } catch (err) {
+        answer({ error: err.message, code: err.code })
+      }
+    }
+    addEventListener('message', onMessage)
+    frame.addEventListener('load', onLoad)
+    const unsubscribe = [window.tower.subscribe(sendBoard), window.tower.onBoardError(sendBoard), window.tower.prefs.on(sendPrefs)]
+    frame.src = `${url}?tower=${token}`
+    return {
+      close() {
+        open = false
+        removeEventListener('message', onMessage)
+        frame.removeEventListener('load', onLoad)
+        unsubscribe.forEach((fn) => fn())
+        closeWatches()
+      },
+    }
+  }
+
   window.tower = {
     framed,
     version: VERSION,
@@ -388,6 +474,7 @@
     keys: keySender('keys'),
     shellKeys: keySender('shell/keys'),
     watch,
+    relay,
     ui: api.ui,
     remember: api.remember,
     recall: api.recall,

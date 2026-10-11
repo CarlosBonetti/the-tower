@@ -484,13 +484,6 @@ const BUILDING_MIN_WINDOWS = 16
 const callsign = (id) => findCard(id).callsign
 const when = (ms) => new Date(ms).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 const $ = (id) => document.getElementById(id)
-/** The one value a framed shelf page keeps for itself (`tower.remember`); storage can be unavailable, and then nothing is kept. */
-function remembered(key) {
-  try { return localStorage.getItem(key) } catch { return null }
-}
-function remember(key, value) {
-  try { localStorage.setItem(key, value) } catch {}
-}
 
 /** Why there is no live board, until the next board. */
 let boardError
@@ -1760,8 +1753,7 @@ function openShelf(project, n, file) {
   leaveArchive()
   closeTerminal()
   arriving = undefined
-  closePageWatches()
-  Object.assign(pageRelay, { token: undefined, paired: false })
+  closeRelay()
   selected = undefined
   shelfOpen = { project, n, file }
   history.replaceState(null, '', shelfHash(shelfOpen))
@@ -1782,88 +1774,28 @@ function openShelf(project, n, file) {
 
 /** A page framed with the relay, at an opaque origin: an `html` entry's, or a declared renderer's. */
 function showPage(url) {
-  const { token } = pairPage()
-  $('shelf-body').innerHTML = `<iframe id="shelf-page" class="page" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-pointer-lock" allow="clipboard-write" src="${esc(url)}?tower=${token}"></iframe>`
-  $('shelf-page').addEventListener('load', onPageLoad)
+  $('shelf-body').innerHTML = `<iframe id="shelf-page" class="page" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-pointer-lock" allow="clipboard-write"></iframe>`
+  pageRelay = tower.relay($('shelf-page'), url, { self: { project: shelfOpen.project, n: shelfOpen.n }, ui: towerVerbs, stored: () => Promise.all([readHeed(), readCrewFolds()]).then(render) })
 }
 
 function leaveShelf() {
-  closePageWatches()
-  Object.assign(pageRelay, { token: undefined, paired: false })
+  closeRelay()
   shelfOpen = undefined
   $('main').classList.remove('shelf')
   $('shelf-body').innerHTML = ''
 }
 
-/** The open `html` or `renderer` entry's page, spoken to as in src/shared/shelf-page.ts: its requests go to the routes they name. */
-/**
- * The open page's relay. Its frame URL carries a token each load, and the page sends it with every message: a
- * document the frame navigates to never has it. Nothing is sent until the page says hello; a frame that loads
- * without saying hello holds another document, and the relay ends.
- */
-const pageRelay = { token: undefined, paired: false, helloSinceLoad: false }
-const pairPage = () => Object.assign(pageRelay, { token: crypto.randomUUID(), paired: false, helloSinceLoad: false })
-const onPageLoad = () => {
-  if (!pageRelay.helloSinceLoad) (pageRelay.paired = false, closePageWatches())
-  pageRelay.helloSinceLoad = false
-}
-const toShelfPage = (msg) => pageRelay.paired && $('shelf-page')?.contentWindow.postMessage(msg, '*')
-const sendBoard = () => {
-  if (!shelfOpen) return
-  const msg = { t: 'board', v: tower.version, self: { project: shelfOpen.project, n: shelfOpen.n } }
-  toShelfPage(boardError ? { ...msg, error: { code: boardError.code, message: boardError.message } } : { ...msg, board })
-}
-/** The viewer's appearance goes to the open page; a `url` page gets the scheme alone, the only message it gets, which carries nothing private. */
-const sendPrefs = () => toShelfPage({ t: 'prefs', prefs: tower.prefs.get() })
+/** The open `html` or `renderer` entry's page, given the board and the API by `tower.relay`. */
+let pageRelay
+const closeRelay = () => (pageRelay?.close(), (pageRelay = undefined))
+/** A `url` page gets the viewer's scheme alone, the only message it gets, which carries nothing private. */
 const sendScheme = () => $('shelf-url')?.contentWindow.postMessage({ t: 'scheme', scheme: tower.prefs.get().scheme }, '*')
-
-/** The streams the open page watches, by its id. Closed when the page goes away. */
-const pageWatches = new Map()
-const closePageWatches = () => {
-  for (const unwatch of pageWatches.values()) unwatch()
-  pageWatches.clear()
-}
-
-const pageRequests = {
-  call: ({ verb, body }) => tower.call(verb, body),
-  get: ({ path }) => tower.get(path),
-  text: ({ path }) => tower.text(path),
-  blob: ({ path }) => tower.blob(path),
-  recall: () => JSON.parse(remembered(pageKey(shelfOpen)) ?? 'null'),
-  stored: ({ key }) => tower.store.get(key),
-}
-
-/** Where the open page's remembered value is kept: one per shelf entry. */
-const pageKey = ({ project, n }) => `shelf-page:${project}/${n}`
 
 const towerVerbs = {
   select: ({ id }) => select(id),
   home: () => goHome(),
   shelf: ({ project, n }) => openShelf(project, n),
-  prefs: ({ prefs }) => tower.prefs.set(prefs),
-  /** @deprecated a page's tower.js asks with `prefs` */
-  scheme: ({ scheme }) => tower.prefs.set({ scheme }),
 }
-
-addEventListener('message', async (e) => {
-  if (!e.source || e.source !== $('shelf-page')?.contentWindow) return
-  const msg = e.data
-  const token = pageRelay.token
-  if (!token || msg.token !== token) return
-  if (msg.t === 'hello') return (Object.assign(pageRelay, { paired: true, helloSinceLoad: true }), closePageWatches(), sendPrefs(), sendBoard())
-  if (!pageRelay.paired) return
-  if (msg.t === 'tower') return towerVerbs[msg.verb](msg)
-  if (msg.t === 'remember') return shelfOpen && remember(pageKey(shelfOpen), JSON.stringify(msg.value))
-  if (msg.t === 'store') return (tower.store.set(msg.key, msg.value), Promise.all([readHeed(), readCrewFolds()]).then(render))
-  if (msg.t === 'watch') return pageWatches.set(msg.id, tower.watch(msg.path, (data) => toShelfPage({ t: 'event', id: msg.id, data })))
-  if (msg.t === 'unwatch') return (pageWatches.get(msg.id)?.(), pageWatches.delete(msg.id))
-  const answer = (reply) => pageRelay.token === token && toShelfPage({ t: 'answer', id: msg.id, ...reply })
-  try {
-    answer({ data: await pageRequests[msg.t](msg) })
-  } catch (err) {
-    answer({ error: err.message, code: err.code })
-  }
-})
 
 /** A frame of a page nobody serves would show the browser's error: say so instead, with a way to look again. */
 async function showUrl(url) {
@@ -2699,7 +2631,7 @@ async function applyTermFont() {
 }
 
 tower.onScheme(applyScheme)
-tower.prefs.on(() => (applyTermFont(), redrawDocs(), sendPrefs(), sendScheme(), drawSettings()))
+tower.prefs.on(() => (applyTermFont(), redrawDocs(), sendScheme(), drawSettings()))
 
 const isTyping = () => ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || $('spawn').open || $('transfer').open || $('keys').open || $('landing').open
 
@@ -2785,7 +2717,6 @@ tower.onBoardError((err) => {
   markLost(err.code === 'disconnected')
   showBoardError()
   if (opened) render()
-  sendBoard()
 })
 
 tower.subscribe(async (next) => {
@@ -2799,7 +2730,6 @@ tower.subscribe(async (next) => {
   freshArchives()
   pruneDraftTitles(board.floors)
   pruneKeptTitles(board.floors)
-  sendBoard()
   void followDraft()
   if (arriving && findCard(arriving)) return select(arriving)
   const wanted = !opened && location.hash.slice(1)

@@ -7,8 +7,8 @@
   "status": "accepted",
   "date": "2026-10-03",
   "supersedes": "shelf-page-contract",
-  "reviewed": "2026-10-10",
-  "refs": ["hub/src/shared/api.ts", "hub/src/shared/api.ts#QUERIES", "hub/src/shared/shelf-page.ts", "hub/src/tower/tower.js", "hub/src/tower/server.ts#openMux", "hub/src/tower/server.ts#run", "hub/renderers/page/index.html"]
+  "reviewed": "2026-10-11",
+  "refs": ["hub/src/shared/api.ts", "hub/src/shared/api.ts#QUERIES", "hub/src/shared/shelf-page.ts", "hub/src/tower/tower.js", "hub/src/tower/server.ts#openMux", "hub/src/tower/server.ts#run", "hub/src/tower/tower.js#relay", "hub/renderers/page/index.html"]
 }
 ---
 **Context.** Shelf pages could read the board but not act ([[shelf-page-contract]]), so no renderer on a
@@ -40,8 +40,9 @@ tower → page  {t: 'scheme', scheme}         its scheme alone, for a `url` entr
 A board the tower can't build arrives as `{v, error: {code, message}}` on the same stream and message, handed to
 `tower.onBoardError` ([[board-errors]]).
 
-The tower page relays a framed page's requests to the routes they name, and its watches through its own
-`tower.watch`. The relay is paired per load: the frame's URL carries a fresh `?tower=<token>`, `tower.js` sends it
+A renderer relays a page it frames with [`tower.relay`](ref:hub/src/tower/tower.js#relay), part of `tower.js`: the
+framed page's requests go to the routes they name, its watches through the framing page's own `tower.watch`, and
+the board, board errors and the viewer's appearance follow as they change. The relay is paired per load: the frame's URL carries a fresh `?tower=<token>`, `tower.js` sends it
 with every message, and nothing reaches the page before its `hello`. A document the frame navigates to never has
 the token, and a frame that loads without a `hello` ends the relay, so a page followed by a link neither reads the
 board nor drives the routes. Streams are multiplexed on one SSE connection per client
