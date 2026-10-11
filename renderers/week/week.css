@@ -1,0 +1,74 @@
+body { margin: 0; background: var(--wall); color: var(--ink); font: var(--fs-l)/1.45 var(--ui); }
+.masthead { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-l); padding: var(--sp-m) var(--sp-xl); background: var(--panel); border-bottom: 1px solid var(--line); }
+.back { color: var(--accent); text-decoration: none; font-size: var(--fs-m); }
+.back:hover { text-decoration: underline; }
+.steps { display: flex; align-items: center; gap: var(--sp-s); font-size: var(--fs-m); }
+.steps button { min-width: var(--control); height: var(--control); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); background: var(--panel-2); color: var(--ink); font: 700 var(--fs-l)/1 var(--ui); cursor: pointer; }
+.steps button:disabled { opacity: .4; cursor: default; }
+.range { color: var(--muted); text-align: center; }
+main { max-width: 60rem; margin: 0 auto; padding: var(--sp-xl) var(--sp-xl) var(--sp-3xl); }
+section { margin-top: var(--sp-2xl); padding: var(--sp-xl); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+h1, h2, h3 { font-family: var(--display); font-weight: 800; margin: 0; }
+h2 { font-size: var(--fs-2xl); margin-bottom: var(--sp-l); }
+h3 { font-size: var(--fs-xl); display: flex; align-items: center; gap: var(--sp-s); margin: var(--sp-l) 0 var(--sp-m); }
+h3 small, .tile small { font: 400 var(--fs-s) var(--ui); color: var(--muted); }
+.note { color: var(--muted); font-size: var(--fs-m); margin: var(--sp-s) 0; }
+.note.broken { color: var(--broken-text); }
+
+.cover { text-align: center; padding: var(--sp-3xl) var(--sp-xl); border: 2px dashed var(--line-strong); background: radial-gradient(circle at 50% 0, color-mix(in oklab, var(--working) 18%, var(--panel)), var(--panel) 70%); }
+.cover h1 { font-size: clamp(2.5rem, 9vw, 4.5rem); font-weight: 900; line-height: 1; letter-spacing: -.02em; }
+.cover .dates { font-size: var(--fs-xl); color: var(--muted); margin: var(--sp-m) 0 var(--sp-2xl); }
+.bigs { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: var(--sp-l); }
+.big { display: flex; flex-direction: column; gap: var(--sp-2xs); padding: var(--sp-l) var(--sp-s); background: var(--panel-2); border-radius: var(--radius); }
+.big b { font: 800 var(--fs-3xl)/1.1 var(--display); }
+.big span { color: var(--muted); font-size: var(--fs-s); }
+.big em { font-style: normal; font-size: var(--fs-2xl); }
+.add { color: var(--added); }
+.del { color: var(--removed); }
+
+.floor { --floor: var(--accent); --on-floor: var(--panel); }
+.swatch { width: .8em; height: .8em; border-radius: 50%; background: var(--floor); }
+.tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--sp-m); }
+.tile { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: var(--sp-m); align-items: center; padding: var(--sp-m); background: var(--panel-2); border-radius: var(--radius); border-left: 3px solid var(--floor); }
+.tile:nth-child(odd) { transform: rotate(-.4deg); }
+.tile:nth-child(even) { transform: rotate(.4deg); }
+.face { grid-row: span 2; display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; background: var(--floor); color: var(--on-floor); font: 800 var(--fs-l)/1 var(--display); }
+.name { font: 700 var(--fs-m) var(--mono); }
+.did { font-size: var(--fs-s); color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+details summary { cursor: pointer; color: var(--accent); margin: var(--sp-m) 0; font-size: var(--fs-m); }
+:root[data-motion='reduce'] .tile { transform: none; }
+@media (prefers-reduced-motion: reduce) { .tile { transform: none !important; } }
+
+.heat { max-width: 44rem; display: grid; grid-template-columns: 3rem repeat(24, minmax(0, 1fr)); gap: 2px; font-size: var(--fs-xs); color: var(--faint); }
+.heat .day, .bars .day { color: var(--muted); font-size: var(--fs-s); align-self: center; }
+.heat .hour { text-align: left; }
+.cell { aspect-ratio: 1; border-radius: var(--radius-s); background: color-mix(in oklab, var(--working) calc(var(--v) * 100%), var(--sunk)); }
+.cell.out { background: transparent; outline: 1px dashed var(--line); outline-offset: -1px; }
+.bars { display: grid; grid-template-columns: 3rem 1fr 1fr; gap: var(--sp-xs) var(--sp-m); margin-top: var(--sp-xl); }
+.legend { font-size: var(--fs-s); color: var(--muted); }
+.bar { position: relative; height: 1.25rem; background: var(--sunk); border-radius: var(--radius-s); overflow: hidden; }
+.bar::before { content: ''; position: absolute; inset: 0 auto 0 0; width: calc(var(--v) * 100%); background: var(--c); }
+.bar b { position: relative; padding: 0 var(--sp-s); font: 700 var(--fs-s)/1.25rem var(--mono); }
+.spend { --c: color-mix(in oklab, var(--accent) 45%, var(--sunk)); }
+.commits { --c: color-mix(in oklab, var(--ready) 55%, var(--sunk)); }
+
+.awards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--sp-l); }
+.award { display: flex; flex-direction: column; gap: var(--sp-2xs); padding: var(--sp-l); background: var(--panel-2); border-radius: var(--radius); border-top: 4px solid var(--floor, var(--working)); }
+.award b { font: 800 var(--fs-3xl)/1.1 var(--display); }
+.award .who { font-weight: 700; }
+.award .more { color: var(--muted); font-size: var(--fs-s); }
+
+.quote blockquote { margin: 0; padding: var(--sp-l) var(--sp-xl); border-left: 4px solid var(--floor, var(--accent)); background: var(--panel-2); border-radius: var(--radius); font-size: var(--fs-xl); }
+.quote .by { font: 700 var(--fs-m) var(--mono); text-align: right; margin: var(--sp-m) 0 0; }
+
+@media (max-width: 30rem) {
+  .masthead { padding: var(--sp-m) var(--sp-xl); }
+  .range { font-size: var(--fs-s); }
+  main { padding: var(--sp-m) var(--sp-xl) var(--sp-2xl); }
+  section { padding: var(--sp-l); }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-s); }
+  .tile { grid-template-columns: 1fr; row-gap: var(--sp-xs); }
+  .face { grid-row: auto; width: 2rem; height: 2rem; font-size: var(--fs-m); }
+  .name { font-size: var(--fs-s); }
+  .heat { grid-template-columns: 2.5rem repeat(24, minmax(0, 1fr)); gap: 1px; }
+}
