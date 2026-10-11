@@ -105,16 +105,20 @@ export function plate(text: string, height: number, style: TextStyle = {}) {
   return m
 }
 
-/** Frees what a subtree owns on the GPU, leaving shared geometries and materials, and the textures `keep` names, alone. */
+/**
+ * Frees what a subtree owns on the GPU, leaving shared geometries, materials and textures, and the textures `keep`
+ * names, alone. A skinned mesh's skeleton goes with it.
+ */
 export function dispose(root: THREE.Object3D, keep: (t: THREE.Texture) => boolean = () => false) {
   root.traverse((o) => {
     if (!(o instanceof THREE.Mesh || o instanceof THREE.Sprite || o instanceof THREE.Points)) return
     if (!(o instanceof THREE.Sprite) && !o.geometry.userData.shared) o.geometry.dispose()
+    if (o instanceof THREE.SkinnedMesh) o.skeleton.dispose()
     const mats: THREE.Material[] = Array.isArray(o.material) ? o.material : [o.material]
     for (const m of mats) {
       if (m.userData.shared) continue
       const map = (m as THREE.MeshBasicMaterial).map
-      if (map && !keep(map)) map.dispose()
+      if (map && !map.userData.shared && !keep(map)) map.dispose()
       m.dispose()
     }
   })

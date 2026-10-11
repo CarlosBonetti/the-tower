@@ -1,7 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import barGlb from '../assets/bar.glb'
-import beanGlb from '../assets/bean.glb'
 import bookcaseGlb from '../assets/bookcase.glb'
 import botGlb from '../assets/bot.glb'
 import calicoGlb from '../assets/calico.glb'
@@ -12,12 +11,12 @@ import djGlb from '../assets/dj.glb'
 import handsGlb from '../assets/hands.glb'
 import kioskGlb from '../assets/kiosk.glb'
 import planeGlb from '../assets/plane.glb'
-import puffGlb from '../assets/puff.glb'
 import tabbyGlb from '../assets/tabby.glb'
 import tvGlb from '../assets/tv.glb'
 import tuxedoGlb from '../assets/tuxedo.glb'
 import wearGlb from '../assets/wear.glb'
 import type { ModelName } from './contract.ts'
+import { loadCast, type Cast } from './rig.ts'
 import { glowing, toon } from './toon.ts'
 
 /**
@@ -26,8 +25,9 @@ import { glowing, toon } from './toon.ts'
  * (for what's recolored), anything else toon-shaded in its color, shared with everything of that color.
  */
 
-const BYTES: Record<ModelName, Uint8Array> = { bar: barGlb, bean: beanGlb, bookcase: bookcaseGlb, bot: botGlb, calico: calicoGlb, console: consoleGlb, couch: couchGlb, desk: deskGlb, dj: djGlb, hands: handsGlb, kiosk: kioskGlb, plane: planeGlb, puff: puffGlb, tabby: tabbyGlb, tv: tvGlb, tuxedo: tuxedoGlb, wear: wearGlb }
-export type Models = Record<ModelName, THREE.Group>
+const BYTES: Record<ModelName, Uint8Array> = { bar: barGlb, bookcase: bookcaseGlb, bot: botGlb, calico: calicoGlb, console: consoleGlb, couch: couchGlb, desk: deskGlb, dj: djGlb, hands: handsGlb, kiosk: kioskGlb, plane: planeGlb, tabby: tabbyGlb, tv: tvGlb, tuxedo: tuxedoGlb, wear: wearGlb }
+/** The Blender models by name, and the cast workers are made of. */
+export type Models = Record<ModelName, THREE.Group> & { cast: Cast }
 
 const tokens = (m: THREE.Material) => new Set(m.name.split('_'))
 
@@ -52,8 +52,8 @@ async function parse(bytes: Uint8Array) {
 }
 
 export async function loadModels(): Promise<Models> {
-  const entries = await Promise.all(Object.entries(BYTES).map(async ([name, bytes]) => [name, await parse(bytes)] as const))
-  return Object.fromEntries(entries) as Models
+  const [entries, cast] = await Promise.all([Promise.all(Object.entries(BYTES).map(async ([name, bytes]) => [name, await parse(bytes)] as const)), loadCast()])
+  return { ...(Object.fromEntries(entries) as Record<ModelName, THREE.Group>), cast }
 }
 
 /** A copy of a model, or a part of one, sharing its geometry and shared materials, with its `own` materials its own. */

@@ -2,10 +2,12 @@ import * as THREE from 'three'
 import { act } from './acts.ts'
 import { WORLD } from './cards.ts'
 import type { Card } from './api.ts'
-import { avatar, lookOf, type Avatar, type Look } from './avatar.ts'
+import { avatar, lookOf, seatedAt, type Avatar, type Look } from './avatar.ts'
 import { walkPose, type GuestPlace } from './life.ts'
 import { DANCE_TILE, STRING_ROWS, partySpots, type DanceFloor, type Plan } from './layout.ts'
+import { BPM } from './music.ts'
 import { instance, type Models } from './models.ts'
+import { pose, type Cast, type ClipKey, type Layer } from './rig.ts'
 import { tintOf } from './palette.ts'
 import { block, glows, sprite, toon } from './toon.ts'
 
@@ -23,10 +25,16 @@ const TILE = 0.02
 const PARTY_COLORS = ['#ff4fa3', '#c792ea', '#6cb6ff', '#5ee38f', '#ffb547', '#4fb3c8'].map((c) => new THREE.Color(c))
 
 /** What the party animates each frame: the neon and the DJ. */
-export type Party = { neon: THREE.MeshBasicMaterial[]; dj: Avatar }
+export type Party = { models: Models; neon: THREE.MeshBasicMaterial[]; dj: Avatar; bartender: Avatar }
 
-const BARTENDER: Look = { species: 'bean', hue: new THREE.Color('#ffd27a'), wear: new THREE.Color('#2b2d42'), hat: 'hat_cap', build: { width: 1, height: 1 } }
-const DJ: Look = { species: 'puff', hue: new THREE.Color('#9b7bff'), wear: new THREE.Color('#ff4fa3'), face: 'face_shades', build: { width: 1, height: 1 } }
+const BARTENDER: Look = {
+  species: 'adventurer', parts: ['Body', 'ArmLeft', 'ArmRight', 'LegLeft', 'LegRight', 'Head'].map((p) => ({ name: `Barbarian_${p}`, atlas: 'Barbarian' })),
+  gear: 'Mug', skin: '#bd8259', hair: '#4a3021', wear: '#2b2d42', hat: 'hat_cap', build: { width: 1.04, height: 1 },
+}
+const DJ: Look = {
+  species: 'adventurer', parts: [...['Body', 'ArmLeft', 'ArmRight', 'LegLeft', 'LegRight'].map((p) => ({ name: `Mage_${p}`, atlas: 'Rogue' as const })), { name: 'Rogue_Head', atlas: 'Rogue' }],
+  skin: '#efbf98', hair: '#e05fa8', wear: '#ff4fa3', face: 'face_shades', build: { width: 1, height: 1 },
+}
 
 function stringLights(p: Plan) {
   const bulbs: THREE.Vector3[] = []
@@ -56,15 +64,14 @@ export function buildParty(p: Plan, models: Models, pickables: THREE.Object3D[])
   barStrip.color.set('#ff4fa3')
   const bartender = avatar(models, BARTENDER)
   bartender.root.position.set(spots.bar.x, 0, spots.bar.z - 0.6)
-  bartender.body.position.y = 0.3
+  bartender.body.position.y = 0.5
   const dj = avatar(models, DJ)
-  dj.root.position.set(spots.dj.x, 0.95, spots.dj.z - 0.5)
-  dj.root.scale.setScalar(1.25)
+  dj.root.position.set(spots.dj.x, 0.55, spots.dj.z - 0.5)
   dj.bulb.color.set('#ffd9a0')
   const sign = sprite('ROOFTOP BAR', 0.35, { color: '#0b1020', bg: '#ff4fa3', px: 48 })
   sign.position.set(spots.bar.x, 2.9, spots.bar.z - 1.2)
   group.add(act(booth.root, { kind: 'dj' }, pickables), act(dj.root, { kind: 'dj' }, pickables), act(bar.root, { kind: 'bar' }, pickables), act(bartender.root, { kind: 'bar' }, pickables), sign, ...stringLights(p))
-  return { group, party: { neon: [booth.material<THREE.MeshBasicMaterial>('neon_glow_own')!, barStrip], dj } }
+  return { group, party: { models, neon: [booth.material<THREE.MeshBasicMaterial>('neon_glow_own')!, barStrip], dj, bartender } }
 }
 
 /**
@@ -116,15 +123,22 @@ export function animateParty(party: Party, beat: number) {
   const pulse = 0.6 + 0.4 * Math.pow(1 - (beat % 1), 2)
   party.neon[0].color.copy(PARTY_COLORS[Math.floor(beat / 4) % PARTY_COLORS.length]).multiplyScalar(pulse)
   party.neon[1].color.set('#ff4fa3').multiplyScalar(0.7 + 0.3 * pulse)
-  const { dj } = party
+  const { dj, bartender, models } = party
   dj.body.position.y = Math.pow(1 - (beat % 1), 3) * 0.05
   dj.body.rotation.y = Math.sin(beat * Math.PI * 0.25) * 0.2
-  dj.arms[0].rotation.x = -1.3 + Math.sin(beat * Math.PI * 4) * 0.25
-  dj.arms[1].rotation.x = Math.floor(beat / 4) % 2 ? -2.4 + Math.sin(beat * Math.PI) * 0.3 : -1.2
+  pose(models.cast, dj.rig, { layers: [{ clip: 'Idle_A:rest', at: beat }, onBeat(models.cast, Math.floor(beat / 8) % 2 ? 'Cheering:arms' : 'Working_A:arms', beat)] })
+  pose(models.cast, bartender.rig, { layers: [{ clip: 'Idle_B', at: beat / (BPM / 60) }] })
+}
+
+/** A clip played in time with the music: a whole number of beats to a loop, as near its own pace as that allows. */
+function onBeat(cast: Cast, clip: ClipKey, beat: number): Layer {
+  const length = cast.clips.get(clip)!.duration
+  const beats = Math.max(1, Math.round((length * BPM) / 60))
+  return { clip, at: ((beat % beats) / beats) * length }
 }
 
 /** A worker at the party, in its own color with its callsign over its head, and a beer in its hand while at the bar. */
-export type Guest = { card: Card; group: THREE.Group; body: THREE.Object3D; arms: THREE.Object3D[]; mug: THREE.Object3D; phase: number }
+export type Guest = { card: Card; group: THREE.Group; models: Models; avatar: Avatar; mug: THREE.Object3D; phase: number }
 
 const shared = <G extends THREE.BufferGeometry>(g: G) => ((g.userData.shared = true), g)
 const MUG = {
@@ -159,7 +173,7 @@ export function makeGuest(card: Card, models: Models): Guest {
   const beer = mug()
   w.hand.add(beer)
   act(group, { kind: 'guest', id: card.id }, [])
-  return { card, group, body: w.body, arms: w.arms, mug: beer, phase: (card.startedAt % 997) / 997 }
+  return { card, group, models, avatar: w, mug: beer, phase: (card.startedAt % 997) / 997 }
 }
 
 /** A guest where its schedule has it at `y`'s level, posed for what it does there: walking, dancing, drinking or mingling. */
@@ -167,39 +181,46 @@ export function placeGuest(g: Guest, at: GuestPlace, y: number, beat: number, t:
   g.group.position.set(at.x, y + at.y, at.z)
   g.group.rotation.y = at.heading
   g.mug.visible = at.pose === 'drink'
-  if (at.pose === 'walk') walkPose(g.body, g.arms, t)
+  if (g.avatar.gear) g.avatar.gear.visible = at.pose !== 'drink'
+  if (at.pose === 'walk') walkPose(g.models, g.avatar, t)
   else if (at.pose === 'dance') dance(g, beat)
   else if (at.pose === 'drink') drink(g, at.since)
   else mingle(g, at.since)
 }
 
-/** Bounces on the beat, sways, and throws its arms up every other bar. */
+/** The moves a guest dances, a few bars of each, in its own order. */
+const MOVES: ClipKey[] = ['Cheering', 'Jump_Idle', 'Waving', 'Cheering:arms']
+
+/** Bounces on the beat and sways, changing moves every two bars. */
 function dance(g: Guest, at: number) {
   const beat = at + g.phase
-  const bounce = Math.abs(Math.sin(beat * Math.PI))
-  g.body.position.y = bounce * 0.18
-  g.body.rotation.set(0, Math.sin(beat * Math.PI * 0.25) * 0.5, Math.sin(beat * Math.PI) * 0.12)
-  const hands = Math.floor(beat / 8) % 2 === 0
-  g.arms.forEach((a, i) => (a.rotation.x = hands ? -2.2 + Math.sin(beat * Math.PI + i * Math.PI) * 0.4 : Math.sin(beat * Math.PI + i) * 0.6))
+  const { body, rig } = g.avatar
+  body.position.y = Math.abs(Math.sin(beat * Math.PI)) * 0.06
+  body.rotation.set(0, Math.sin(beat * Math.PI * 0.25) * 0.5, 0)
+  const move = MOVES[(Math.floor(beat / 8) + Math.floor(g.phase * MOVES.length)) % MOVES.length]
+  const layers = move.endsWith(':arms') ? [{ clip: 'Jump_Idle:rest', at: beat } as const, onBeat(g.models.cast, move, beat)] : [onBeat(g.models.cast, move, beat)]
+  pose(g.models.cast, rig, { layers })
 }
 
 /** How often a guest at the bar sips, give or take its own phase, and how long a sip takes. */
 const SIP = { every: 5, takes: 1.4 }
 
-/** Sits at the counter, shifting its weight, and every few seconds lifts its beer for a sip. */
+/** Sits at the counter, and every few seconds lifts its beer for a sip. */
 function drink(g: Guest, since: number) {
   const cycle = (since + g.phase * SIP.every) % (SIP.every + g.phase * 2)
   const lift = cycle < SIP.takes ? Math.sin((cycle / SIP.takes) * Math.PI) : 0
-  g.body.position.y = 0
-  g.body.rotation.set(0.06 - lift * 0.14, 0, Math.sin(since * 0.8 + g.phase * 6) * 0.04)
-  g.arms[0].rotation.x = -0.3
-  g.arms[1].rotation.x = 0.15 - lift * 1.6
+  const { body, rig } = g.avatar
+  body.position.y = seatedAt(g.models.cast, g.avatar, 0)
+  body.rotation.set(0, 0, 0)
+  pose(g.models.cast, rig, { layers: [{ clip: 'Sit_Chair_Idle:rest', at: since + g.phase * 3 }, { clip: 'Holding_A:arms', at: since, weight: 1 - lift }, { clip: 'Use_Item:arms', at: 0.6, weight: lift }] })
 }
 
-/** Chats: turns a little to the others and talks with a hand now and then. */
+/** Chats: turns a little to the others and talks with its hands now and then. */
 function mingle(g: Guest, since: number) {
   const talk = Math.max(0, Math.sin(since * 0.9 + g.phase * 7))
-  g.body.position.y = 0
-  g.body.rotation.set(0, Math.sin(since * 0.4 + g.phase * 5) * 0.25, 0)
-  g.arms.forEach((a, i) => (a.rotation.x = i === 1 ? -0.4 - talk * 0.8 + Math.sin(since * 6) * 0.15 * talk : 0))
+  const { body, rig } = g.avatar
+  body.position.y = 0
+  body.rotation.set(0, Math.sin(since * 0.4 + g.phase * 5) * 0.25, 0)
+  const at = since + g.phase * 4
+  pose(g.models.cast, rig, { layers: [{ clip: 'Idle_B:rest', at }, { clip: 'Idle_B:arms', at, weight: 1 - talk }, { clip: 'Interact:arms', at: since, weight: talk }] })
 }

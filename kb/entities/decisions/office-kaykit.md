@@ -100,7 +100,7 @@ thing on a floor, big planes muted, colour spent on small countable things, one 
 - *Labels over the city model's buildings*: new canvas text; the pad's colour and the order say whose.
 
 **Impact.** Every level is dressed; frame draw calls stay within fifteen of before at every tour spot, about 27k
-triangles added per floor. Building Tower 3D measures its models from the subset of the bundle vendored in `renderers/tower3d/kaykit` (copied by [`tower3d-kit.ts`](ref:hub/scripts/tower3d-kit.ts) `vendor`), so a fresh clone builds it. New
+triangles added per floor. Building Tower 3D measures its models from the subset of the bundle vendored in `renderers/tower3d/kaykit` (copied by [`tower3d-kit.ts`](ref:hub/scripts/tower3d-kit.ts) `vendor`, which leaves the workers' `Characters/` there alone, [[kaykit-workers]]), so a fresh clone builds it. New
 places are scene documents in `renderers/kaykit/scenes/prefabs` plus a line in `zones.ts`. The bundle grew from
 4.8 to 8.3 MB. Batches were building-wide at first, culled per instance and not occluded, so a wide view counted
 other floors' instances in its frustum; since [[tower3d-levels]] each level has its own, drawn only while it is.

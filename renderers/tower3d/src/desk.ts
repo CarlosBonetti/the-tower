@@ -5,8 +5,9 @@ import type { Card } from './api.ts'
 import { WORLD, branchLine, bubbleOf, pairLine, glanceOf, onStatusColor, speechLines, speechOf, statusColor, statusName } from './cards.ts'
 import { DESK, SEAT_OFFSET } from './layout.ts'
 import { ASLEEP, OFFLINE, OPEN_DESK, screenTexture } from './screens.ts'
-import { avatar, lookOf, type Avatar, type Look } from './avatar.ts'
+import { avatar, lookOf, seatedAt, type Avatar, type Look } from './avatar.ts'
 import { instance, type Models } from './models.ts'
+import { pose, type Pose } from './rig.ts'
 import { posterOf, shownKey, type Shown } from './showing.ts'
 import { block, dispose, glowing, glows, mesh, sprite, toon } from './toon.ts'
 
@@ -61,13 +62,11 @@ export type Desk = {
   card: Card
   models: Models
   look: Look
-  worker: THREE.Object3D
-  body: THREE.Object3D
-  arms: THREE.Object3D[]
-  bulb: THREE.MeshBasicMaterial
+  avatar: Avatar
   strip: THREE.MeshBasicMaterial
   screen: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
-  minis: THREE.Group
+  /** The worker's subagents standing about its desk. */
+  minis: { group: THREE.Group; avatars: Avatar[] }
   /** The fork of the worker running now in the second chair, and which run it is; the chair stands only while one runs. */
   twin?: { run: string; group: THREE.Group; avatar: Avatar }
   tag?: THREE.Sprite
@@ -95,11 +94,13 @@ export type Desk = {
   phase: number
 }
 
-/** A subagent: a small one of its worker's kind, in a color of its own, wearing nothing. */
+/** A subagent: a small one of its worker's kind, a look of its own, wearing nothing. */
 function mini(models: Models, parent: Look, id: string) {
-  const a = avatar(models, { ...lookOf(id), species: parent.species, hat: undefined, face: undefined })
+  const own = lookOf(id)
+  const look: Look = parent.species === 'bot' ? { ...parent, hue: own.species === 'bot' ? own.hue : parent.hue } : own.species === 'adventurer' ? own : parent
+  const a = avatar(models, { ...look, hat: undefined, face: undefined, ...(look.species === 'adventurer' && { gear: undefined }) })
   a.root.scale.setScalar(0.28)
-  return a.root
+  return a
 }
 
 /** A workstation's furniture: the desk, the strip along its near edge, and its monitor's screen. */
@@ -212,9 +213,10 @@ function seated(card: Card, models: Models, marks: Marks, furniture: Pick<Desk, 
   const look = lookOf(card.id)
   const w = avatar(models, look)
   w.root.position.copy(SEAT)
+  if (w.gear) w.gear.visible = false
   furniture.group.add(w.root)
-  const minis = new THREE.Group()
-  furniture.group.add(minis)
+  const minis = { group: new THREE.Group(), avatars: [] }
+  furniture.group.add(minis.group)
   const speech = new THREE.Group()
   speech.position.copy(marks.speech)
   furniture.group.add(speech)
@@ -222,7 +224,7 @@ function seated(card: Card, models: Models, marks: Marks, furniture: Pick<Desk, 
   papers.position.set(PAPERS.x, DESK.height, PAPERS.z)
   furniture.group.add(papers)
   const desk: Desk = {
-    ...furniture, marks, card, models, look, worker: w.root, body: w.body, arms: w.arms, bulb: w.bulb, minis, speech, papers, papersCount: 0, binderSessions: 0,
+    ...furniture, marks, card, models, look, avatar: w, minis, speech, papers, papersCount: 0, binderSessions: 0,
     tagText: '', gistText: '', bubbleText: '', speechText: '', sideText: '', turn: 0, phase: random() * 10,
   }
   syncDesk(desk, card)
@@ -301,9 +303,9 @@ export function showOnMonitor(desk: Desk, map: THREE.Texture) {
 export function syncDesk(desk: Desk, card: Card) {
   desk.card = card
   const color = statusColor(card)
-  desk.bulb.color.set(color)
+  desk.avatar.bulb.color.set(color)
   desk.strip.color.set(color)
-  desk.worker.visible = !card.stranded
+  desk.avatar.root.visible = !card.stranded
   showOnMonitor(desk, monitorOf(card))
 
   const tagText = [card.callsign, statusName(card), desk.marks.branch && card.worktree && branchLine(card), pairLine(card)].filter(Boolean).join('  ·  ')
@@ -348,17 +350,20 @@ export function syncDesk(desk: Desk, card: Card) {
   const fork = desk.marks.twin && running.find((run) => run.type === 'fork')
   if (fork?.id !== desk.twin?.run) seatTwin(desk, fork?.id)
   const minis = Math.min(running.filter((run) => run !== fork).length, 4)
-  if (desk.minis.children.length !== minis) {
-    dispose(desk.minis)
-    desk.minis.clear()
-    for (let i = 0; i < minis; i++) {
+  if (desk.minis.avatars.length !== minis) {
+    dispose(desk.minis.group)
+    desk.minis.group.clear()
+    desk.minis.avatars = Array.from({ length: minis }, (_, i) => {
       const m = mini(desk.models, desk.look, `${card.id}/${i}`)
       const at = desk.marks.minis
-      m.position.set(at.x + i * at.step, at.y, at.z)
-      desk.minis.add(m)
-    }
+      m.root.position.set(at.x + i * at.step, at.y, at.z)
+      desk.minis.group.add(m.root)
+      return m
+    })
   }
 }
+
+const TWIN_SCALE = 0.85
 
 /** A fork of the worker in the second chair: the worker's own look, a little smaller, its twin; none when `run` is. */
 function seatTwin(desk: Desk, run: string | undefined) {
@@ -370,7 +375,8 @@ function seatTwin(desk: Desk, run: string | undefined) {
   const chair = instance(desk.models.desk).part('chair')
   chair.position.set(0, 0, 0)
   const twin = avatar(desk.models, desk.look)
-  twin.root.scale.setScalar(0.85)
+  twin.root.scale.setScalar(TWIN_SCALE)
+  if (twin.gear) twin.gear.visible = false
   group.add(chair, twin.root)
   group.position.set(SEAT.x + at.x, SEAT.y, SEAT.z + at.z)
   group.rotation.y = at.turn
@@ -468,28 +474,38 @@ function poseRaised(desk: Desk, t: number, seat: THREE.Vector3) {
   return k < RAISE.hold
 }
 
+/** The worker in its chair: typing while it works, waving you over while it asks, a showing held up over its head, else sitting back. */
+function seatedPose(card: Card, p: number, holding: boolean): Pose {
+  const sit = { clip: 'Sit_Chair_Idle:rest', at: p } as const
+  if (holding) return { layers: [sit, { clip: 'Cheering:arms', at: p * 0.5 }] }
+  if (card.status === 'working' || card.status === 'booting') return { layers: [sit, { clip: 'Type', at: p }] }
+  if (card.status === 'needs_input' || card.status === 'blocked') return { layers: [sit, { clip: 'Waving:arms', at: p }] }
+  const lean = card.status === 'failed' ? 0.45 : card.status === 'idle' ? 0.22 + Math.sin(p * 0.9) * 0.04 : card.status === 'watching' ? -0.15 : 0
+  return { layers: [{ clip: 'Sit_Chair_Idle', at: p }], lean }
+}
+
 /** Poses the worker for its status: typing, turned round to you, leaning back to watch, slumped, dozing. */
 export function poseDesk(desk: Desk, t: number, dt: number) {
-  const { card, body, arms } = desk
+  const { card, avatar: a } = desk
+  const { cast } = desk.models
   const p = t + desk.phase
-  const working = card.status === 'working' || card.status === 'booting'
   const asks = card.status === 'needs_input' || card.status === 'blocked'
   const holding = poseRaised(desk, t, SEAT)
   const turnTo = asks || holding ? Math.PI : card.waiting && card.status === 'done' ? Math.PI * 0.55 : 0
   desk.turn = ease(desk.turn, turnTo, dt * 5)
-  body.rotation.y = desk.turn
-  const hop = asks ? Math.max(0, Math.sin(p * 5)) * 0.12 : 0
-  body.position.y = SEAT_Y + hop + (working ? Math.abs(Math.sin(p * 10)) * 0.025 : Math.sin(p * 1.3) * 0.01)
-  body.rotation.x = card.status === 'failed' ? 0.4 : card.status === 'idle' ? 0.14 + Math.sin(p * 0.9) * 0.03 : card.status === 'watching' ? -0.12 : 0
-  arms.forEach((a, i) => {
-    a.rotation.x = holding ? -2.7 + Math.sin(p * 3 + i) * 0.08 : working ? Math.sin(p * 16 + i * Math.PI) * 0.25 : asks ? -1.6 + Math.sin(p * 6 + i) * 0.4 : 0
-  })
+  a.body.rotation.y = desk.turn
+  const hop = asks ? Math.max(0, Math.sin(p * 5)) * 0.08 : 0
+  a.body.position.y = seatedAt(cast, a, SEAT_Y) + hop
+  pose(cast, a.rig, seatedPose(card, p, holding))
   if (desk.twin) {
-    const { body: twinBody, arms: twinArms } = desk.twin.avatar
-    twinBody.position.y = SEAT_Y + Math.abs(Math.sin(p * 10 + 1.3)) * 0.025
-    twinArms.forEach((a, i) => (a.rotation.x = Math.sin(p * 16 + 1.3 + i * Math.PI) * 0.25))
+    const twin = desk.twin.avatar
+    twin.body.position.y = seatedAt(cast, twin, SEAT_Y / TWIN_SCALE)
+    pose(cast, twin.rig, { layers: [{ clip: 'Sit_Chair_Idle:rest', at: p + 1.3 }, { clip: 'Type', at: p + 1.3 }] })
   }
-  desk.minis.children.forEach((m, i) => (m.position.y = desk.marks.minis.y + Math.max(0, Math.sin(p * 6 + i * 1.7)) * 0.08))
+  desk.minis.avatars.forEach((m, i) => {
+    m.root.position.y = desk.marks.minis.y + Math.max(0, Math.sin(p * 6 + i * 1.7)) * 0.08
+    pose(cast, m.rig, { layers: [{ clip: 'Cheering', at: p + i * 0.4 }] })
+  })
   if (desk.bubble) desk.bubble.position.set(SEAT.x + 0.32, BUBBLE_Y + Math.sin(p * 3) * 0.05 + hop, SEAT.z)
-  desk.bulb.color.set(statusColor(card)).multiplyScalar(card.waiting ? 0.6 + Math.abs(Math.sin(p * 4)) * 0.6 : 1)
+  a.bulb.color.set(statusColor(card)).multiplyScalar(card.waiting ? 0.6 + Math.abs(Math.sin(p * 4)) * 0.6 : 1)
 }

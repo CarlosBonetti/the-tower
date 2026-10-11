@@ -1,11 +1,12 @@
 import * as THREE from 'three'
 import { act } from './acts.ts'
-import { avatar, lookOf, pick, roll } from './avatar.ts'
+import { avatar, lookOf, pick, roll, type Avatar } from './avatar.ts'
 import type { Desk } from './desk.ts'
 import { DESK, WALL, carBox, colliders, coreFront, danceSpot, floorOfProject, levelY, partySpots, rateLimitBoxes, walkway, type Box, type Level, type Plan } from './layout.ts'
 import type { Card } from './api.ts'
 import { SOUNDS, type Sound } from './cards.ts'
 import { instance, type Models } from './models.ts'
+import { pose, type Pose } from './rig.ts'
 
 /**
  * Life in the building: three cats roaming its floors, workers walking in from the elevator and out to it, and the
@@ -15,16 +16,19 @@ import { instance, type Models } from './models.ts'
 const WALK_SPEED = 1.6
 export const CAT_SPEED = 2.2
 
-export const walkPose = (body: THREE.Object3D, arms: THREE.Object3D[], t: number) => {
-  body.position.y = Math.abs(Math.sin(t * 9)) * 0.06
-  body.rotation.set(0, 0, Math.sin(t * 9) * 0.06)
-  arms.forEach((a, i) => (a.rotation.x = Math.sin(t * 9 + i * Math.PI) * 0.7))
+/** Walking, in step with the clock, its gear in hand. */
+export function walkPose(models: Models, a: Avatar, t: number) {
+  a.body.position.y = 0
+  a.body.rotation.set(0, 0, 0)
+  if (a.gear) a.gear.visible = true
+  pose(models.cast, a.rig, WALKING(t))
 }
+const WALKING = (t: number): Pose => ({ layers: [{ clip: 'Walking_A', at: t }] })
 
-const standPose = (body: THREE.Object3D, arms: THREE.Object3D[]) => {
-  body.position.y = 0
-  body.rotation.set(0, 0, 0)
-  arms.forEach((a) => (a.rotation.x = 0))
+const standPose = (models: Models, a: Avatar, t: number) => {
+  a.body.position.y = 0
+  a.body.rotation.set(0, 0, 0)
+  pose(models.cast, a.rig, { layers: [{ clip: 'Idle_A', at: t }] })
 }
 
 const headingOf = (from: THREE.Vector3, to: THREE.Vector3) => Math.atan2(to.x - from.x, to.z - from.z)
@@ -51,21 +55,22 @@ export function arrival(p: Plan, desk: Desk): Arrival {
 /** Walks an arriving worker toward its seat; true once it sits. */
 export function walkIn(a: Arrival, dt: number, t: number) {
   a.t += dt * WALK_SPEED
-  const w = a.desk.worker
+  const w = a.desk.avatar
   const step = along(a.path, a.t)
   if (!step) {
-    w.position.copy(a.path.at(-1)!)
-    w.rotation.y = 0
+    w.root.position.copy(a.path.at(-1)!)
+    w.root.rotation.y = 0
+    if (w.gear) w.gear.visible = false
     return true
   }
-  w.position.copy(step.at)
-  w.rotation.y = step.heading
-  walkPose(a.desk.body, a.desk.arms, t)
+  w.root.position.copy(step.at)
+  w.root.rotation.y = step.heading
+  walkPose(a.desk.models, w, t)
   return false
 }
 
 /** A worker gone off duty, walking from its chair into the elevator on its level before it leaves the building. */
-export type Leaver = { group: THREE.Group; body: THREE.Object3D; arms: THREE.Object3D[]; level: number; path: THREE.Vector3[]; t: number }
+export type Leaver = { group: THREE.Group; models: Models; avatar: Avatar; level: number; path: THREE.Vector3[]; t: number }
 
 /** A leaver from the desk at `desk` on `level`, starting where its worker stands (both world space). */
 export function leaver(p: Plan, id: string, level: number, desk: THREE.Vector3, from: THREE.Vector3, models: Models): Leaver {
@@ -75,7 +80,7 @@ export function leaver(p: Plan, id: string, level: number, desk: THREE.Vector3, 
   group.add(w.root)
   const out = pathTo(p, desk).slice(0, -1).reverse()
   const car = out.at(-1)!.clone().setZ(coreFront(p) - 1.2)
-  return { group, body: w.body, arms: w.arms, level, path: [from, ...out, car], t: 0 }
+  return { group, models, avatar: w, level, path: [from, ...out, car], t: 0 }
 }
 
 /** How far ahead of a leaver its elevator's doors open: they are open by the time it reaches them. */
@@ -92,12 +97,12 @@ export function walkOut(l: Leaver, dt: number, t: number) {
   if (!step) {
     w.position.copy(l.path.at(-1)!)
     w.rotation.y -= w.rotation.y * Math.min(1, dt * 6)
-    standPose(l.body, l.arms)
+    standPose(l.models, l.avatar, t)
     return true
   }
   w.position.copy(step.at)
   w.rotation.y = step.heading
-  walkPose(l.body, l.arms, t)
+  walkPose(l.models, l.avatar, t)
   return false
 }
 

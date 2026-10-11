@@ -254,9 +254,9 @@ rings nothing and leaves ringing to the page framing it ([[attention-list]]); N 
 waits; the desk panel's ✕ dismisses the worker's wait, which then stops pulsing; while you walk a floor, an arrow on the
 screen's edge points to each worker on it waiting on you out of view
 ([`pointers`](ref:hub/renderers/tower3d/src/compass.ts#pointers)). A `blocked` worker turns round to you with a ?. A worker's look is its own, hashed
-from the session id ([`lookOf`](ref:hub/renderers/tower3d/src/avatar.ts#lookOf)): a species (a bean, a puff
-with its bulb on a curled stalk, or a bot), a color, maybe a hat or glasses. Its
-status shows on its bulb, its bubble and its pose. Above its monitor, a tag
+from the session id ([`lookOf`](ref:hub/renderers/tower3d/src/avatar.ts#lookOf)): a KayKit adventurer dressed from
+hashed parts, colours and gear, or a bot, all on one skeleton and posed by KayKit's clips ([[kaykit-workers]]). Its
+status shows on the light over its head, its bubble and its pose. Above its monitor, a tag
 names it and its status, and a line over the tag says what it's up to, so the floor reads at a glance: the tool it runs or
 asks for, else Claude's latest answer, else the latest prompt ([`glanceOf`](ref:hub/renderers/tower3d/src/cards.ts#glanceOf)).
 
@@ -265,10 +265,11 @@ committed `.glb` files and embedded in the bundle ([[bundled-renderer]]). The re
 by names ([`instance`](ref:hub/renderers/tower3d/src/models.ts#instance)): pivots (empties) for parts it
 moves, and materials, where `glow` is unlit, `own` is copied per instance to be recolored, and anything
 else is toon-shaded. The export merges meshes per pivot and material, so each desk costs a few draw calls.
-Live surfaces (screens, books, tiles) stay in code. Every worker model keeps one contract
-([`CONTRACT`](ref:hub/renderers/tower3d/src/contract.ts#CONTRACT), dressed by [`avatar`](ref:hub/renderers/tower3d/src/avatar.ts#avatar)): pivots `body`, `arm_L`, `arm_R`, anchors
-`hat` and `face` for what it wears and `hand_R` for what it holds, the status light `bulb_glow_own` and optional `hue_own` parts; `wear.glb` holds what
-they wear, hung on the anchors. The cats share one body (`models/catkit.py`, skipped by the build like `kit.py`),
+Live surfaces (screens, books, tiles) stay in code. Workers keep one contract
+([`CONTRACT`](ref:hub/renderers/tower3d/src/contract.ts#CONTRACT), dressed by [`avatar`](ref:hub/renderers/tower3d/src/avatar.ts#avatar)): the bones
+of KayKit's Rig_Medium that clips move, the adventurers' parts and the clips (`kaykit/Characters`), and the bot's
+pivots named after the bones they ride, its anchors `hat` and `face` and its status light `bulb_glow_own`; `wear.glb`
+holds what workers wear, hung on anchors on the head bone, and what one holds goes in its right hand slot. The cats share one body (`models/catkit.py`, skipped by the build like `kit.py`),
 each script painting its own coat, and keep their own contract: pivots `head`, `tail`, `paw_L` and `paw_R`.
 
 **The door** ([[tower3d-door]]): `window.tower3d` ([`door.ts`](ref:hub/renderers/tower3d/src/door.ts)) is how an

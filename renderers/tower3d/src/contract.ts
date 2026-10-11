@@ -1,10 +1,11 @@
 /**
- * What each Blender model (models/*.py) must hold for the renderer to use it: nodes it reaches by name (pivots it
- * moves, anchors it hangs things on) and materials it recolors. `npm test` checks every asset against it. Imports
+ * What each model must hold for the renderer to use it: nodes it reaches by name (pivots it moves, anchors it hangs
+ * things on, bones it poses) and materials it recolors, for the Blender models (models/*.py); and the parts and clips
+ * of the KayKit characters workers are made of (kaykit/Characters). `npm test` checks every asset against it. Imports
  * nothing, so Node reads it as well as the bundle.
  */
 
-export const MODEL_NAMES = ['bar', 'bean', 'bookcase', 'bot', 'calico', 'console', 'couch', 'desk', 'dj', 'hands', 'kiosk', 'plane', 'puff', 'tabby', 'tv', 'tuxedo', 'wear'] as const
+export const MODEL_NAMES = ['bar', 'bookcase', 'bot', 'calico', 'console', 'couch', 'desk', 'dj', 'hands', 'kiosk', 'plane', 'tabby', 'tv', 'tuxedo', 'wear'] as const
 export type ModelName = (typeof MODEL_NAMES)[number]
 
 export const HATS = ['hat_beanie', 'hat_cap', 'hat_crown', 'hat_bow', 'hat_flower']
@@ -42,11 +43,11 @@ export const CLIPS = ['Idle_A', 'Idle_B', 'Walking_A', 'Sit_Chair_Idle', 'Cheeri
 export type ClipName = (typeof CLIPS)[number]
 
 /**
- * A worker: pivots `body`, `arm_L` and `arm_R` that poses move, anchors `hat` (the top of its head) and `face`
- * (between its eyes) for what it wears, `hand_R` (in its right hand, under `arm_R`) for what it holds, and its status
- * light. Parts in the worker's hue (`hue_own`) are optional.
+ * The bot (models/bot.py), modelled standing in the rig's rest pose (a T-pose, 2.2 units tall, facing +z): a pivot
+ * per bone it rides, named as the bone, with `hat` and `face` under `head` for what it wears, and its status light. Parts
+ * in its hue (`hue_own`) are optional.
  */
-const WORKER = { nodes: ['body', 'arm_L', 'arm_R', 'hat', 'face', 'hand_R'], materials: ['bulb_glow_own'] }
+const BOT = { nodes: ['hips', 'chest', 'head', 'upperarml', 'lowerarml', 'upperarmr', 'lowerarmr', 'upperlegl', 'lowerlegl', 'footl', 'upperlegr', 'lowerlegr', 'footr', 'hat', 'face'], materials: ['bulb_glow_own'] }
 
 /** A cat (models/catkit.py): pivots `head`, `tail` and its front paws, `paw_L` and `paw_R`, that its poses move. */
 const CAT = { nodes: ['head', 'tail', 'paw_L', 'paw_R'], materials: [] }
@@ -54,9 +55,7 @@ const CAT = { nodes: ['head', 'tail', 'paw_L', 'paw_R'], materials: [] }
 export type Contract = { nodes: string[]; materials: string[] }
 
 export const CONTRACT: Record<ModelName, Contract> = {
-  bean: WORKER,
-  puff: WORKER,
-  bot: WORKER,
+  bot: BOT,
   wear: { nodes: [...HATS, ...FACES], materials: ['wear_own'] },
   tabby: CAT,
   calico: CAT,
