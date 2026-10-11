@@ -104,8 +104,8 @@ export type StationSlot = { n: number; x: number; z: number }
  */
 export type DeskSlot = StationSlot & { card: Card; beside?: string }
 
-/** From a desk's center to where a reviewer sits beside its worker: the desk's left end, past the worker's mouse. */
-export const BESIDE_X = -1
+/** From a desk's center to where a reviewer sits beside its worker: the desk's left end, a body's width clear of the worker. */
+export const BESIDE_X = -1.2
 export type KioskSlot = { shell: Shell; x: number; z: number }
 /** A worker's screen on the video wall: its center on the wall (facing +z) and its size. */
 export type TileSlot = { card: Card; x: number; y: number; w: number; h: number }
