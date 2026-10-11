@@ -12,6 +12,15 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.22.0
+
+Tower 3D's city has a neighbourhood. No host restart, no config change, the renderer API is unchanged. Rebuild
+Tower 3D (`npm run tower3d`) and reload it.
+
+- West of the tower, between the ring road and the towers: about 35 gabled houses on two curved lanes, some with
+  porches, a few lit at night; an L-block, a stepped tower and a water tower on braced legs; and trees along the ring
+  road. Generated at load from constants (`exterior/neighbourhood.ts`), six draw calls in all.
+
 ## v1.21.2
 
 The note you carry in Tower 3D stays steady while you turn. No host restart, no config change, the renderer API is
