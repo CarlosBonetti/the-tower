@@ -51,15 +51,10 @@
         "Hat": {
           "chance": 0.55,
           "group": "hat",
-          "seed": "which hat",
-          "by": "index",
           "pool": ["hat_beanie", "hat_cap", "hat_crown", "hat_bow", "hat_flower"]
         },
         "Face": {
           "chance": 0.25,
-          "group": "face",
-          "seed": "which face",
-          "by": "index",
           "pool": ["face_glasses", "face_shades"]
         }
       }
@@ -89,9 +84,6 @@
       "Hat": {
         "chance": 0.25,
         "group": "hat",
-        "seed": "which hat",
-        "by": "index",
-        "pool": ["hat_beanie", "hat_cap", "hat_crown", "hat_bow", "hat_flower"],
         "unless": ["Rogue_Head_Hooded"]
       },
       "Face": {

@@ -17,7 +17,7 @@ export const pick = <T>(xs: readonly T[], r: number) => xs[Math.floor(r * xs.len
  * candidate moves only the ids it now scores highest for, about one in the pool's new size; removing one moves only
  * its own; the pool's order never matters.
  */
-export const rendezvous = (id: string, what: string, pool: readonly string[]) => {
+export const rendezvous = <T extends string>(id: string, what: string, pool: readonly T[]) => {
   let best = pool[0]
   let top = -1
   for (const p of pool) {

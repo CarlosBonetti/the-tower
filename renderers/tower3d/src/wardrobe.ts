@@ -1,13 +1,13 @@
 import { z } from 'zod'
 import { ADVENTURERS, BODY_PARTS, BONES, SLOTS, type Adventurer, type Bone, type Slot } from './contract.ts'
-import { pick, rendezvous, roll } from './hashed.ts'
+import { rendezvous, roll } from './hashed.ts'
 
 /**
  * The wardrobe: how workers are dressed, as one document (renderers/tower3d/wardrobe.json) over the catalogue of parts.
  * `fits` move, turn and scale a worn part over where it was made to sit, by default and per part worn with it;
  * `outfits` are named looks; `mix` is how a worker's session id is dressed: a bot or an adventurer, maybe an outfit,
  * and for everything an outfit leaves open, a roll per slot and the part of the slot's pool it scores highest for
- * (`rendezvous`), so a part or outfit added re-dresses only the wearers it wins. Imports no three: Node reads it, and
+ * (`rendezvous`), so a part, outfit, body or colour added re-dresses only the wearers it wins. Imports no three: Node reads it, and
  * Tower 3D and the dresser call the same functions.
  */
 
@@ -26,7 +26,6 @@ export const Rule = z.object({
   chance: z.number().min(0).max(1).describe('of wearing something in the slot'),
   group: z.string().optional().describe('slots of one group share a roll, stacked in SLOTS order: at most one of them is worn'),
   seed: z.string().optional().describe('what the roll (without a group) and the choice hash under; the slot in lowercase by default. Changing it re-dresses the slot'),
-  by: z.literal('index').optional().describe('pick the pool by index of a roll on `seed`, in the pool order'),
   pool: z.array(z.string()).optional().describe('only these parts; every part of the slot by default'),
   except: z.array(z.string()).optional().describe('never these parts'),
   unless: z.array(z.string()).optional().describe('the slot stays bare on a look that, as rolled, wears any of these'),
@@ -143,7 +142,7 @@ function rolled(id: string, rules: Partial<Record<Slot, Rule>>, c: Catalogue, fi
     if (!pool.length) continue
     const r = roll(id, rule.group ?? seed)
     if (r < from || r >= from + rule.chance) continue
-    worn.set(slot, rule.by === 'index' ? pick(pool, roll(id, seed)) : rendezvous(id, seed, pool))
+    worn.set(slot, rendezvous(id, seed, pool))
     hashed.add(slot)
   }
   const all = new Set([...wearing, ...worn.values()])
@@ -157,8 +156,8 @@ const within = ([lo, hi]: [number, number], r: number) => lo + r * (hi - lo)
 function dressed(id: string, outfit: Outfit, name: string | undefined, w: Wardrobe, c: Catalogue): Look {
   const { mix } = w
   const r = (what: string) => roll(id, what)
-  const body = outfit.body ?? pick(mix.bodies, r('body'))
-  const paint = outfit.paint ?? (r('repaint') < mix.repaint ? pick(mix.bodies, r('paint')) : body)
+  const body = outfit.body ?? rendezvous(id, 'body', mix.bodies)
+  const paint = outfit.paint ?? (r('repaint') < mix.repaint ? rendezvous(id, 'paint', mix.bodies) : body)
   const slots = rolled(id, mix.slots, c, outfit.slots ?? {}, bodyParts(body))
   if (!slots.has('Head') && !(outfit.slots && 'Head' in outfit.slots)) slots.set('Head', `${body}_Head`)
   return {
@@ -167,9 +166,9 @@ function dressed(id: string, outfit: Outfit, name: string | undefined, w: Wardro
     body,
     paint,
     parts: SLOTS.flatMap((s) => (slots.has(s) ? [slots.get(s)!] : [])),
-    skin: outfit.skin ?? pick(mix.skins, r('skin')),
-    hair: outfit.hair ?? pick(mix.hairs, r('hair')),
-    wear: outfit.wear ?? pick(mix.wears, r('wear')),
+    skin: outfit.skin ?? rendezvous(id, 'skin', mix.skins),
+    hair: outfit.hair ?? rendezvous(id, 'hair', mix.hairs),
+    wear: outfit.wear ?? rendezvous(id, 'wear', mix.wears),
     build: outfit.build ?? { width: within(mix.build.width, r('width')), height: within(mix.build.height, r('height')) },
   }
 }
@@ -187,7 +186,7 @@ export function lookOf(id: string, w: Wardrobe, c: Catalogue): Look {
       species: 'bot',
       hue: hex(hueOf(id), 0.55, 0.62),
       parts: SLOTS.flatMap((s) => (parts.has(s) ? [parts.get(s)!] : [])),
-      wear: pick(mix.wears, roll(id, 'wear')),
+      wear: rendezvous(id, 'wear', mix.wears),
       build: { width: within(mix.build.width, roll(id, 'width')), height: within(mix.build.height, roll(id, 'height')) },
     }
   }

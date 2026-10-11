@@ -81,7 +81,8 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   part or bare per slot, anything left out hashed), and the **mix**: the bot's share and what it wears, the outfits'
   share, the bodies, colours and build range, and a rule per slot (its chance, a `group` of exclusive slots sharing one
   roll, a `seed` it hashes under, its pool and exclusions, `unless`: bare when the look wears one of these, as the hooded
-  head keeps hats and helms off). [`lookOf`](ref:hub/renderers/tower3d/src/wardrobe.ts#lookOf) hashes a session id
+  head keeps hats and helms off). Bodies and colours are chosen by rendezvous like parts, so adding a colour recolours
+  only the workers it wins. [`lookOf`](ref:hub/renderers/tower3d/src/wardrobe.ts#lookOf) hashes a session id
   into it: a bot one time in five; else maybe an outfit, the rest from the mix. The roof's bartender and DJ are outfits
   kept out of the share, dressed by name. One function, `avatar(models, look, wardrobe)`, dresses every look, and keeps
   each rigid part it hangs by name with its made placement (`worn`), so the dresser re-fits a part live. Saved through
