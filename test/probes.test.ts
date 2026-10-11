@@ -84,7 +84,8 @@ test('the core declares the quota probe, on; the config overrides its fields, an
 })
 
 test("a probe's stream, read by a tower: two answers, then three failures; the fold keeps the limits and counts the failures", () => {
-  const readings = readingsOf(text('probe-quota.jsonl'))
+  const { readings, unreadable } = readingsOf(text('probe-quota.jsonl'))
+  assert.equal(unreadable, 0)
   const at = (i: number) => readings[i][0]
   assert.deepEqual(readings.map(([, r]) => [r.reads, r.ok]), [['claude.usage', true], ['claude.usage', true], ['claude.usage', false], ['claude.usage', false], ['claude.usage', false]])
   const facts = probeFacts(readings)
@@ -100,7 +101,16 @@ test("a probe's stream, read by a tower: two answers, then three failures; the f
 })
 
 test("with no session, the weekly budget is read from the probe's reads", () => {
-  const facts = probeFacts(readingsOf(text('probe-quota.jsonl')))
+  const facts = probeFacts(readingsOf(text('probe-quota.jsonl')).readings)
   const budget = weeklyBudget([], [facts], Date.parse('2026-10-11T12:00:00Z'))
   assert.deepEqual([budget?.percentUsed, budget?.resetsAt, budget?.since, budget?.spent], [89, '2026-10-11T22:00:00.000Z', facts.limitReadings.seven_day[0][0], 0])
+})
+
+test('a line that is no JSON costs its own read only: the reads before and after it are kept', () => {
+  const [header, first, second, ...rest] = text('probe-quota.jsonl').split('\n')
+  const torn = [header, first, second.slice(0, 40), ...rest].join('\n')
+  const { readings, unreadable } = readingsOf(torn)
+  assert.equal(unreadable, 1)
+  assert.deepEqual(readings.map(([, r]) => r.ok), [true, false, false, false])
+  assert.deepEqual(readingsOf(['{"stream"', first, ''].join('\n')), { readings: [], unreadable: 2 })
 })

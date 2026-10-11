@@ -14,6 +14,7 @@
     "hub/src/bridge/probes.ts#accountLimits",
     "hub/src/bridge/probes.ts#probesOf",
     "hub/src/bridge/probes.ts#usageAnswer",
+    "hub/src/bridge/probes.ts#readingsOf",
     "hub/src/probes.ts#runProbes",
     "hub/src/system.ts#watchSystem",
     "hub/src/shared/paths.ts#systemStreamsPath",
@@ -62,7 +63,11 @@ fixture). Facts go in a log ([[logs-are-facts]]); what they mean is folded.
 - *A stream per probe, one writer.* `streams/system/probe.<name>/YYYY-MM.jsonl` (the file's UTC month): a header
   `{stream, startedAt, version}`, `startedAt` the month's start, then `[t, "p", read]` events, `read` the reader's
   name, the ms it took, and `{ok: true, answer}` (Claude's answer as it came, nulls dropped, so a later fold reads
-  every past read) or `{ok: false, error}`. Skipped reads are not logged: they follow from the session logs. Project
+  every past read) or `{ok: false, error}`. Skipped reads are not logged: they follow from the session logs. Each read
+  stands alone, so a line that is no JSON (an append torn by a crash, a hand edit) costs that read only: the fold
+  passes over it and counts it, and the tower's log names the file. An append after a torn line starts a line of its
+  own. A session's log stops at its break ([[broken-logs]]), because its events build on each other; a stream's reads
+  don't. Project
   streams are reserved at `streams/projects/<project>/<stream>/`, none written yet.
 - *Folded beside the sessions.* [`watchSystem`](ref:hub/src/system.ts#watchSystem) watches `streams/system/` and
   folds each probe's months in order ([`probeFacts`](ref:hub/src/bridge/probes.ts#probeFacts)): `limitReadings` and

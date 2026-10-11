@@ -48,10 +48,26 @@ export const monthFile = (at: number): string => `${new Date(at).toISOString().s
 /** The line a read is appended as, to the file of its month. */
 export const eventLine = (at: number, read: ProbeRead): string => JSON.stringify([Math.round(at - monthStart(at)) / 1000, 'p', read] satisfies StreamEvent)
 
-/** A stream file's reads; the text after the last newline is a line still being written. */
-export const readingsOf = (text: string): ProbeReading[] => {
-  const [header, ...events] = text.split('\n').slice(0, -1).map((line) => JSON.parse(line)) as [StreamHeader, ...StreamEvent[]]
-  return events.map(([t, , read]) => [header.startedAt + t * 1000, read])
+/** A stream file's reads, and how many of its lines are no JSON. */
+export type StreamFile = { readings: ProbeReading[]; unreadable: number }
+
+const parsed = (line: string): unknown => {
+  try {
+    return JSON.parse(line)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * A stream file's reads; the text after the last newline is a line still being written. Each read stands alone, so a
+ * line that is no JSON (an append torn by a crash, a hand edit) costs that read only: it is counted and passed over.
+ * A header that is no JSON leaves no read to place in time.
+ */
+export const readingsOf = (text: string): StreamFile => {
+  const [header, ...events] = text.split('\n').slice(0, -1).map(parsed) as [StreamHeader | undefined, ...(StreamEvent | undefined)[]]
+  const readings = header ? events.flatMap((e): ProbeReading[] => (e ? [[header.startedAt + e[0] * 1000, e[2]]] : [])) : []
+  return { readings, unreadable: events.length + 1 - readings.length - (header ? 1 : 0) }
 }
 
 /** Claude's answer to `get_usage`, as much of it as the fold reads. */

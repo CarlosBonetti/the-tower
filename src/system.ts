@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, watch } fro
 import path from 'node:path'
 import { factsAfter, type Session } from './bridge/facts.ts'
 import { foldLog } from './checkpoints.ts'
-import { probeFacts, readingsOf, type ProbeFacts, type ProbeReading } from './bridge/probes.ts'
+import { probeFacts, readingsOf, type ProbeFacts, type StreamFile } from './bridge/probes.ts'
 import type { Peer, Resource } from './bridge/resources.ts'
 import type { RepoRead } from './bridge/worktrees.ts'
 import { readItem, scanCollections } from './collections.ts'
@@ -82,23 +82,21 @@ const PROBE_STREAM = /^probe\.([\w-]+)$/
 const MONTH_FILE = /^\d{4}-\d{2}\.jsonl$/
 
 /** A stream file's reads, as of its size. */
-type StreamFile = { bytes: number; readings: ProbeReading[] }
+type HeldStream = StreamFile & { bytes: number }
 
-/** A stream file's reads: a line that is no JSON fails naming the file, which only a hand edit can break. */
-const streamReadings = (file: string): ProbeReading[] => {
-  try {
-    return readingsOf(readFileSync(file, 'utf8'))
-  } catch (err) {
-    throw new Error(`${file}: ${(err as Error).message}`, { cause: err })
-  }
+/** A stream file read again: lines that are no JSON are passed over, and the tower's log says so. */
+const readStream = (file: string, bytes: number): HeldStream => {
+  const read = readingsOf(readFileSync(file, 'utf8'))
+  if (read.unreadable) console.error(`${file}: ${read.unreadable} line(s) are no JSON, each a read passed over`)
+  return { ...read, bytes }
 }
 
 /**
  * Each probe's stream folded, by probe name, from its month files in order, and the files as read: a file `held` at
  * the same size is not read again.
  */
-const probesIn = (root: string, held: Map<string, StreamFile>): { probes: Map<string, ProbeFacts>; files: Map<string, StreamFile> } => {
-  const files = new Map<string, StreamFile>()
+const probesIn = (root: string, held: Map<string, HeldStream>): { probes: Map<string, ProbeFacts>; files: Map<string, HeldStream> } => {
+  const files = new Map<string, HeldStream>()
   const probes = new Map<string, ProbeFacts>()
   for (const stream of readdirSync(root)) {
     const name = PROBE_STREAM.exec(stream)?.[1]
@@ -109,7 +107,7 @@ const probesIn = (root: string, held: Map<string, StreamFile>): { probes: Map<st
       .flatMap((f) => {
         const file = path.join(root, stream, f)
         const bytes = statSync(file).size
-        const read = held.get(file)?.bytes === bytes ? held.get(file)! : { bytes, readings: streamReadings(file) }
+        const read = held.get(file)?.bytes === bytes ? held.get(file)! : readStream(file, bytes)
         files.set(file, read)
         return read.readings
       })
@@ -174,7 +172,7 @@ export const watchSystem = async (paths: SystemPaths, notify: () => void): Promi
   const tails = new Map<string, () => void>()
   let items: CollectionItem[] = []
   let threads: ThreadFile[] = []
-  let streamFiles = new Map<string, StreamFile>()
+  let streamFiles = new Map<string, HeldStream>()
   let probes = new Map<string, ProbeFacts>()
   let live: HostLive | undefined
   let running: Resource[] = []
