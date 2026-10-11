@@ -1345,14 +1345,22 @@ function render() {
 /** The lighting's passes before the scene is drawn: the rig fitted to what is seen, and the contact shadows under your level, all counted on the meter. */
 function lightFrame() {
   const y = s.plan.levels[s.me.level]?.y ?? 0
-  rigFrame(scene, { ...s.plan, top: s.plan.levels.at(-1)?.y ?? 0, y, height: levelHeight(s.me.level), whole: !handsShown(), panels: panelGrid(s.plan) })
+  const near = cameraOnLevel()
+  rigFrame(scene, { ...s.plan, top: s.plan.levels.at(-1)?.y ?? 0, y, height: levelHeight(s.me.level), whole: !near, panels: panelGrid(s.plan) })
   renderer.info.autoReset = false
   renderer.info.reset()
-  contactShadows(renderer, scene, standingOn(), { ...s.plan, y })
+  contactShadows(renderer, scene, near ? standingOn() : [], { ...s.plan, y })
 }
 
-/** What stands on your level and its own part of the building, while you are on one: walking or petting, not riding or flying. */
-const standingOn = () => (s.world && handsShown() ? [s.levels[s.me.level]?.group, s.world.levels[s.me.level]].filter((o) => o !== undefined) : [])
+/** The camera is within your level's storey, out of the elevator: walking, seated, petting, or flying between those. */
+function cameraOnLevel() {
+  const { x, y, z } = camera.position
+  const floor = levelY(s.me.level)
+  return !s.ride && Math.abs(x) < s.plan.width / 2 && Math.abs(z) < s.plan.depth / 2 && y > floor && y < floor + levelHeight(s.me.level)
+}
+
+/** What stands on your level and its own part of the building. */
+const standingOn = () => (s.world ? [s.levels[s.me.level]?.group, s.world.levels[s.me.level]].filter((o) => o !== undefined) : [])
 
 /** Your hands are in view while you walk or pet a cat, but not while the camera rides or flies. */
 const handsShown = () => (s.view === 'walk' || s.view === 'pet') && !s.ride && !s.flight

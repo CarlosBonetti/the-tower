@@ -6,7 +6,7 @@
   "in": "web-tower",
   "status": "accepted",
   "date": "2026-10-10",
-  "reviewed": "2026-10-10",
+  "reviewed": "2026-10-11",
   "refs": [
     "hub/renderers/tower3d/src/boot.ts",
     "hub/renderers/tower3d/src/light/setting.ts#startLighting",
@@ -59,7 +59,11 @@ measured. So anyone it annoys, or whose machine it slows, needs a way to turn it
   - [`bloom`](ref:hub/renderers/tower3d/src/light/bloom.ts#bloom) draws only what is tagged with
     [`glows`](ref:hub/renderers/tower3d/src/toon.ts#glows) and adds it to the canvas, as strong as the night is dark.
 
-  [`lightFrame`](ref:hub/renderers/tower3d/src/main.ts#lightFrame) runs the passes before the scene is drawn.
+  [`lightFrame`](ref:hub/renderers/tower3d/src/main.ts#lightFrame) runs the passes before the scene is drawn. What is
+  seen is decided by where the camera stands: within your level's storey (walking, seated, or flying between a desk
+  and your eye) the sun's shadow fits that level and the contact shadows are drawn; anywhere else (the overview, the
+  elevator) the sun's shadow fits the whole building and there are none. Closing a panel flies the camera home, so
+  the shadows are there on its first frame.
 - *It applies on reload.* The ramp and the shader patches are fixed as materials are made, and the shadow map is
   renderer state. The popover's section
   ([`lightingSection`](ref:hub/renderers/tower3d/src/light/setting.ts#lightingSection)) stores the choice and offers
