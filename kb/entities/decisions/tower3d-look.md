@@ -25,6 +25,10 @@
     "hub/renderers/tower3d/src/exterior/neighbourhood.ts#inNeighbourhood",
     "hub/renderers/tower3d/src/exterior/shell.ts#frame",
     "hub/renderers/tower3d/src/exterior/roof.ts#roofPlant",
+    "hub/renderers/tower3d/src/exterior/windows.ts#keepHours",
+    "hub/renderers/tower3d/src/exterior/windows.ts#keepsHours",
+    "hub/renderers/tower3d/src/exterior/beacons.ts#beacons",
+    "hub/renderers/tower3d/src/exterior/clouds.ts#clouds",
     "hub/renderers/tower3d/src/outside.ts#buildings",
     "hub/renderers/tower3d/src/world.ts#plantOnRoof"
   ]
@@ -57,6 +61,17 @@ measured. So anyone it annoys, or whose machine it slows, needs a way to turn it
   ([`roofPlant`](ref:hub/renderers/tower3d/src/exterior/roof.ts#roofPlant), placed by
   [`plantOnRoof`](ref:hub/renderers/tower3d/src/world.ts#plantOnRoof)) is in steel and bronze. The box city and the
   old shell are deleted, so there is one implementation of each.
+- *The city follows the clock*, every part a pure function of the wall clock's hour (`?at`) or sim time
+  (`?stepped`), so frames repeat. Each lit window keeps office hours hashed from where it stands
+  ([`keepHours`](ref:hub/renderers/tower3d/src/exterior/windows.ts#keepHours)): on around dusk, off through the
+  evening, a few all night or again before dawn. The hours ride on its vertices and the window material compares
+  them with the hour on the GPU ([`keepsHours`](ref:hub/renderers/tower3d/src/exterior/windows.ts#keepsHours)), as
+  far as the night has fallen: by day every lit window shows as before. Red warning lights flash on the parapet
+  corners of the six tallest towers and on the roof's mast, each structure on a hashed phase
+  ([`beacons`](ref:hub/renderers/tower3d/src/exterior/beacons.ts#beacons)), tagged to glow. A few soft clouds drift
+  overhead, placed on the GPU from sim time and tinted by the sky at the hour
+  ([`clouds`](ref:hub/renderers/tower3d/src/exterior/clouds.ts#clouds)). Two draw calls in all. The rig's interior
+  light is chained after a material's own shader patch, so the windows keep their hours with the lighting on.
 - *The lighting is one setting.* [`startLighting`](ref:hub/renderers/tower3d/src/light/setting.ts#startLighting)
   reads `tower.store` under [`LIGHTING_KEY`](ref:hub/renderers/tower3d/src/light/setting.ts#LIGHTING_KEY) (on
   unless `false`) in [`boot.ts`](ref:hub/renderers/tower3d/src/boot.ts), the bundle's entry, and only then loads

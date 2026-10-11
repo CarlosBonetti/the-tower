@@ -216,7 +216,8 @@ terminal or the big screen is open, opened up on the roof. The party dances to i
 - The sky follows the viewer's clock.
 
 **Outside** ([`outside`](ref:hub/renderers/tower3d/src/outside.ts#outside)): a sky, light and city of windows
-lit by the viewer's clock, and a ring road around the block, 42 to 57 m out, its asphalt and centre dashes one mesh.
+lit by the viewer's clock (each window on its own office hours, red warning lights flashing on the tallest
+towers and clouds drifting overhead: decision `tower3d-look`), and a ring road around the block, 42 to 57 m out, its asphalt and centre dashes one mesh.
 Sixteen cars drive it on the right in two lanes ([`traffic`](ref:hub/renderers/tower3d/src/outside.ts#traffic)), three
 instanced meshes (body, cabin, lamps); each lane is a convoy at its own speed whose cars drift ahead and back, never
 into each other, so where every car is follows from the sim clock and hashed constants alone, the same on every
