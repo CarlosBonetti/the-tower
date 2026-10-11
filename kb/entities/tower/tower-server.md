@@ -46,7 +46,9 @@ starts again from a snapshot (`tower.js` re-watches every stream on a new mux). 
 watch with the failure and leaves nothing behind on the mux.
 
 Renderers are served at [`/r/<name>/`](ref:hub/src/tower/server.ts#rendered): the entry, or any file below the
-renderer's root, at the tower's origin and unsandboxed, since the user declared them. `/` redirects to the configured
+renderer's root, at the tower's origin and unsandboxed, since the user declared them; its files are readable from
+any origin, so a renderer framed on a shelf at an opaque origin still loads its modules. Framed at the tower's
+origin, as a shown URL, `tower.js` calls the routes itself; only a frame at an origin of its own is relayed. `/` redirects to the configured
 one ([`home`](ref:hub/src/tower/server.ts#home)), and `GET /renderers` lists every one
 ([`renderersOf`](ref:hub/src/renderers.ts#renderersOf)), built or not ([[renderers-in-config]]). A renderer that
 isn't built, or a config that can't be read, shows as an HTML page saying so: a reader of `/` is in a browser tab.
