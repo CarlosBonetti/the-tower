@@ -175,11 +175,12 @@ function ceilingLights(p: Plan, h: number, color: THREE.ColorRepresentation) {
 }
 
 /** The landing in front of the elevator: a rug in the floor's color with its number painted on, garage-style. */
+/** The floor's number on a rug before the elevator, ending short of the first row's desk rugs (2.33 m out from the core). */
 function landingRug(p: Plan, number: string, tint: string, color: string) {
   const g = new THREE.Group()
-  const z = coreFront(p) + 2.4
-  g.add(block(CORE.width + 1.6, 0.012, 3.4, toon(color), 0, 0, z))
-  const paint = plate(number, 1.7, { color: tint, px: 160 })
+  const z = coreFront(p) + 1.3
+  g.add(block(CORE.width + 1.6, 0.012, 1.9, toon(color), 0, 0, z))
+  const paint = plate(number, 1.5, { color: tint, px: 160 })
   paint.material.opacity = 0.55
   paint.rotation.set(-Math.PI / 2, 0, Math.PI)
   paint.position.set(0, 0.02, z)
