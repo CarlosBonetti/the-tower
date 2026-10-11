@@ -6,7 +6,7 @@
   "in": "tower",
   "status": "accepted",
   "date": "2026-10-07",
-  "reviewed": "2026-10-10",
+  "reviewed": "2026-10-11",
   "refs": [
     "hub/src/tower/server.ts#currentBoard",
     "hub/src/tower/server.ts#errorOf",
@@ -44,7 +44,8 @@ belongs to the API, not to one page. The fix is the user's (a typo in the config
   used to end with an empty 500: a spawn refused for `user.name` now says so.
 - **Renderers.** `tower.onBoardError(fn)` is called with an `Error` holding `code`, at once if the tower's latest word
   was a failure; the next board through `subscribe` means it recovered. The tower page and Tower 3D show it in a
-  banner over the last board they drew, gone with the next board; the tower page relays it to a framed page.
+  banner over the last board they drew, gone with the next board (Tower 3D, before its first board, on its loading
+  screen too, [[tower3d-start]]); the tower page relays it to a framed page.
 - **A lost tower is a board error too.** When `/board` drops, `tower.js` tells `onBoardError` an error of code
   `disconnected` ([`BoardError`](ref:hub/src/shared/shelf-page.ts#BoardError): told by the client, never sent by the
   tower), once until a board comes back. The browser's `EventSource` reconnects by itself after a dropped connection;

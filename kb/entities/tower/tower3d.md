@@ -20,6 +20,10 @@ root, so a fresh checkout lists Tower 3D as not built until it builds. Its setti
 ([`renderersHtml`](ref:hub/src/shared/cards.ts#renderersHtml)), each built one a link to `/r/<name>/`; framed,
 where the frame can't navigate the tower page, a link opens a tab of its own.
 
+**The start.** A loading screen, the elevator's panel, is drawn by the page before the bundle runs and lights a
+button per stage; a live page draws nothing until its first board is built and its shaders compiled, then fades
+the screen on the first frame ([[tower3d-start]]).
+
 **Board → plan → scene.** [`plan`](ref:hub/renderers/tower3d/src/layout.ts#plan) is a pure function from
 the board to the building as data: the lobby, a floor per project, the roof, one shared floor plate, every
 workstation (taken or free) and shell kiosk slot, and what a walker bumps into. The scene, the walking and the panels all read

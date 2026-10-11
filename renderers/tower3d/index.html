@@ -6,6 +6,7 @@
 <title>The Tower</title>
 <link rel="stylesheet" href="/xterm.css">
 <link rel="stylesheet" href="/design.css">
+<script>window.__lt=[];new PerformanceObserver(l=>{for(const e of l.getEntries())__lt.push([Math.round(e.startTime),Math.round(e.duration)])}).observe({type:"longtask",buffered:true})</script>
 <script src="/tower.js"></script>
 <style>
 * { box-sizing: border-box; }
@@ -274,6 +275,28 @@ button.doc-file { display: block; width: 100%; border: none; background: none; f
 #board-error { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); max-width: min(620px, 90vw); padding: var(--sp-l) var(--sp-xl); border-left: 4px solid var(--broken); z-index: 9; }
 #board-error b { display: block; margin-bottom: var(--sp-xs); font: 800 var(--fs-m)/1 var(--display); letter-spacing: .06em; text-transform: uppercase; }
 #toasts { bottom: 48px; max-width: min(468px, 90vw); }
+#loading { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: var(--sp-l); background: var(--wall); transition: opacity .3s ease-out; }
+#loading.leaving { opacity: 0; pointer-events: none; }
+#loading .plate { width: min(280px, 100%); display: grid; gap: var(--sp-m); padding: var(--sp-l); background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; box-shadow: var(--shadow); }
+#loading .ind { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-s) var(--sp-l); border-radius: var(--radius-s); background: var(--enamel); color: var(--working); font: 700 var(--fs-2xl)/1 var(--mono); }
+#loading .ind small { font: 700 var(--fs-xs)/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; text-align: right; color: color-mix(in srgb, var(--working) 75%, var(--enamel)); }
+#loading .arrow { display: inline-block; margin-right: var(--sp-xs); font-size: var(--fs-m); animation: loading-rise .9s ease-in-out infinite alternate; }
+@keyframes loading-rise { from { transform: translateY(3px); opacity: .4; } to { transform: translateY(-3px); opacity: 1; } }
+#loading ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-xs); }
+#loading li { display: grid; grid-template-columns: 24px 1fr; align-items: center; gap: var(--sp-m); font-size: var(--fs-s); color: var(--faint); }
+#loading li b { position: relative; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--panel-2); color: var(--muted); font: 700 var(--fs-xs)/1 var(--mono); }
+#loading li b::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: var(--working); opacity: 0; z-index: -1; }
+#loading li.done { color: var(--muted); }
+#loading li.done b { background: var(--sunk); }
+#loading li.now { color: var(--ink); font-weight: 700; }
+#loading li.now b { background: var(--working); border-color: var(--working); color: var(--enamel); }
+#loading li.now b::after { animation: loading-glow 1.1s ease-in-out infinite alternate; }
+@keyframes loading-glow { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: .35; } }
+#loading .why { margin: 0; font-size: var(--fs-s); color: var(--broken-text); }
+#loading:not([data-failed]) .why { display: none; }
+#loading[data-failed] .arrow, #loading[data-failed] b::after { animation: none; }
+:root[data-motion='reduce'] #loading .arrow, :root[data-motion='reduce'] #loading b::after { animation: none; }
+@media (prefers-reduced-motion: reduce) { :root:not([data-motion='full']) #loading .arrow, :root:not([data-motion='full']) #loading b::after { animation: none; } }
 </style>
 </head>
 <body>
@@ -349,6 +372,13 @@ button.doc-file { display: block; width: 100%; border: none; background: none; f
 <div id="fade"></div>
 <div id="toasts"></div>
 <div id="board-error" class="glass hidden" role="alert"><b>The tower can't build the board</b><span></span></div>
+<div id="loading" role="status" aria-label="Tower 3D is loading">
+  <div class="plate">
+    <div class="ind"><span><span class="arrow">▲</span><span class="floor">L</span></span><small>The Tower<br>going up</small></div>
+    <ol><li data-stage="settings" class="now"><b>L</b>your settings</li><li data-stage="models"><b>1</b>models and the kit</li><li data-stage="board"><b>2</b>the board</li><li data-stage="building"><b>3</b>building the floors</li><li data-stage="lighting"><b>R</b>lighting the scene</li></ol>
+    <p class="why" role="alert"></p>
+  </div>
+</div>
 
 <script src="tower3d.js"></script>
 </body>

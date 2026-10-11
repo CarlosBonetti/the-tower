@@ -49,6 +49,7 @@ import { wallNow } from './clock.ts'
 import { installDoor } from './door.ts'
 import { reducedMotion } from '../../../src/shared/prefs.ts'
 import { FIXTURE, fixtureBoards, readArchive, readConversations } from './fixtures.ts'
+import * as loading from './loading.ts'
 import { archiveOf, archiveRead, drawersAt, readArchives, readFloorArchive } from './archive.ts'
 import { poseFiling } from './filing.ts'
 import { CABINETS, DANCE, DESKS, FILINGS, GALLERY, GUESTS, NOTES, PIGEONHOLES, RUNNING, STATIONS, WALLS, reconcile } from './layers.ts'
@@ -288,6 +289,7 @@ function onBoardError(err: Error & { code: string }) {
   $('board-error').querySelector('b')!.textContent = boardErrorTitle(err.code)
   $('board-error').querySelector('span')!.textContent = err.message
   show('board-error', true)
+  if (loading.shown()) loading.fail(`${boardErrorTitle(err.code)}: ${err.message}`)
   s.lost = err.code === 'disconnected'
   renderPanel()
 }
@@ -1325,21 +1327,65 @@ function frame(now: number) {
   if (s.stepped) return
   const start = performance.now()
   update(dt)
-  if (!covered()) render()
+  if (drawing && !covered()) render()
   measure(now, performance.now() - start)
 }
+
+/** Whether frames draw: a live page draws nothing until its first board is built and its shaders compiled (`startOn`). */
+let drawing = FIXTURE !== undefined
+
+/** Boards that arrive while the first is built supersede one another: the latest is drawn once the page has started. */
+let starting = false
+let latest: Parameters<typeof onBoard> | undefined
+function onLiveBoard(next: Board, at: ShelfSelf | undefined) {
+  if (starting) return void (latest = [next, at])
+  if (!s.first) return onBoard(next, at)
+  starting = true
+  startOn(next, at).then(() => {
+    starting = false
+    if (latest) onBoard(...latest)
+    latest = undefined
+  }, failStart)
+}
+
+const failStart = (err: Error) => (toast(`start: ${err.message}`), loading.fail(`start: ${err.message}`))
+
+/**
+ * The first board under the loading screen: a paint so the screen shows each stage, the building, then every program
+ * its first frame draws with compiled off the main thread (KHR_parallel_shader_compile), the scene set as that frame
+ * sets it (the rig's lights and shadows are part of each program), and that frame drawn under the screen as it leaves.
+ */
+async function startOn(next: Board, at: ShelfSelf | undefined) {
+  loading.stage('building')
+  await painted()
+  onBoard(next, at)
+  loading.stage('lighting')
+  await painted()
+  frameScene()
+  await renderer.compileAsync(scene, camera)
+  drawing = true
+  render()
+  loading.leave()
+}
+
+const painted = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve)))
 
 /** A panel that hides the world: while it is open the scene isn't drawn, and the canvas keeps its last frame. */
 const covered = () => s.panel?.kind === 'desk' || s.panel?.kind === 'shell' || s.panel?.kind === 'doc' || s.panel?.kind === 'kept' || s.panel?.kind === 'picture' || s.panel?.kind === 'logbook'
 
 function render() {
-  if (s.board && s.world) paintScreens(s.simNow, screenDistance)
-  showLevels(levelsShown(s))
-  if (LIT) lightFrame()
+  frameScene()
   renderer.render(scene, camera)
   if (LIT) bloom(renderer, scene, camera)
   Object.assign(s.meter, { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles })
   if (s.hands && handsShown()) drawHands(renderer, s.hands)
+}
+
+/** What a frame sets on the scene before it is drawn: the screens painted, the levels shown, the lighting's passes. */
+function frameScene() {
+  if (s.board && s.world) paintScreens(s.simNow, screenDistance)
+  showLevels(levelsShown(s))
+  if (LIT) lightFrame()
 }
 
 /** The lighting's passes before the scene is drawn: the rig fitted to what is seen, and the contact shadows under your level, all counted on the meter. */
@@ -2622,8 +2668,8 @@ Promise.all([loadModels(), tower.recall(), loadFaces(), loadKit(), tower.rendere
   primeSeen = (kept as Kept | null)?.seen === undefined
   if ((kept as Kept | null)?.fps) toggleFps()
   if (fixture) onBoard(fixture[0], undefined)
-  else (tower.subscribe(onBoard), tower.onBoardError(onBoardError))
-}, (err: Error) => toast(`start: ${err.message}`))
+  else (loading.stage('board'), tower.subscribe(onLiveBoard), tower.onBoardError(onBoardError))
+}, failStart)
 Promise.all([tower.get('renderers'), tower.renderer()]).then(([{ renderers }, here]) =>
   ($('renderers').innerHTML = renderersHtml(renderers, here?.name, tower.framed)), (err: Error) => toast(`renderers: ${err.message}`))
 
