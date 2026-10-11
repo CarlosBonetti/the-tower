@@ -12,6 +12,15 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.25.1
+
+Pages framed on a shelf reach the tower again, Tower 3D among them. No host restart, no config change, the renderer
+API is unchanged. Restart the tower (`tower down tower && tower up tower`) and reload.
+
+- v1.24.1 decided whether a page is relayed from `location.origin`, which is its URL's origin, the tower's, even in a
+  sandboxed frame: a page framed on a shelf called the routes itself and CORS refused it (`/renderers`, `/origins`).
+  `tower.js` now reads the page's own origin, `self.origin`, `null` in a sandboxed frame.
+
 ## v1.25.0
 
 Tower 3D's workers are KayKit characters. No host restart, no config change, the renderer API is unchanged. Rebuild
