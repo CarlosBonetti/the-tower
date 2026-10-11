@@ -46,7 +46,10 @@ const caption = (text) => {
   return sentence ?? (text.length > 120 ? `${text.slice(0, 118).trimEnd()}…` : text)
 }
 
-/** Every worker on duty within the week, one per floor and callsign, its sessions and latest card together. */
+/**
+ * Every worker on duty within the week, one per floor and callsign: its sessions, their turns (each session's whole
+ * run, the cards' only count of work) and its latest card.
+ */
 function workersOf(cards, { from, to }) {
   const byName = new Map()
   for (const card of cards) {
@@ -56,6 +59,7 @@ function workersOf(cards, { from, to }) {
     byName.set(key, {
       project: card.project, callsign: card.callsign,
       sessions: (had?.sessions ?? 0) + 1,
+      turns: (had?.turns ?? 0) + card.turns,
       latest: had && lastSeen(had.latest) > lastSeen(card) ? had.latest : card,
     })
   }
@@ -119,8 +123,8 @@ function quoteOf(workers, stats) {
   return workers
     .map((w) => ({ w, said: latestSaid(w.latest) }))
     .filter(({ said }) => said)
-    .map(({ w, said }) => ({ w, at: said.startedAt, text: said.answer.trim().split(/\n\s*\n/)[0] }))
-    .filter(({ text }) => text.length >= 24 && text.length <= 280 && !text.startsWith('```') && !text.endsWith(':'))
+    .map(({ w, said }) => ({ w, at: said.startedAt, text: said.answer.trim().split(/\n\s*\n/)[0].trim() }))
+    .filter(({ text }) => text.length >= 24 && text.length <= 280 && !text.startsWith('```') && !/:\W*$/.test(text))
     .sort((a, b) => commits(b.w.project) - commits(a.w.project) || b.at - a.at)[0]
 }
 
@@ -160,7 +164,7 @@ function tileHtml(worker, color) {
 
 function photoHtml(workers, floors) {
   const groups = floors
-    .map((f) => ({ f, ws: workers.filter((w) => w.project === f.id).sort((a, b) => a.callsign.localeCompare(b.callsign)) }))
+    .map((f) => ({ f, ws: workers.filter((w) => w.project === f.id).sort((a, b) => b.turns - a.turns || a.callsign.localeCompare(b.callsign)) }))
     .filter(({ ws }) => ws.length)
   if (!groups.length) return `<section><h2>The class photo</h2><p class="note">Nobody worked this week.</p></section>`
   return `<section><h2>The class photo</h2>${groups.map(({ f, ws }) => `
