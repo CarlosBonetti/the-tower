@@ -1339,9 +1339,15 @@ function showSideView(view) {
   drawSideView()
 }
 
+/** The nearest element from `el` up that scrolls its content: the list itself, or in the short layout the sidebar around it. */
+const scrollerOf = (el) => {
+  for (let e = el; e; e = e.parentElement) if (/auto|scroll/.test(getComputedStyle(e).overflowY)) return e
+  return document.scrollingElement
+}
+
 /** The `[data-hold]` row at a scrolled list's top edge, the last to start at or above it, and its offset from the edge. */
 const topAnchorOf = (list) => {
-  const top = list.getBoundingClientRect().top
+  const top = scrollerOf(list).getBoundingClientRect().top
   const row = [...list.querySelectorAll('[data-hold]')].findLast((el) => el.getBoundingClientRect().top <= top) ?? list.querySelector('[data-hold]')
   return row && { key: row.dataset.hold, offset: row.getBoundingClientRect().top - top }
 }
@@ -1350,7 +1356,7 @@ const topAnchorOf = (list) => {
 const sightAnchorOf = (list, key) => {
   const row = key && list.querySelector(`[data-hold="${CSS.escape(key)}"]`)
   if (!row) return undefined
-  const edges = list.getBoundingClientRect()
+  const edges = scrollerOf(list).getBoundingClientRect()
   const { top, bottom } = row.getBoundingClientRect()
   return top < edges.bottom && bottom > edges.top ? { key, offset: top - edges.top } : undefined
 }
@@ -1362,7 +1368,9 @@ const sightAnchorOf = (list, key) => {
 function redrawHeld(list, html, anchor) {
   list.innerHTML = html
   const row = anchor && list.querySelector(`[data-hold="${CSS.escape(anchor.key)}"]`)
-  if (row) list.scrollTop += row.getBoundingClientRect().top - list.getBoundingClientRect().top - anchor.offset
+  if (!row) return
+  const scroller = scrollerOf(list)
+  scroller.scrollTop += row.getBoundingClientRect().top - scroller.getBoundingClientRect().top - anchor.offset
 }
 
 /** Writes `html` into `el` only when it changed, so a focused or hovered control in it survives a render. */
