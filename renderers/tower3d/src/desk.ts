@@ -28,6 +28,9 @@ const SPEECH_LINE = 0.11
 const SPEECH_GAP = 0.04
 /** The worker's chair on the floor, at the keyboard. */
 const SEAT = new THREE.Vector3(0, 0, -SEAT_OFFSET)
+/** The chair's seat as its sitter's root sees it: its top, and its back rest's face (models/desk.py). */
+const CHAIR = { y: SEAT_Y, back: -0.34 }
+const Y = new THREE.Vector3(0, 1, 0)
 /** The second monitor, on the desk's left, turned toward the seat: what the worker last showed you. */
 export const SIDE = { width: 0.66, height: 0.41, x: -0.98, y: 1.07, z: 0.06, turn: -0.55 }
 /**
@@ -66,6 +69,8 @@ export type Desk = {
   models: Models
   look: Look
   avatar: Avatar
+  /** The chair's seat and back, swivelling with the worker as it turns. */
+  swivel: THREE.Object3D
   strip: THREE.MeshBasicMaterial
   screen: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
   /** The worker's subagents standing about its desk. */
@@ -215,7 +220,7 @@ export function dressBinder(desk: Desk, sessions: number) {
 const PAPERS = { x: -0.58, z: -0.42, sheet: { width: 0.26, depth: 0.18, thick: 0.012 }, most: 8, flag: 0.36, above: 0.4 }
 
 /** The worker in its chair at a desk's seat, its subagents, speech and the papers it hasn't read, around `furniture`. */
-function seated(card: Card, models: Models, marks: Marks, furniture: Pick<Desk, 'group' | 'strip' | 'screen' | 'side' | 'binder'>): Desk {
+function seated(card: Card, models: Models, marks: Marks, furniture: Pick<Desk, 'group' | 'swivel' | 'strip' | 'screen' | 'side' | 'binder'>): Desk {
   const look = lookOf(card.id, models.cast.slots)
   const w = avatar(models, look)
   w.root.position.copy(SEAT)
@@ -246,7 +251,7 @@ export function makeDesk(card: Card, models: Models): Desk {
   binder.position.set(BINDER.x, DESK.height, BINDER.z)
   binder.rotation.y = BINDER.turn
   group.add(binder)
-  return seated(card, models, OWN, { group, strip, screen, side, binder })
+  return seated(card, models, OWN, { group, swivel: chair.getObjectByName('swivel')!, strip, screen, side, binder })
 }
 
 /** A notebook open on a desk, its base's near edge toward -z; its screen faces the one sitting there. */
@@ -288,7 +293,7 @@ export function makeVisitor(card: Card, models: Models): Desk {
   group.add(chair)
   const book = notebook()
   group.add(book.group)
-  return seated(card, models, VISIT, { group, strip: book.strip, screen: book.screen })
+  return seated(card, models, VISIT, { group, swivel: chair.getObjectByName('swivel')!, strip: book.strip, screen: book.screen })
 }
 
 function relabel(desk: Desk, key: 'tag' | 'gist' | 'bubble', next: THREE.Sprite | undefined) {
@@ -504,10 +509,11 @@ export function poseDesk(desk: Desk, t: number, dt: number) {
   const holding = poseRaised(desk, t, SEAT)
   const turnTo = asks || holding ? Math.PI : card.waiting && card.status === 'done' ? Math.PI * 0.55 : 0
   desk.turn = ease(desk.turn, turnTo, dt * 5)
+  desk.swivel.rotation.y = desk.turn
   a.body.rotation.y = desk.turn
   const hop = asks ? Math.max(0, Math.sin(p * 5)) * 0.08 : 0
-  a.body.position.y = seatedAt(desk.models.cast, a, SEAT_Y) + hop
-  if (desk.twin) desk.twin.avatar.body.position.y = seatedAt(desk.models.cast, desk.twin.avatar, SEAT_Y / TWIN_SCALE)
+  a.body.position.copy(seatedAt(desk.models.cast, a, CHAIR).applyAxisAngle(Y, desk.turn)).add(new THREE.Vector3(0, hop, 0))
+  if (desk.twin) desk.twin.avatar.body.position.copy(seatedAt(desk.models.cast, desk.twin.avatar, { y: CHAIR.y / TWIN_SCALE, back: CHAIR.back / TWIN_SCALE }))
   desk.minis.avatars.forEach((m, i) => (m.root.position.y = desk.marks.minis.y + Math.max(0, Math.sin(p * 6 + i * 1.7)) * 0.08))
   if (desk.bubble) desk.bubble.position.set(SEAT.x + 0.32, BUBBLE_Y + Math.sin(p * 3) * 0.05 + hop, SEAT.z)
   a.bulb.color.set(statusColor(card)).multiplyScalar(card.waiting ? 0.6 + Math.abs(Math.sin(p * 4)) * 0.6 : 1)

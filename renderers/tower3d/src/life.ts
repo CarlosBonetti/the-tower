@@ -19,7 +19,7 @@ export const CAT_SPEED = 2.2
 
 /** Walking, in step with the clock, its gear in hand. */
 export function walkPose(models: Models, a: Avatar, t: number) {
-  a.body.position.y = 0
+  a.body.position.set(0, 0, 0)
   a.body.rotation.set(0, 0, 0)
   if (a.gear) a.gear.visible = true
   pose(models.cast, a.rig, WALKING(t), t)
@@ -28,7 +28,7 @@ const WALKING = (t: number): Pose => ({ layers: [{ clip: 'Walking_A', at: t }] }
 
 /** Standing about. */
 export function standPose(models: Models, a: Avatar, t: number) {
-  a.body.position.y = 0
+  a.body.position.set(0, 0, 0)
   a.body.rotation.set(0, 0, 0)
   pose(models.cast, a.rig, { layers: [{ clip: 'Idle_A', at: t }] }, t)
 }

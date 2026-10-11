@@ -60,10 +60,11 @@ capsule("cactus", 0.045, 0.1, (-0.55, DESK_H + 0.17, 0.38), leaf)
 capsule("cactus_arm", 0.025, 0.04, (-0.5, DESK_H + 0.2, 0.38), leaf)
 
 chair = empty("chair", (0, 0, SEAT_Z))
-slab("seat", (0.6, 0.09, 0.56), (0, SEAT_Y - 0.09, SEAT_Z), fabric, chair, bevel=0.035, segments=4)
-backrest = box("backrest", (0.56, 0.62, 0.08), (0, SEAT_Y + 0.38, SEAT_Z - 0.38), fabric, chair, bevel=0.035, segments=4)
+swivel = empty("swivel", (0, 0, 0), chair)
+slab("seat", (0.6, 0.09, 0.56), (0, SEAT_Y - 0.09, SEAT_Z), fabric, swivel, bevel=0.035, segments=4)
+backrest = box("backrest", (0.56, 0.62, 0.08), (0, SEAT_Y + 0.38, SEAT_Z - 0.38), fabric, swivel, bevel=0.035, segments=4)
 backrest.rotation_euler = (math.radians(-8), 0, 0)
-box("spine", (0.06, 0.4, 0.04), (0, SEAT_Y + 0.05, SEAT_Z - 0.34), frame, chair)
+box("spine", (0.06, 0.4, 0.04), (0, SEAT_Y + 0.05, SEAT_Z - 0.34), frame, swivel)
 cylinder("lift", 0.035, SEAT_Y - 0.12, (0, (SEAT_Y - 0.09) / 2 + 0.06, SEAT_Z), frame, chair, vertices=12)
 for i in range(5):
     a = i * 2 * math.pi / 5

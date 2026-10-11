@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { ADVENTURERS, BODY_PARTS, FACES, HATS, type Adventurer, type Slot } from './contract.ts'
 import { pick, rendezvous, roll } from './hashed.ts'
 import { instance, type Models } from './models.ts'
-import { RIG_SCALE, rigOf, skinned, wearModel, wearRigid, wearSkinned, type Cast, type Rig } from './rig.ts'
+import { RIG_SCALE, rigOf, seatOf, skinned, wearModel, wearRigid, wearSkinned, type Cast, type Rig, type Sitting } from './rig.ts'
 import { glowing, toonMapped } from './toon.ts'
 
 /**
@@ -71,6 +71,8 @@ export type Avatar = {
   /** What it carries in its right hand while it stands, if anything. */
   gear?: THREE.Object3D
   bulb: THREE.MeshBasicMaterial
+  /** How its body sits (`seatOf`): the lowest of its parts under it, the furthest back of them behind it. */
+  seat: Sitting
 }
 
 /** The atlas cells a skin and hair colour replace: each adventurer paints faces in its first swatch, hair in its second. */
@@ -195,11 +197,25 @@ function bot(models: Models, rig: Rig, look: Extract<Look, { species: 'bot' }>):
 /** How much bigger than life what a worker holds is drawn, to read in its big hands. */
 const HELD_SCALE = 1.8
 
-/** How far above a chair's seat a seated worker's hips are, rig units. */
-const HIPS_ON_SEAT = 0.2
+/**
+ * A seat in the space of the root of whoever sits on it, facing +z: its top's height, and the z of its back rest's
+ * face. Without a back rest the hips sit over the seat's middle.
+ */
+export type Seat = { y: number; back?: number }
 
-/** How high `a`'s body rises in its root to sit on a seat `seat` high (in its root's space). */
-export const seatedAt = (cast: Cast, a: Avatar, seat: number) => seat + (HIPS_ON_SEAT - cast.seatedHips) * a.rig.root.scale.y
+/** Where `a`'s body stands in its root to sit on `seat`: its underside on the top, its back against the back rest. */
+export function seatedAt(cast: Cast, a: Avatar, seat: Seat) {
+  const s = a.rig.root.scale
+  const { hips } = cast.seated
+  return new THREE.Vector3(-hips.x * s.x, seat.y - a.seat.under * s.y, seat.back === undefined ? -hips.z * s.z : seat.back - a.seat.back * s.z)
+}
+
+/** How the skinned parts on a rig sit together: the lowest underside and the furthest back. */
+function sittingOf(cast: Cast, rig: Rig): Sitting {
+  const sits: Sitting[] = []
+  rig.root.traverse((o) => o instanceof THREE.SkinnedMesh && sits.push(seatOf(cast, o.geometry)))
+  return { under: Math.min(...sits.map((s) => s.under)), back: Math.min(...sits.map((s) => s.back)) }
+}
 
 /** A worker dressed in its look, standing at the origin, facing +z. */
 export function avatar(models: Models, look: Look): Avatar {
@@ -221,5 +237,5 @@ export function avatar(models: Models, look: Look): Avatar {
   hand.rotation.z = Math.PI / 2
   hand.scale.setScalar(HELD_SCALE / RIG_SCALE)
   rig.bone('handslotr').add(hand)
-  return { root, body, rig, hand, gear: dressed.gear, bulb: dressed.bulb }
+  return { root, body, rig, hand, gear: dressed.gear, bulb: dressed.bulb, seat: sittingOf(models.cast, rig) }
 }

@@ -203,7 +203,7 @@ const MOVES: ClipKey[] = ['Cheering', 'Jump_Idle', 'Waving', 'Cheering:arms']
 function dance(g: Guest, at: number, t: number) {
   const beat = at + g.phase
   const { body, rig } = g.avatar
-  body.position.y = Math.abs(Math.sin(beat * Math.PI)) * 0.06
+  body.position.set(0, Math.abs(Math.sin(beat * Math.PI)) * 0.06, 0)
   body.rotation.set(0, Math.sin(beat * Math.PI * 0.25) * 0.5, 0)
   const move = MOVES[(Math.floor(beat / 8) + Math.floor(g.phase * MOVES.length)) % MOVES.length]
   const layers = move.endsWith(':arms') ? [{ clip: 'Jump_Idle:rest', at: beat } as const, onBeat(g.models.cast, move, beat)] : [onBeat(g.models.cast, move, beat)]
@@ -218,7 +218,7 @@ function drink(g: Guest, since: number, t: number) {
   const cycle = (since + g.phase * SIP.every) % (SIP.every + g.phase * 2)
   const lift = cycle < SIP.takes ? Math.sin((cycle / SIP.takes) * Math.PI) : 0
   const { body, rig } = g.avatar
-  body.position.y = seatedAt(g.models.cast, g.avatar, 0)
+  body.position.copy(seatedAt(g.models.cast, g.avatar, { y: 0 }))
   body.rotation.set(0, 0, 0)
   pose(g.models.cast, rig, { layers: [{ clip: 'Sit_Chair_Idle:rest', at: since + g.phase * 3 }, { clip: 'Holding_A:arms', at: since, weight: 1 - lift }, { clip: 'Use_Item:arms', at: 0.6, weight: lift }] }, t)
 }
@@ -227,7 +227,7 @@ function drink(g: Guest, since: number, t: number) {
 function mingle(g: Guest, since: number, t: number) {
   const talk = Math.max(0, Math.sin(since * 0.9 + g.phase * 7))
   const { body, rig } = g.avatar
-  body.position.y = 0
+  body.position.set(0, 0, 0)
   body.rotation.set(0, Math.sin(since * 0.4 + g.phase * 5) * 0.25, 0)
   const at = since + g.phase * 4
   pose(g.models.cast, rig, { layers: [{ clip: 'Idle_B:rest', at }, { clip: 'Idle_B:arms', at, weight: 1 - talk }, { clip: 'Interact:arms', at: since, weight: talk }] }, t)

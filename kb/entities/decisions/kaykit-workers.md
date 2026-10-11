@@ -16,6 +16,8 @@
     "hub/renderers/tower3d/src/rig.ts#wearModel",
     "hub/renderers/tower3d/src/avatar.ts#lookOf",
     "hub/renderers/tower3d/src/avatar.ts#avatar",
+    "hub/renderers/tower3d/src/avatar.ts#seatedAt",
+    "hub/renderers/tower3d/src/rig.ts#seatOf",
     "hub/renderers/tower3d/src/contract.ts#CLIPS",
     "hub/renderers/tower3d/src/contract.ts#ADVENTURER_PARTS",
     "hub/renderers/tower3d/models/bot.py",
@@ -90,6 +92,13 @@ keep theirs, whatever the order of the GLB's names. Bots don't wear
   up a showing, the seated clip leaned back watching or slumped idle or failed
   ([`poseDesk`](ref:hub/renderers/tower3d/src/desk.ts#poseDesk)); `Walking_A` walking in and out; on the roof,
   dances changing every two bars on the music's beat, sitting at the bar with a beer, mingling with `Interact`.
+- Seats are measured, not tuned. The seated clip puts the hips 0.4 rig units behind the rig's root, so a body is
+  placed by what it sits on: [`seatOf`](ref:hub/renderers/tower3d/src/rig.ts#seatOf) skins each part's vertices
+  into the clip's first frame and keeps the lowest point of what bears on the seat (hips and thighs) and the back of
+  what leans on a back rest (hips, spine, chest); [`seatedAt`](ref:hub/renderers/tower3d/src/avatar.ts#seatedAt)
+  puts that underside on the seat's top and that back against the back rest's face, or the hips over a stool's
+  middle. Every body, bot or outfit sits by its own mesh. The office chair's seat and back are a `swivel` pivot
+  (`models/desk.py`) turned with the worker, about the post, so a worker turned round to you stays in its chair.
 
 **Alternatives considered.**
 - *Kenney Mini Characters*: lighter, but a seven-bone rig with no elbows or knees.
@@ -114,7 +123,7 @@ keep theirs, whatever the order of the GLB's names. Bots don't wear
 **Impact.** On `?board=busy&seed=1` (stepped, lit): draw calls 578 → 574 on a floor, 1272 → 1212 in the overview,
 468 → 466 on the roof; frame time on a floor 3.5 → 4.4 ms (medians of three, the same afternoon), of which posing
 only the levels drawn won back 0.4 ms. A reviewer sits 1.2 m beside its author and a fork's twin 1.05 m, clear of
-the wider bodies; seated heads top 1.84 m, over the 1.6 m eye, so from behind a worker what lies in front of it on
+the wider bodies; seated heads top about 1.75 m, over the 1.6 m eye, so from behind a worker what lies in front of it on
 the desk is aimed past its head, not through it. Every worker looks different from before, so `tool:frames` shows every stage with a worker
 changed. `npm test` checks both GLBs hold the contract's parts, bones and clips, and that `parts.glb`'s parts are named
 after a slot, painted in an atlas and hung on the clips' bones or the pack's skin. The repo grew by 1.1 MB (1.5 MB of

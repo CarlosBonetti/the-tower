@@ -40,8 +40,11 @@ export type Cast = {
   inverses: THREE.Matrix4[]
   atlases: Map<Adventurer, THREE.Texture>
   clips: Map<ClipKey, THREE.AnimationClip>
-  /** The hips' height in a chair, rig units: where the seat lifts a seated worker from. */
-  seatedHips: number
+  /**
+   * The rig seated (the sit clip's first frame), in rig units: where its hips are, and each joint's skinning matrix,
+   * which carries a skinned part's rest vertex to where it sits (`seatOf`).
+   */
+  seated: { hips: THREE.Vector3; skin: THREE.Matrix4[] }
 }
 
 const parse = (bytes: Uint8Array) =>
@@ -134,10 +137,52 @@ export async function loadCast(): Promise<Cast> {
   for (const name of CLIPS) clips.set(name, rig.animations.find((a) => a.name === name)!)
   clips.set('Type', typing(bones, clips.get('Sit_Chair_Idle')!))
   for (const [name, clip] of [...clips]) for (const part of ['arms', 'rest'] as const) clips.set(`${name}:${part}` as ClipKey, cut(clip, part))
-  const seated = SkeletonUtils.clone(bones)
-  new THREE.AnimationMixer(seated).clipAction(clips.get('Sit_Chair_Idle')!).play().getMixer().update(0)
-  seated.updateMatrixWorld(true)
-  return { bones, parts, slots, merged: new Map(), joints: skeleton.bones.map((b) => b.name), inverses: skeleton.boneInverses, atlases, clips, seatedHips: seated.getObjectByName('hips')!.getWorldPosition(new THREE.Vector3()).y }
+  const joints = skeleton.bones.map((b) => b.name)
+  const sitting = SkeletonUtils.clone(bones)
+  new THREE.AnimationMixer(sitting).clipAction(clips.get('Sit_Chair_Idle')!).play().getMixer().update(0)
+  sitting.updateMatrixWorld(true)
+  const seated = {
+    hips: sitting.getObjectByName('hips')!.getWorldPosition(new THREE.Vector3()),
+    skin: joints.map((n, i) => sitting.getObjectByName(n)!.matrixWorld.clone().multiply(skeleton.boneInverses[i])),
+  }
+  return { bones, parts, slots, merged: new Map(), joints, inverses: skeleton.boneInverses, atlases, clips, seated }
+}
+
+/** The joints a seated body bears on: its pelvis and thighs on the seat, its back against a back rest. */
+const ON_SEAT = new Set(['hips', 'upperlegl', 'upperlegr'])
+const ON_BACK = new Set(['hips', 'spine', 'chest'])
+
+const seats = new WeakMap<THREE.BufferGeometry, Sitting>()
+
+/**
+ * How a skinned part sits, in rig units: the lowest point of what bears on the seat, and the back of what leans on a
+ * back rest (the least z), each vertex counted with the joint that moves it most.
+ */
+export type Sitting = { under: number; back: number }
+
+export function seatOf(cast: Cast, geometry: THREE.BufferGeometry): Sitting {
+  if (!seats.has(geometry)) {
+    const { position, skinIndex, skinWeight } = geometry.attributes
+    const v = new THREE.Vector3()
+    const at = new THREE.Vector3()
+    let under = Infinity
+    let back = Infinity
+    for (let i = 0; i < position.count; i++) {
+      let most = 0
+      for (let k = 1; k < 4; k++) if (skinWeight.getComponent(i, k) > skinWeight.getComponent(i, most)) most = k
+      const joint = cast.joints[skinIndex.getComponent(i, most)]
+      if (!ON_SEAT.has(joint) && !ON_BACK.has(joint)) continue
+      at.set(0, 0, 0)
+      for (let k = 0; k < 4; k++) {
+        const w = skinWeight.getComponent(i, k)
+        if (w) at.addScaledVector(v.fromBufferAttribute(position, i).applyMatrix4(cast.seated.skin[skinIndex.getComponent(i, k)]), w)
+      }
+      if (ON_SEAT.has(joint)) under = Math.min(under, at.y)
+      if (ON_BACK.has(joint)) back = Math.min(back, at.z)
+    }
+    seats.set(geometry, { under, back })
+  }
+  return seats.get(geometry)!
 }
 
 /** A worker's copy of the bones and the mixer that poses them. */
