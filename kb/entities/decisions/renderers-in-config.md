@@ -2,12 +2,12 @@
 {
   "type": "decision",
   "name": "Renderers are declared in the config, served at /r/<name>/",
-  "summary": "A renderer is a directory of built files the tower serves at /r/<name>/ at its origin. The core declares page (the tower page) and tower3d; the config's renderers add to them or override their fields, renderer picks what / opens, and each renderer's settings pass through unread. Available is derived: the entry exists. A shelf entry { renderer: <name> } frames a declared renderer in the tower page, settings and all.",
+  "summary": "A renderer is a directory of built files the tower serves at /r/<name>/ at its origin. The core declares page (the tower page), week (The Week) and tower3d; the config's renderers add to them or override their fields, renderer picks what / opens, and each renderer's settings pass through unread. Available is derived: the entry exists. A shelf entry { renderer: <name> } frames a declared renderer in the tower page, settings and all.",
   "in": "tower",
   "status": "accepted",
   "date": "2026-10-08",
   "reviewed": "2026-10-11",
-  "refs": ["hub/src/shared/model.ts#ShelfEntry", "hub/src/renderers.ts#renderersOf", "hub/src/renderers.ts#defaultRenderer", "hub/src/renderers.ts#rendererFile", "hub/src/shared/model.ts#RendererConfig", "hub/src/tower/server.ts#rendered", "hub/src/tower/server.ts#home", "hub/src/tower/server.ts#renderersRead", "hub/src/tower/tower.js", "hub/src/shared/cards.ts#renderersHtml", "hub/renderers/tower3d/src/acts.ts#catName"]
+  "refs": ["hub/src/shared/model.ts#ShelfEntry", "hub/src/renderers.ts#renderersOf", "hub/src/renderers.ts#defaultRenderer", "hub/src/renderers.ts#rendererFile", "hub/src/shared/model.ts#RendererConfig", "hub/src/tower/server.ts#rendered", "hub/src/tower/server.ts#home", "hub/src/tower/server.ts#renderersRead", "hub/src/tower/tower.js", "hub/renderers/week/week.js", "hub/src/shared/cards.ts#renderersHtml", "hub/renderers/tower3d/src/acts.ts#catName"]
 }
 ---
 **Problem.** Renderers could only live on a project's shelf. Tower 3D reached the user because their config put a
@@ -21,7 +21,9 @@ update of the core never touches it.
 **How.**
 - *The config.* `renderers: { <name>: { root, entry?, settings? } }` and `renderer: <name>`. `root` is the absolute
   directory of the renderer's built files, `entry` its page in it (`index.html`). The core declares `page`
-  (`renderers/page/`, the tower page) and `tower3d` (`renderers/tower3d/out/`); a config entry under a built-in's name
+  (`renderers/page/`, the tower page), `week` (`renderers/week/`, The Week: a plain page, the budget week as a
+  yearbook, stepping back by weeks that end at a reset, `#<YYYY-MM-DD>` naming one) and `tower3d`
+  (`renderers/tower3d/out/`); a config entry under a built-in's name
   overrides its fields, so `{ "tower3d": { "settings": … } }` keeps the root
   ([`renderersOf`](ref:hub/src/renderers.ts#renderersOf)). `renderer` defaults to `page`; naming none is a config
   error ([`defaultRenderer`](ref:hub/src/renderers.ts#defaultRenderer)).

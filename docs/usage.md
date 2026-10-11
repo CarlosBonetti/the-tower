@@ -69,6 +69,6 @@ entries, then `tower config check`. See [config.md](config.md).
 
 ## Your own renderer
 
-The tower page and Tower 3D are two renderers of the same board. Write your own, or copy one of them out of the
+The tower page, Tower 3D and The Week (`/r/week/`, the budget week as a yearbook) are three renderers of the same board. Write your own, or copy one of them out of the
 checkout and change it: [extending.md](extending.md) has the recipe, and every other way to extend the tower. A worker
 can build one for you: "make a renderer that shows every floor as a kanban board".
