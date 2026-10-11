@@ -11,9 +11,10 @@
  * full bundle (https://kaylousberg.itch.io/) over it.
  *
  *   tsx scripts/tower3d-kit.ts                      build out/kaykit/kit.kaykit
- *   tsx scripts/tower3d-kit.ts vendor <bundle>      replace renderers/tower3d/kaykit with the models the office uses
+ *   tsx scripts/tower3d-kit.ts vendor <bundle>      replace the bundle files in renderers/tower3d/kaykit with the models
+ *                                                   the office uses (its Characters/ stay: scripts/tower3d-characters.ts)
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
 import { fit, worldBox, type Vec3 } from '../renderers/kaykit/src/catalog.ts'
@@ -50,13 +51,20 @@ The models Tower 3D draws, copied unchanged from the KayKit Bits Bundle 1 (1.1) 
 the bundle's.
 
 \`npm run tower3d\` measures them into the renderer's kit. When the office takes a model this folder lacks, copy
-the models it uses from a full bundle: \`tsx scripts/tower3d-kit.ts vendor <bundle>\`.
+the models it uses from a full bundle: \`tsx scripts/tower3d-kit.ts vendor <bundle>\`. \`Characters/\` holds what
+the workers are made of, from two other KayKit packs (its own README).
 `
 
-/** Replaces the vendored folder with the files measuring `ids` reads from the bundle at `bundle`, its license and a README. */
+/** The vendored folder's characters, which another script vendors (scripts/tower3d-characters.ts). */
+const CHARACTERS = 'Characters'
+
+/**
+ * Replaces the vendored bundle files with those measuring `ids` reads from the bundle at `bundle`, its license and a
+ * README, leaving the characters be.
+ */
 function vendor(bundle: string) {
   if (!existsSync(bundle)) throw new Error(`no KayKit Bits bundle at ${bundle}`)
-  rmSync(VENDORED, { recursive: true, force: true })
+  for (const entry of readdirSync(VENDORED)) if (entry !== CHARACTERS) rmSync(path.join(VENDORED, entry), { recursive: true, force: true })
   const files = [...sourceFiles(bundle, ids), 'License.txt']
   for (const file of files) {
     mkdirSync(path.dirname(path.join(VENDORED, file)), { recursive: true })

@@ -11,6 +11,37 @@ export const HATS = ['hat_beanie', 'hat_cap', 'hat_crown', 'hat_bow', 'hat_flowe
 export const FACES = ['face_glasses', 'face_shades']
 
 /**
+ * KayKit's `Rig_Medium`, the skeleton every worker stands on, by the names three.js gives its bones (glTF's `hand.r`
+ * is `handr`). Clips move them; the bot's parts ride them.
+ */
+export const BONES = [
+  'root', 'hips', 'spine', 'chest', 'head',
+  'upperarml', 'lowerarml', 'wristl', 'handl', 'handslotl', 'upperarmr', 'lowerarmr', 'wristr', 'handr', 'handslotr',
+  'upperlegl', 'lowerlegl', 'footl', 'toesl', 'upperlegr', 'lowerlegr', 'footr', 'toesr',
+] as const
+export type Bone = (typeof BONES)[number]
+
+/** The KayKit Adventurers whose bodies, heads and atlases a worker is dressed from. */
+export const ADVENTURERS = ['Knight', 'Mage', 'Rogue', 'Barbarian'] as const
+export type Adventurer = (typeof ADVENTURERS)[number]
+
+/** The skinned parts every adventurer has, named `<Adventurer>_<part>`. */
+export const BODY_PARTS = ['Body', 'ArmLeft', 'ArmRight', 'LegLeft', 'LegRight'] as const
+/** Heads, each in its adventurer's atlas: the rogue's comes hooded too. */
+export const HEADS = ['Knight_Head', 'Mage_Head', 'Rogue_Head', 'Rogue_Head_Hooded', 'Barbarian_Head'] as const
+/** Rigid parts on the head bone, and capes on the chest bone. */
+export const HELMS = ['Knight_Helmet', 'Mage_Hat', 'Barbarian_Hat'] as const
+export const CAPES = ['Knight_Cape', 'Mage_Cape', 'Rogue_Cape', 'Barbarian_Cape'] as const
+/** Gear held in the right hand (`handslotr`), out while a worker stands. */
+export const GEAR = ['Mug', '1H_Wand', 'Spellbook', '1H_Sword', '1H_Axe', 'Knife'] as const
+
+export const ADVENTURER_PARTS = [...ADVENTURERS.flatMap((a) => BODY_PARTS.map((p) => `${a}_${p}`)), ...HEADS, ...HELMS, ...CAPES, ...GEAR]
+
+/** KayKit's own clips on `Rig_Medium` (Character Animations 1.1) that poses play. */
+export const CLIPS = ['Idle_A', 'Idle_B', 'Walking_A', 'Sit_Chair_Idle', 'Cheering', 'Waving', 'Jump_Idle', 'Interact', 'Use_Item', 'Working_A', 'Holding_A'] as const
+export type ClipName = (typeof CLIPS)[number]
+
+/**
  * A worker: pivots `body`, `arm_L` and `arm_R` that poses move, anchors `hat` (the top of its head) and `face`
  * (between its eyes) for what it wears, `hand_R` (in its right hand, under `arm_R`) for what it holds, and its status
  * light. Parts in the worker's hue (`hue_own`) are optional.

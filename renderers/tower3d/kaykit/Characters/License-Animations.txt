@@ -1,0 +1,17 @@
+	KayKit : Character Animations (1.1)
+
+	Created/distributed by Kay Lousberg (www.kaylousberg.com)
+	https://kaylousberg.itch.io/kaykit-character-animations
+
+			------------------------------
+
+	License: (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	This content is free to use in personal, educational and commercial projects.
+	If you wish to credit me you can do so by crediting "Kay Lousberg, www.kaylousberg.com" (this is not mandatory)
+
+			------------------------------
+
+	The pack's store page lists its asset license as "Creative Commons Zero v1.0 Universal". The lines above are
+	those of the pack's License.txt; the store page asks that unmodified copies not be resold or claimed as one's own.
