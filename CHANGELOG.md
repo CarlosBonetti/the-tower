@@ -12,6 +12,26 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.26.0
+
+Tower 3D's looks are data, and a character creator dresses them by hand. No host restart, no config change, the
+renderer API is unchanged. Rebuild Tower 3D (`npm run tower3d`) and reload it.
+
+- The wardrobe: `renderers/tower3d/wardrobe.json`, checked as Tower 3D loads. **Fits** move, turn and scale a worn
+  piece over where it was made, by default and per head (or any part worn with it). **Outfits** are named looks (the
+  roof's bartender and DJ among them). The **mix** is how the rest are hashed: the bot's share, each slot's chance and
+  pool, and the palettes. Parts are a catalogue derived from the models, so a new part needs no code; the old hats and
+  glasses are ordinary parts in a new `Hat` slot and in `Face`.
+- Bodies, colours and hats are chosen by rendezvous like the other parts, so a part, colour or outfit added re-dresses
+  only the workers it wins. This re-dresses the floor once.
+- Hats sit on each head and glasses on the eyes; the glasses' and shades' temples reach the ears, and the glasses
+  weigh a quarter of what they did.
+- The dresser, `renderers/tower3d/dresser.html`: start from a body or randomize, pick a part per slot and colours from
+  the palettes, pose the worker (seated in the office chair, typing, walking, dancing), and fit a piece with a gizmo
+  (T, R, S) on every head of a line-up, each head saving its own fit. Keep looks as outfits, see what a save changes
+  before it writes, and read the worker's draw calls and triangles. `npm run tool:dresser -- serve` opens it with saving
+  to the file; `tool:dresser shot` renders it for agents.
+
 ## v1.25.2
 
 v1.25.1's fix, read as `window.origin`: the same origin in a browser, and what the tower's checks run (v1.25.1 failed
