@@ -155,7 +155,7 @@ function figure(l: Look): Figure {
   return { group, avatar: a, chair, look: l }
 }
 
-const SPACING = 0.95
+const SPACING = 0.8
 
 /** The stand dressed in the look: one worker, or one per head side by side, the look's own head in the middle. */
 function restage() {
@@ -201,8 +201,10 @@ const PANELS = 2 * 312
 function frame(free = Math.max(0.3, (innerWidth - PANELS) / innerWidth)) {
   stand.updateMatrixWorld(true)
   const box = new THREE.Box3()
-  if (view === 'face') for (const f of figures) box.expandByPoint(f.avatar.rig.bone('head').getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.1, 0))).expandByScalar(0.45)
-  else for (const f of figures) box.expandByObject(f.avatar.root).union(f.chair.visible ? new THREE.Box3().setFromObject(f.chair) : new THREE.Box3())
+  if (view === 'face') {
+    for (const f of figures) box.expandByPoint(f.avatar.rig.bone('head').getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.1, 0)))
+    box.expandByScalar(0.45)
+  } else for (const f of figures) box.expandByObject(f.avatar.root).union(f.chair.visible ? new THREE.Box3().setFromObject(f.chair) : new THREE.Box3())
   const center = box.getCenter(new THREE.Vector3())
   const size = box.getSize(new THREE.Vector3())
   const dir = new THREE.Vector3(...VIEWS[view]).normalize()
