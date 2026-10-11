@@ -9,6 +9,7 @@ import { mkdirSync, readFileSync } from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import * as pty from '@lydell/node-pty'
+import { endOnReadError } from '../shared/pty.ts'
 import headless from '@xterm/headless'
 import { serializer, type Terminal } from '../bridge/screen.ts'
 import { withoutParentSession, withoutTerminal } from '../shared/env.ts'
@@ -69,6 +70,7 @@ function spawnShell({ project: projectId, cwd, cols, rows }: Extract<ToTerms, { 
     screen.write(data)
     broadcast(s, { t: 'o', data })
   })
+  endOnReadError(proc, `shell ${id}`)
   proc.onExit(({ exitCode }) => {
     broadcast(s, { t: 'x', exitCode })
     screen.dispose()
