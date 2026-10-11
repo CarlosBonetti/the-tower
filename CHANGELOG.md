@@ -12,6 +12,22 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.25.0
+
+Tower 3D's workers are KayKit characters. No host restart, no config change, the renderer API is unchanged. Rebuild
+Tower 3D (`npm run tower3d`) and reload it.
+
+- Every worker is a KayKit adventurer on one rig (CC0), posed by KayKit's clips on the sim clock: typing at its desk,
+  walking in and out, beside its author as a reviewer, dancing and serving on the roof. Its look is hashed from its
+  session: a body, a head, hair, helm, cape and gear shown or swapped, its colours. The robot stays, on the same bones;
+  the bean and the puff retire. A new pose fades in over the last.
+- A worker sits by its own mesh, on the seat and against the back rest, and the office chair swivels with it when it
+  turns to you. What it wears (glasses, the bartender's cap, the DJ's shades) fits its head.
+- A parts kit to make new looks: `renderers/tower3d/parts/parts.blend`, five bodies wearing every part at once, the
+  kit's atlases wired; `npm run tower3d:parts` exports what you model there into Tower 3D, refusing a part with what
+  to fix. A part's slot is its name's prefix, so a new part needs no code, and adding one dresses only the share of
+  workers it wins. Its README walks the loop.
+
 ## v1.24.1
 
 A renderer opens framed. No host restart, no config change, the renderer API is unchanged. Restart the tower
