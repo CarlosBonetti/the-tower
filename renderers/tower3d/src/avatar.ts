@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { ADVENTURERS, BODY_PARTS, FACES, HATS, type Adventurer, type Slot } from './contract.ts'
+import { pick, rendezvous, roll } from './hashed.ts'
 import { instance, type Models } from './models.ts'
 import { RIG_SCALE, rigOf, skinned, wearModel, wearRigid, wearSkinned, type Cast, type Rig } from './rig.ts'
 import { glowing, toonMapped } from './toon.ts'
@@ -21,15 +22,6 @@ const WEAR_COLORS = ['#ff6b6b', '#ffd166', '#06d6a0', '#4cc9f0', '#b388ff', '#f7
 export const SKINS = ['#f6cfb0', '#efbf98', '#d9a077', '#bd8259', '#9a6340', '#734628', '#4f2f1c']
 export const HAIRS = ['#2b2522', '#4a3021', '#7a4b2a', '#c99a55', '#e2c784', '#a8452a', '#b9b4ae', '#f2efe9', '#4f7cff', '#e05fa8', '#3fb489']
 
-const hash = (s: string) => {
-  let h = 2166136261
-  for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0
-  return h
-}
-/** A number in [0, 1) for `id`, its own for each `what`. */
-export const roll = (id: string, what: string) => hash(`${id}#${what}`) / 2 ** 32
-export const pick = <T>(xs: readonly T[], r: number) => xs[Math.floor(r * xs.length)]
-
 /** A worker's own color, hashed from its session id: who it is. Its status shows on its bulb, bubble and pose. */
 export const hueOf = (id: string) => {
   let h = 0
@@ -38,10 +30,11 @@ export const hueOf = (id: string) => {
 }
 
 /**
- * A worker's look, hashed from its session id: the same on every board and every reload while `slots` (the cast's)
- * hold the same parts. One in five is a bot. An adventurer takes its body from one adventurer, now and then repainted
- * in another's atlas, a head that may be another's, maybe a helm or a cape, a face piece, a prop or an outfit, maybe
- * gear in hand, and a skin and hair colour of its own.
+ * A worker's look, hashed from its session id: the same on every board and every reload. One in five is a bot. An
+ * adventurer takes its body from one adventurer, now and then repainted in another's atlas, a head that may be
+ * another's, maybe a helm or a cape, a face piece, a prop or an outfit, maybe gear in hand, and a skin and hair colour
+ * of its own. Whether it wears something in a slot is a roll of its own; which part, the `rendezvous` of the slot's
+ * (the cast's `slots`): a part added to a slot dresses only the share of its wearers it wins, the rest keep theirs.
  */
 export function lookOf(id: string, slots: Record<Slot, readonly string[]>): Look {
   const r = (what: string) => roll(id, what)
@@ -49,22 +42,22 @@ export function lookOf(id: string, slots: Record<Slot, readonly string[]>): Look
   const wear = pick(WEAR_COLORS, r('wear'))
   const faced = r('face') < 0.25
   if (r('species') < 0.2) return { species: 'bot', hue: `#${hueOf(id).getHexString()}`, hat: r('hat') < 0.55 ? pick(HATS, r('which hat')) : undefined, face: faced ? pick(FACES, r('which face')) : undefined, wear, build }
-  const face = faced ? pick([...FACES, ...slots.Face], r('which face')) : undefined
-  const some = (slot: Slot, chance: number) => (slots[slot].length > 0 && r(slot) < chance ? pick(slots[slot], r(`which ${slot}`)) : undefined)
+  const face = faced ? rendezvous(id, 'face', [...FACES, ...slots.Face]) : undefined
+  const some = (slot: Slot, chance: number) => (slots[slot].length > 0 && r(slot) < chance ? rendezvous(id, slot, slots[slot]) : undefined)
   const body = pick(ADVENTURERS, r('body'))
   const paint = r('repaint') < 0.3 ? pick(ADVENTURERS, r('paint')) : body
-  const head = r('head') < 0.4 ? pick(slots.Head, r('which head')) : `${body}_Head`
+  const head = r('head') < 0.4 ? rendezvous(id, 'head', slots.Head) : `${body}_Head`
   const hooded = head === 'Rogue_Head_Hooded'
   const hatRoll = r('hat')
-  const helm = !hooded && hatRoll < 0.2 ? pick(slots.Helm, r('which helm')) : undefined
+  const helm = !hooded && hatRoll < 0.2 ? rendezvous(id, 'helm', slots.Helm) : undefined
   const hat = !hooded && !helm && hatRoll < 0.45 ? pick(HATS, r('which hat')) : undefined
-  const cape = r('cape') < 0.2 ? pick(slots.Cape, r('which cape')) : undefined
+  const cape = r('cape') < 0.2 ? rendezvous(id, 'cape', slots.Cape) : undefined
   const made = face !== undefined && slots.Face.includes(face)
   const parts: Part[] = [
     ...BODY_PARTS.map((p) => ({ name: `${body}_${p}`, atlas: paint })),
     ...[head, helm, cape, made ? face : undefined, some('Prop', 0.25), some('Outfit', 0.3)].filter((p) => p !== undefined).map((name) => ({ name })),
   ]
-  const gear = r('gear') < 0.35 ? pick(slots.Gear, r('which gear')) : undefined
+  const gear = r('gear') < 0.35 ? rendezvous(id, 'gear', slots.Gear) : undefined
   return { species: 'adventurer', parts, gear, skin: pick(SKINS, r('skin')), hair: pick(HAIRS, r('hair')), hat, face: made ? undefined : face, wear, build }
 }
 

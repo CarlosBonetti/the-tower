@@ -28,7 +28,9 @@
     "hub/renderers/tower3d/parts/README.md",
     "hub/renderers/tower3d/parts/build.py",
     "hub/renderers/tower3d/parts/export.py",
-    "hub/scripts/tower3d-parts.ts"
+    "hub/scripts/tower3d-parts.ts",
+    "hub/renderers/tower3d/src/hashed.ts#rendezvous",
+    "hub/test/rendezvous.test.ts"
   ],
   "links": [
     { "to": "office-kaykit", "verb": "uses", "carries": "the vendored KayKit folder, its characters beside the office's Bits" },
@@ -78,7 +80,10 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   material), refusing with the fix what the runtime could not wear. A part's name starts with its slot
   ([`SLOTS`](ref:hub/renderers/tower3d/src/contract.ts#SLOTS): `Head`, `Helm`, `Face`, `Cape`, `Gear`, `Prop`,
   `Outfit`); `loadCast` reads `parts.glb` beside the pack and every slot's pool is the pack's parts then the made
-  ones, so a part reaches looks with no code, and adding one reshuffles who wears what in its slot. Bots don't wear
+  ones, so a part reaches looks with no code. Whether a worker wears something in a slot is its own roll; which
+part is the rendezvous of the pool ([`rendezvous`](ref:hub/renderers/tower3d/src/hashed.ts#rendezvous): the part
+scoring highest for the worker), so a part added to a slot of N takes about one in N+1 of its wearers and the rest
+keep theirs, whatever the order of the GLB's names. Bots don't wear
   them. Examples to copy: round glasses, a headset, a coffee mug, a vest cut from the Knight's body keeping its
   weights.
 - Poses: at the desk, `Type` while working, `Waving:arms` while asking (turned round), `Cheering:arms` while holding
@@ -99,6 +104,10 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
 - *The slot in glTF extras, or in a list in code*: the name is what the Outliner, the contract test and the runtime
   all read; a list would have to be edited for every part.
 - *A rig per body in the `.blend`*: a part would need copying onto each; instances of `Wardrobe` show it on all.
+- *A `none` candidate in each slot's rendezvous* (TURING-72's first suggestion): at equal weight the bare share
+  shrinks with every part added (1 in N+1); weighted to hold it, its weight changes with N and moves workers. A roll
+  of its own for wearing keeps both stable.
+- *Picking by index into the pool* (the first cut): every part added re-dressed most of a slot's wearers.
 - *Blender's export as the runtime's file*: its skin orders joints its own way; normalizing keeps one skeleton and
   lets skinned made parts merge with the pack's into one mesh.
 

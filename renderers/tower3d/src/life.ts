@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { act } from './acts.ts'
-import { avatar, lookOf, pick, roll, type Avatar } from './avatar.ts'
+import { avatar, lookOf, type Avatar } from './avatar.ts'
+import { pick, roll } from './hashed.ts'
 import type { Desk } from './desk.ts'
 import { DESK, WALL, carBox, colliders, coreFront, danceSpot, floorOfProject, levelY, partySpots, rateLimitBoxes, walkway, type Box, type Level, type Plan } from './layout.ts'
 import type { Card } from './api.ts'

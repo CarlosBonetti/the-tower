@@ -36,6 +36,9 @@ A part is one mesh object in its slot's collection, named `<Slot>_<Name>` with l
 The examples are one of each kind to copy: `Face_RoundGlasses`, `Helm_Headset` (three swatches), `Gear_CoffeeMug`
 (held as the pack's Mug is) and `Outfit_Vest`, cut from the Knight's body and pushed out, keeping its weights.
 
+A first exercise: the headset's mic boom runs straight forward from the ear cup. Bend it toward the mouth (Edit Mode,
+select the boom's far end and the mic, rotate about the cup), export, and look at it on the line-up and in Tower 3D.
+
 ## Making a part
 
 1. **Open** `renderers/tower3d/parts/parts.blend` in Blender (5.2).
@@ -59,8 +62,10 @@ Neither stops a part from exporting.
 
 ## What changes in Tower 3D
 
-Each look hashes, from a worker's session id, whether it wears something in a slot and which: a part joins its
-slot's pool, so a new part shows up on some workers, and adding one reshuffles who wears what in that slot. The bots
+Each look hashes, from a worker's session id, whether it wears something in a slot, and which part of the slot's
+pool: the part scoring highest for that worker (rendezvous hashing, `hashed.ts`). A new part takes about one in N+1 of
+the slot's wearers (N parts before it) and everyone else keeps what they wore; removing a part re-dresses only its
+wearers. How many workers wear something in a slot never changes with the pool. The bots
 wear only their own hats and faces (`models/wear.py`). A part is drawn at the size it was made: a worker's build
 scales it with the body.
 

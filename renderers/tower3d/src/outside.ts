@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { skyAt, type Sky } from '../../../src/shared/design.ts'
-import { pick, roll } from './avatar.ts'
+import { pick, roll } from './hashed.ts'
 import { random } from './random.ts'
 import { glows } from './toon.ts'
 import { LAYERS, skyline, type Layer } from './exterior/skyline.ts'

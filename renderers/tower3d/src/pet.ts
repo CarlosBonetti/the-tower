@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { roll } from './avatar.ts'
+import { roll } from './hashed.ts'
 import type { Stroke } from './hands.ts'
 import type { Cat, CatName } from './life.ts'
 
