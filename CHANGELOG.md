@@ -12,6 +12,16 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.24.1
+
+A renderer opens framed. No host restart, no config change, the renderer API is unchanged. Restart the tower
+(`tower down tower && tower up tower`).
+
+- A renderer shown beside a worker, framed at the tower's origin, waited forever for a relay: `tower.js` now relays
+  only when its page is framed at an origin of its own, and otherwise calls the routes itself.
+- A renderer framed on a shelf runs at an opaque origin, where its ES modules (The Week's) were refused by CORS: a
+  renderer's files are now readable from any origin, as the served modules already were.
+
 ## v1.24.0
 
 The Week: a third renderer, the tower's week as a yearbook. No host restart, no config change, the renderer API is
