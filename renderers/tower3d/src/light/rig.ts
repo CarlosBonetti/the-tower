@@ -69,7 +69,10 @@ const POOL = { low: 0.7, high: 1.45, reach: [3.2, 2.4] }
 
 /** Adds the interior's ceiling light to a lit material's shader: a fill inside the building's box, banded like the sun. */
 function lightInside(m: THREE.Material) {
-  m.onBeforeCompile = (shader) => {
+  const own = m.onBeforeCompile.bind(m)
+  const ownKey = m.customProgramCacheKey()
+  m.onBeforeCompile = (shader, renderer) => {
+    own(shader, renderer)
     Object.assign(shader.uniforms, uniforms)
     shader.vertexShader = shader.vertexShader
       .replace('void main() {', 'varying vec3 vInterior;\nvoid main() {')
@@ -103,7 +106,7 @@ function lightInside(m: THREE.Material) {
   reflectedLight.indirectDiffuse += inside.x * inside.y * inside.z * band * pool * interiorLight * material.diffuseColor;`,
       )
   }
-  m.customProgramCacheKey = () => 'interior'
+  m.customProgramCacheKey = () => `interior|${ownKey}`
   m.needsUpdate = true
 }
 
