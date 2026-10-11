@@ -70,11 +70,13 @@ sphere("flower_heart", 0.03, (-0.15, -0.04, 0.075), pollen, flower)
 glasses = empty("face_glasses", (0, 0, 0))
 for side in (-1, 1):
     torus(f"glasses_ring_{side}", 0.075, 0.012, (side * 0.12, 0, 0.03), ink, glasses)
+    cylinder(f"glasses_temple_{side}", 0.008, 0.22, (side * 0.19, 0.01, -0.08), ink, glasses, vertices=8, axis="z")
 box("glasses_bridge", (0.1, 0.016, 0.016), (0, 0.015, 0.03), ink, glasses)
 
 shades = empty("face_shades", (0, 0, 0))
 for side in (-1, 1):
     box(f"shades_lens_{side}", (0.16, 0.1, 0.025), (side * 0.11, 0, 0.035), lens, shades, bevel=0.03)
+    cylinder(f"shades_temple_{side}", 0.01, 0.22, (side * 0.18, 0.02, -0.075), lens, shades, vertices=8, axis="z")
 box("shades_bridge", (0.08, 0.02, 0.02), (0, 0.025, 0.035), lens, shades)
 
 path, shot = out_path()
