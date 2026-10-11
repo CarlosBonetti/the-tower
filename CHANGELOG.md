@@ -12,6 +12,20 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.24.0
+
+The Week: a third renderer, the tower's week as a yearbook. No host restart, no config change, the renderer API is
+unchanged (`GET /renderers` lists one more). Restart the tower (`tower down tower && tower up tower`), then open
+`/r/week/`, or frame it on a shelf with `{ "label": "The Week", "renderer": "week" }`.
+
+- The budget week, from one reset to the next, with ‹ › to earlier weeks and `#YYYY-MM-DD` to link one: a cover (the
+  share of the weekly quota, spend, sessions, worker-hours, commits landed and lines), the class photo (every worker
+  of the week by floor, the busiest first, each with a line of what it did), the week's rhythm (turns by day and hour,
+  spend and commits per day), superlatives and a quote of the week. Every number is read from `/stats`, the archive
+  and the board.
+- A plain page, no build: a small renderer to start from. `docs/extending.md` now says what `/stats` and
+  `/archive/<project>` answer, which reads `tower api` leaves out, and the formatters `/panels.js` serves.
+
 ## v1.23.0
 
 Tower 3D's city follows the clock through the night. No host restart, no config change, the renderer API is
