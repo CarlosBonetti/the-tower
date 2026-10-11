@@ -74,7 +74,7 @@ export type Leaver = { group: THREE.Group; models: Models; avatar: Avatar; level
 
 /** A leaver from the desk at `desk` on `level`, starting where its worker stands (both world space). */
 export function leaver(p: Plan, id: string, level: number, desk: THREE.Vector3, from: THREE.Vector3, models: Models): Leaver {
-  const w = avatar(models, lookOf(id))
+  const w = avatar(models, lookOf(id, models.cast.slots))
   w.bulb.color.set('#3a4458')
   const group = new THREE.Group()
   group.add(w.root)

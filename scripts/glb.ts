@@ -57,6 +57,11 @@ export function writer(json: Json) {
       json.accessors.push({ ...a, bufferView: view(bytesOf(src, a.bufferView)), byteOffset: undefined })
       return json.accessors.length - 1
     },
+    /** An accessor described by `fields`, holding `bytes`. */
+    data(fields: Json, bytes: Buffer) {
+      json.accessors.push({ ...fields, bufferView: view(bytes), byteOffset: undefined })
+      return json.accessors.length - 1
+    },
     image(src: Glb, i: number) {
       const img = src.json.images[i]
       json.images ??= []

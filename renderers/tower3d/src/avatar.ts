@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { ADVENTURERS, BODY_PARTS, CAPES, FACES, GEAR, HATS, HEADS, HELMS, type Adventurer } from './contract.ts'
+import { ADVENTURERS, BODY_PARTS, FACES, HATS, type Adventurer, type Slot } from './contract.ts'
 import { instance, type Models } from './models.ts'
 import { RIG_SCALE, rigOf, skinned, wearModel, wearRigid, wearSkinned, type Cast, type Rig } from './rig.ts'
 import { glowing, toonMapped } from './toon.ts'
@@ -10,8 +10,8 @@ import { glowing, toonMapped } from './toon.ts'
  * hangs on its `hat` and `face` anchors. A look is plain data, hashed from the session id by `lookOf`.
  */
 
-/** A part of the pack, painted with an adventurer's atlas (an atlas of another than its own recolours it). */
-export type Part = { name: string; atlas: Adventurer }
+/** A part, painted with an adventurer's atlas: its own unless `atlas` names another, which recolours it. */
+export type Part = { name: string; atlas?: Adventurer }
 type Common = { hat?: string; face?: string; wear: string; build: { width: number; height: number } }
 export type Look =
   | (Common & { species: 'adventurer'; parts: Part[]; gear?: string; skin: string; hair: string })
@@ -37,34 +37,35 @@ export const hueOf = (id: string) => {
   return new THREE.Color().setHSL((h % 360) / 360, 0.55, 0.62)
 }
 
-/** Whose atlas a part is painted in as the pack ships it. */
-const ownerOf = (part: string) => ADVENTURERS.find((a) => part.startsWith(a)) ?? (part === 'Mug' || part === '1H_Axe' ? 'Barbarian' : part === 'Knife' ? 'Rogue' : part === '1H_Sword' ? 'Knight' : 'Mage')
-
 /**
- * A worker's look, hashed from its session id: the same on every board and every reload. One in five is a bot. An
- * adventurer takes its body from one adventurer, now and then repainted in another's atlas, a head that may be
- * another's, maybe a helm or a cape, maybe gear in hand, and a skin and hair colour of its own.
+ * A worker's look, hashed from its session id: the same on every board and every reload while `slots` (the cast's)
+ * hold the same parts. One in five is a bot. An adventurer takes its body from one adventurer, now and then repainted
+ * in another's atlas, a head that may be another's, maybe a helm or a cape, a face piece, a prop or an outfit, maybe
+ * gear in hand, and a skin and hair colour of its own.
  */
-export function lookOf(id: string): Look {
+export function lookOf(id: string, slots: Record<Slot, readonly string[]>): Look {
   const r = (what: string) => roll(id, what)
   const build = { width: 0.94 + r('width') * 0.12, height: 0.94 + r('height') * 0.12 }
   const wear = pick(WEAR_COLORS, r('wear'))
-  const face = r('face') < 0.25 ? pick(FACES, r('which face')) : undefined
-  if (r('species') < 0.2) return { species: 'bot', hue: `#${hueOf(id).getHexString()}`, hat: r('hat') < 0.55 ? pick(HATS, r('which hat')) : undefined, face, wear, build }
+  const faced = r('face') < 0.25
+  if (r('species') < 0.2) return { species: 'bot', hue: `#${hueOf(id).getHexString()}`, hat: r('hat') < 0.55 ? pick(HATS, r('which hat')) : undefined, face: faced ? pick(FACES, r('which face')) : undefined, wear, build }
+  const face = faced ? pick([...FACES, ...slots.Face], r('which face')) : undefined
+  const some = (slot: Slot, chance: number) => (slots[slot].length > 0 && r(slot) < chance ? pick(slots[slot], r(`which ${slot}`)) : undefined)
   const body = pick(ADVENTURERS, r('body'))
   const paint = r('repaint') < 0.3 ? pick(ADVENTURERS, r('paint')) : body
-  const head = r('head') < 0.4 ? pick(HEADS, r('which head')) : `${body}_Head`
+  const head = r('head') < 0.4 ? pick(slots.Head, r('which head')) : `${body}_Head`
   const hooded = head === 'Rogue_Head_Hooded'
   const hatRoll = r('hat')
-  const helm = !hooded && hatRoll < 0.2 ? pick(HELMS, r('which helm')) : undefined
+  const helm = !hooded && hatRoll < 0.2 ? pick(slots.Helm, r('which helm')) : undefined
   const hat = !hooded && !helm && hatRoll < 0.45 ? pick(HATS, r('which hat')) : undefined
-  const cape = r('cape') < 0.2 ? pick(CAPES, r('which cape')) : undefined
+  const cape = r('cape') < 0.2 ? pick(slots.Cape, r('which cape')) : undefined
+  const made = face !== undefined && slots.Face.includes(face)
   const parts: Part[] = [
     ...BODY_PARTS.map((p) => ({ name: `${body}_${p}`, atlas: paint })),
-    ...[head, helm, cape].filter((p) => p !== undefined).map((name) => ({ name, atlas: ownerOf(name) })),
+    ...[head, helm, cape, made ? face : undefined, some('Prop', 0.25), some('Outfit', 0.3)].filter((p) => p !== undefined).map((name) => ({ name })),
   ]
-  const gear = r('gear') < 0.35 ? pick(GEAR, r('which gear')) : undefined
-  return { species: 'adventurer', parts, gear, skin: pick(SKINS, r('skin')), hair: pick(HAIRS, r('hair')), hat, face, wear, build }
+  const gear = r('gear') < 0.35 ? pick(slots.Gear, r('which gear')) : undefined
+  return { species: 'adventurer', parts, gear, skin: pick(SKINS, r('skin')), hair: pick(HAIRS, r('hair')), hat, face: made ? undefined : face, wear, build }
 }
 
 export type Avatar = {
@@ -159,21 +160,22 @@ function adventurer(models: Models, rig: Rig, look: Extract<Look, { species: 'ad
     if (!materials.has(atlas)) materials.set(atlas, tinted(cast.atlases.get(atlas)!, look.skin, look.hair))
     return materials.get(atlas)!
   }
-  for (const atlas of new Set(look.parts.map((p) => p.atlas))) {
-    const names = look.parts.filter((p) => p.atlas === atlas).map((p) => p.name)
+  const atlasOf = (p: Part) => p.atlas ?? cast.parts.get(p.name)!.atlas
+  for (const atlas of new Set(look.parts.map(atlasOf))) {
+    const names = look.parts.filter((p) => atlasOf(p) === atlas).map((p) => p.name)
     const soft = names.filter((n) => skinned(cast, n))
     if (soft.length) wearSkinned(cast, rig, soft, materialOf(atlas))
     for (const n of names.filter((n) => !skinned(cast, n))) wearRigid(cast, rig, n, materialOf(atlas))
   }
-  const head = look.parts.find((p) => (HEADS as readonly string[]).includes(p.name))!.name
+  const head = look.parts.find((p) => cast.slots.Head.includes(p.name))!.name
   const space = headSpace(cast, rig, head)
   const fits = space.width / WEAR_HEAD
-  const helmed = look.parts.some((p) => (HELMS as readonly string[]).includes(p.name))
+  const helmed = look.parts.some((p) => cast.slots.Helm.includes(p.name))
   const bulb = glowing('#ffffff')
   const light = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8), bulb)
   light.position.copy(space.top).add(new THREE.Vector3(0, helmed ? BULB_LIFT * 1.6 : BULB_LIFT, 0))
   rig.bone('head').add(light)
-  const gear = look.gear === undefined ? undefined : wearRigid(cast, rig, look.gear, materialOf(ownerOf(look.gear)))
+  const gear = look.gear === undefined ? undefined : wearRigid(cast, rig, look.gear, materialOf(cast.parts.get(look.gear)!.atlas))
   return { hat: anchor(rig.bone('head'), space.top, fits), face: anchor(rig.bone('head'), space.face, fits), bulb, gear }
 }
 

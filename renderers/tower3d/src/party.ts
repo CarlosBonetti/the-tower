@@ -167,7 +167,7 @@ export function mug() {
 }
 
 export function makeGuest(card: Card, models: Models): Guest {
-  const w = avatar(models, lookOf(card.id))
+  const w = avatar(models, lookOf(card.id, models.cast.slots))
   w.bulb.color.copy(PARTY_COLORS[card.id.length % PARTY_COLORS.length])
   const group = new THREE.Group()
   group.add(w.root)

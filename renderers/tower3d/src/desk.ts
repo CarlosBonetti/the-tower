@@ -99,7 +99,7 @@ export type Desk = {
 
 /** A subagent: a small one of its worker's kind, a look of its own, wearing nothing. */
 function mini(models: Models, parent: Look, id: string) {
-  const own = lookOf(id)
+  const own = lookOf(id, models.cast.slots)
   const look: Look = parent.species === 'bot' ? { ...parent, hue: own.species === 'bot' ? own.hue : parent.hue } : own.species === 'adventurer' ? own : parent
   const a = avatar(models, { ...look, hat: undefined, face: undefined, ...(look.species === 'adventurer' && { gear: undefined }) })
   a.root.scale.setScalar(0.28)
@@ -216,7 +216,7 @@ const PAPERS = { x: -0.58, z: -0.42, sheet: { width: 0.26, depth: 0.18, thick: 0
 
 /** The worker in its chair at a desk's seat, its subagents, speech and the papers it hasn't read, around `furniture`. */
 function seated(card: Card, models: Models, marks: Marks, furniture: Pick<Desk, 'group' | 'strip' | 'screen' | 'side' | 'binder'>): Desk {
-  const look = lookOf(card.id)
+  const look = lookOf(card.id, models.cast.slots)
   const w = avatar(models, look)
   w.root.position.copy(SEAT)
   if (w.gear) w.gear.visible = false

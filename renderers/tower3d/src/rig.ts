@@ -4,11 +4,12 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import adventurersGlb from '../kaykit/Characters/adventurers.glb'
 import clipsGlb from '../kaykit/Characters/rig_medium.glb'
-import { ADVENTURERS, CLIPS, type Adventurer, type Bone, type ClipName } from './contract.ts'
+import partsGlb from '../parts/parts.glb'
+import { ADVENTURERS, CLIPS, PACK_SLOTS, SLOTS, slotOf, type Adventurer, type Bone, type ClipName, type Slot } from './contract.ts'
 
 /**
  * The skeleton every worker stands on (KayKit's Rig_Medium, kaykit/Characters), the parts the adventurers are dressed
- * from, and the clips that pose them, parsed once (`loadCast`). A worker is a copy of the bones (`rigOf`) with one
+ * from (the pack's, and those made in parts/parts.blend), and the clips that pose them, parsed once (`loadCast`). A worker is a copy of the bones (`rigOf`) with one
  * `AnimationMixer` over the shared clips; `pose` sets it from a list of layers, each a clip at a time, so a pose is a
  * function of the sim clock and nothing is kept between frames.
  */
@@ -25,8 +26,13 @@ export type ClipKey = ClipName | 'Type' | `${ClipName | 'Type'}:${'arms' | 'rest
 export type Cast = {
   /** The bones, without parts: what every worker's rig is copied from. */
   bones: THREE.Object3D
-  /** Each adventurer part as the pack holds it: skinned parts on the bones, rigid ones on the bone they hang on. */
-  parts: Map<string, { mesh: THREE.Mesh; bone?: string }>
+  /**
+   * Each part as its file holds it: skinned parts on the bones, rigid ones on the bone they hang on, and the atlas it is
+   * painted in.
+   */
+  parts: Map<string, { mesh: THREE.Mesh; bone?: string; atlas: Adventurer }>
+  /** The parts a look may pick for each slot: the pack's, then the made ones named after it. */
+  slots: Record<Slot, readonly string[]>
   /** Skinned parts merged into one geometry, by their names: what a worker draws in one call per atlas. */
   merged: Map<string, THREE.BufferGeometry>
   /** The bones skinned parts are bound to, in order, and their inverse binds: the pack's rest pose. */
@@ -102,19 +108,26 @@ function atlasOf(material: THREE.MeshStandardMaterial) {
 }
 
 export async function loadCast(): Promise<Cast> {
-  const [adventurers, rig] = await Promise.all([parse(adventurersGlb), parse(clipsGlb)])
+  const [adventurers, made, rig] = await Promise.all([parse(adventurersGlb), parse(partsGlb), parse(clipsGlb)])
   const bones = adventurers.scene.getObjectByName('Rig')!
-  const parts = new Map<string, { mesh: THREE.Mesh; bone?: string }>()
-  const atlases = new Map<Adventurer, THREE.Texture>()
-  bones.updateMatrixWorld(true)
-  bones.traverse((o) => {
-    if (!(o instanceof THREE.Mesh)) return
-    o.geometry.userData.shared = true
-    o.geometry.computeBoundingSphere()
-    const owner = ADVENTURERS.find((a) => o.material.name === `${a.toLowerCase()}_texture`)
-    if (owner && !atlases.has(owner)) atlases.set(owner, atlasOf(o.material))
-    parts.set(o.name, { mesh: o, bone: o instanceof THREE.SkinnedMesh ? undefined : o.parent!.name })
-  })
+  const parts: Cast['parts'] = new Map()
+  const collect = (from: THREE.Object3D) => {
+    from.updateMatrixWorld(true)
+    from.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return
+      o.geometry.userData.shared = true
+      o.geometry.computeBoundingSphere()
+      const atlas = ADVENTURERS.find((a) => o.material.name === `${a.toLowerCase()}_texture`)!
+      parts.set(o.name, { mesh: o, bone: o instanceof THREE.SkinnedMesh ? undefined : o.parent!.name, atlas })
+    })
+  }
+  collect(bones)
+  const atlases = new Map(ADVENTURERS.map((a) => [a, atlasOf([...parts.values()].find((p) => p.atlas === a)!.mesh.material as THREE.MeshStandardMaterial)]))
+  const pack = new Set(parts.keys())
+  collect(made.scene.getObjectByName('Rig')!)
+  const authored = [...parts.keys()].filter((n) => !pack.has(n))
+  const slots = { ...PACK_SLOTS }
+  for (const s of SLOTS) slots[s] = [...PACK_SLOTS[s], ...authored.filter((n) => slotOf(n) === s)]
   for (const { mesh } of parts.values()) mesh.removeFromParent()
   const { skeleton } = [...parts.values()].map((p) => p.mesh).find((m) => m instanceof THREE.SkinnedMesh) as THREE.SkinnedMesh
   const clips = new Map<ClipKey, THREE.AnimationClip>()
@@ -124,7 +137,7 @@ export async function loadCast(): Promise<Cast> {
   const seated = SkeletonUtils.clone(bones)
   new THREE.AnimationMixer(seated).clipAction(clips.get('Sit_Chair_Idle')!).play().getMixer().update(0)
   seated.updateMatrixWorld(true)
-  return { bones, parts, merged: new Map(), joints: skeleton.bones.map((b) => b.name), inverses: skeleton.boneInverses, atlases, clips, seatedHips: seated.getObjectByName('hips')!.getWorldPosition(new THREE.Vector3()).y }
+  return { bones, parts, slots, merged: new Map(), joints: skeleton.bones.map((b) => b.name), inverses: skeleton.boneInverses, atlases, clips, seatedHips: seated.getObjectByName('hips')!.getWorldPosition(new THREE.Vector3()).y }
 }
 
 /** A worker's copy of the bones and the mixer that poses them. */

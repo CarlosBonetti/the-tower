@@ -38,6 +38,19 @@ export const GEAR = ['Mug', '1H_Wand', 'Spellbook', '1H_Sword', '1H_Axe', 'Knife
 
 export const ADVENTURER_PARTS = [...ADVENTURERS.flatMap((a) => BODY_PARTS.map((p) => `${a}_${p}`)), ...HEADS, ...HELMS, ...CAPES, ...GEAR]
 
+/**
+ * What a look fills, part by part. A part made in parts/parts.blend is named after its slot (`Face_RoundGlasses`), and
+ * joins the pack's parts of that slot: a whole head; on the head bone, a helm worn instead of a hat or a face piece; a
+ * cape on the chest; gear held in the right hand; a prop worn on any bone; an outfit skinned over the body.
+ */
+export const SLOTS = ['Head', 'Helm', 'Face', 'Cape', 'Gear', 'Prop', 'Outfit'] as const
+export type Slot = (typeof SLOTS)[number]
+export const slotOf = (part: string) => SLOTS.find((s) => part.startsWith(`${s}_`))
+/** The pack's parts in each slot. */
+export const PACK_SLOTS: Record<Slot, readonly string[]> = { Head: HEADS, Helm: HELMS, Face: [], Cape: CAPES, Gear: GEAR, Prop: [], Outfit: [] }
+/** The materials parts are painted with: an adventurer's atlas each, by name. */
+export const ATLASES = ADVENTURERS.map((a) => `${a.toLowerCase()}_texture`)
+
 /** KayKit's own clips on `Rig_Medium` (Character Animations 1.1) that poses play. */
 export const CLIPS = ['Idle_A', 'Idle_B', 'Walking_A', 'Sit_Chair_Idle', 'Cheering', 'Waving', 'Jump_Idle', 'Interact', 'Use_Item', 'Working_A', 'Holding_A'] as const
 export type ClipName = (typeof CLIPS)[number]
