@@ -120,9 +120,9 @@ def capsule(name, radius, length, center, material, parent=None, squash=(1, 1)):
     return _finish(obj, name, material, parent, smooth=True)
 
 
-def torus(name, major, minor, center, material, parent=None, arc=2 * math.pi, rotation=(0, 0, 0)):
-    """A torus in the renderer's xy plane (facing +z), swept `arc` radians from +x."""
-    bpy.ops.mesh.primitive_torus_add(major_radius=major, minor_radius=minor, major_segments=32, minor_segments=10)
+def torus(name, major, minor, center, material, parent=None, arc=2 * math.pi, rotation=(0, 0, 0), segments=(32, 10)):
+    """A torus in the renderer's xy plane (facing +z), swept `arc` radians from +x, of (around, across) `segments`."""
+    bpy.ops.mesh.primitive_torus_add(major_radius=major, minor_radius=minor, major_segments=segments[0], minor_segments=segments[1])
     obj = bpy.context.object
     if arc < 2 * math.pi:
         import bmesh

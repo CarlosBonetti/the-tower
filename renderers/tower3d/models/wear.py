@@ -44,7 +44,7 @@ def rod(name, radius, a, b, material, parent):
     """A thin cylinder from `a` to `b` (renderer coordinates)."""
     mid = [(p + q) / 2 for p, q in zip(a, b)]
     length = math.dist(a, b)
-    obj = cylinder(name, radius, length, (0, 0, 0), material, None, vertices=8, axis="z")
+    obj = cylinder(name, radius, length, (0, 0, 0), material, None, vertices=4, axis="z")
     obj.rotation_mode = "QUATERNION"
     obj.rotation_quaternion = at(0, 0, 1).rotation_difference(at(*(q - p for p, q in zip(a, b))))
     obj.location = at(*mid)
@@ -98,13 +98,13 @@ sphere("flower_heart", 0.03, (-0.15, -0.04, 0.075), pollen, flower)
 
 glasses = empty("face_glasses", (0, 0, 0))
 for side in (-1, 1):
-    torus(f"glasses_ring_{side}", 0.075, 0.012, (side * 0.12, 0, 0.03), ink, glasses)
+    torus(f"glasses_ring_{side}", 0.075, 0.012, (side * 0.12, 0, 0.03), ink, glasses, segments=(16, 4))
 temples("glasses", 0.19, 0.01, 0.03, 0.009, ink, glasses)
 box("glasses_bridge", (0.1, 0.016, 0.016), (0, 0.015, 0.03), ink, glasses)
 
 shades = empty("face_shades", (0, 0, 0))
 for side in (-1, 1):
-    box(f"shades_lens_{side}", (0.16, 0.1, 0.025), (side * 0.11, 0, 0.035), lens, shades, bevel=0.03)
+    box(f"shades_lens_{side}", (0.16, 0.1, 0.025), (side * 0.11, 0, 0.035), lens, shades, bevel=0.03, segments=2)
 temples("shades", 0.185, 0.02, 0.035, 0.011, lens, shades)
 box("shades_bridge", (0.08, 0.02, 0.02), (0, 0.025, 0.035), lens, shades)
 
