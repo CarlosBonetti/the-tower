@@ -2,13 +2,18 @@
  * The dresser's tools (renderers/tower3d/dresser.html): serve it to dress workers by hand and save the wardrobe, and
  * shoot a look headless through the same page, so an agent checks a fit from a picture.
  *
- *   npm run tool:dresser -- serve [--port 4396]        the dresser at http://127.0.0.1:<port>/dresser.html, rebuilt
- *                                                      on every load; its Save writes renderers/tower3d/wardrobe.json
- *                                                      (PUT /wardrobe, checked by parseWardrobe and written by
- *                                                      formatWardrobe; the page checks it against the catalogue first)
- *   npm run tool:dresser -- shot <outfit|id|CALLSIGN|blank> [--pose stand|sit|type|walk|wave|cheer|dance] [--at <s>]
+ *   npm run tool:dresser -- serve [--port 4396] [--wardrobe <file>]
+ *                                                      the dresser at http://127.0.0.1:<port>/dresser.html, rebuilt
+ *                                                      on every load, starting from the wardrobe on disk (GET
+ *                                                      /wardrobe); its Save writes it (PUT /wardrobe, checked by
+ *                                                      parseWardrobe and written by formatWardrobe; the page checks
+ *                                                      it against the catalogue first). --wardrobe serves and saves
+ *                                                      another file, renderers/tower3d/wardrobe.json by default: a
+ *                                                      copy, to try saving without touching the real one
+ *   npm run tool:dresser -- shot <outfit|body|id|CALLSIGN> [--pose stand|sit|type|walk|wave|cheer|dance] [--at <s>]
  *                                [--view front|side|face|three-quarter] [--heads all] [--size 1200x900] [--out file.png]
- *                                                      a PNG of the look: an outfit of wardrobe.json, or a session id
+ *                                                      a PNG of the look: an outfit of wardrobe.json, a body as it
+ *                                                      starts (Knight, Mage, Rogue, Barbarian, bot), or a session id
  *                                                      hashed as Tower 3D hashes it (a callsign is read from
  *                                                      `tower agent`), posed at --at seconds; --heads all lines it up
  *                                                      on every head
@@ -31,16 +36,16 @@ const OUT = path.join(REPO, 'renderers/tower3d/out')
 const WARDROBE = path.join(REPO, 'renderers/tower3d/wardrobe.json')
 const wardrobe = () => parseWardrobe(JSON.parse(fs.readFileSync(WARDROBE, 'utf8')), path.relative(REPO, WARDROBE))
 
-/** Writes the wardrobe a page sends, if it is one, as its file holds it. */
-function saveWardrobe(req: http.IncomingMessage, res: http.ServerResponse) {
+/** Writes the wardrobe a page sends to `file`, if it is one, as its file holds it. */
+function saveWardrobe(file: string, req: http.IncomingMessage, res: http.ServerResponse) {
   let body = ''
   req.setEncoding('utf8')
   req.on('data', (chunk: string) => (body += chunk))
   req.on('end', () => {
     try {
-      fs.writeFileSync(WARDROBE, formatWardrobe(parseWardrobe(JSON.parse(body), 'the wardrobe sent')))
-      console.log(`saved ${path.relative(REPO, WARDROBE)}`)
-      res.writeHead(204).end()
+      fs.writeFileSync(file, formatWardrobe(parseWardrobe(JSON.parse(body), 'the wardrobe sent')))
+      console.log(`saved ${file}`)
+      res.writeHead(200, { 'content-type': 'text/plain' }).end(path.relative(REPO, file).startsWith('..') ? file : path.relative(REPO, file))
     } catch (e) {
       res.writeHead(422, { 'content-type': 'text/plain' }).end((e as Error).message)
     }
@@ -51,12 +56,19 @@ const TYPES: Record<string, string> = { '.html': 'text/html', '.js': 'text/javas
 
 const build = () => execFileSync('npm', ['run', '-s', 'tower3d'], { cwd: REPO, stdio: 'pipe' })
 
-/** The built Tower 3D pages, with the tower's design sheet and faces, on a loopback port. */
-async function serve(port: number, rebuild: boolean) {
+/** The built Tower 3D pages, with the tower's design sheet and faces, and the wardrobe kept at `kept`, on a loopback port. */
+async function serve(port: number, rebuild: boolean, kept = WARDROBE) {
   const server = http.createServer((req, res) => {
     const url = decodeURIComponent(new URL(req.url!, 'http://x').pathname)
-    if (url === '/wardrobe' && req.method === 'HEAD') return res.writeHead(204).end()
-    if (url === '/wardrobe' && req.method === 'PUT') return saveWardrobe(req, res)
+    if (url === '/wardrobe' && req.method === 'GET') return res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(fs.readFileSync(kept))
+    if (url === '/wardrobe' && req.method === 'PUT') return saveWardrobe(kept, req, res)
+    if (url.startsWith('/who/')) {
+      try {
+        return res.writeHead(200, { 'content-type': 'text/plain' }).end(sessionOf(url.slice('/who/'.length)))
+      } catch (e) {
+        return res.writeHead(404, { 'content-type': 'text/plain' }).end((e as Error).message)
+      }
+    }
     if (url === '/design.css') return res.writeHead(200, { 'content-type': 'text/css' }).end(designCss())
     const face = fonts.find((f) => url === `/fonts/${f.file}`)
     if (face) return res.writeHead(200, { 'content-type': 'font/woff2' }).end(fs.readFileSync(fontFile(face)))
@@ -78,6 +90,8 @@ function sessionOf(who: string) {
   return id
 }
 
+const BODIES = ['Knight', 'Mage', 'Rogue', 'Barbarian', 'bot']
+
 const size = (s: string) => {
   const [w, h] = s.split('x').map(Number)
   if (!w || !h) throw new Error(`--size wants WxH, got ${s}`)
@@ -90,7 +104,7 @@ async function shot(who: string, opts: { pose?: string; at?: string; view?: stri
   try {
     await withPage(url, { width: 640, height: 480 }, async (page) => {
       await page.eval('dresser.ready()')
-      const spec = who === 'blank' ? 'blank' : who in wardrobe().outfits ? { outfit: who } : { id: sessionOf(who) }
+      const spec = BODIES.includes(who) ? { body: who } : who in wardrobe().outfits ? { outfit: who } : { id: sessionOf(who) }
       await page.eval(`dresser.look(${JSON.stringify(spec)})`)
       if (opts.heads === 'all') await page.eval('dresser.heads(true)')
       await page.eval(`dresser.pose(${JSON.stringify(opts.pose ?? 'stand')}, ${Number(opts.at ?? 0.5)})`)
@@ -111,14 +125,17 @@ async function main() {
   const { values, positionals } = parseArgs({
     args: rest,
     allowPositionals: true,
-    options: { port: { type: 'string' }, pose: { type: 'string' }, at: { type: 'string' }, view: { type: 'string' }, heads: { type: 'string' }, size: { type: 'string' }, out: { type: 'string' } },
+    options: { port: { type: 'string' }, wardrobe: { type: 'string' }, pose: { type: 'string' }, at: { type: 'string' }, view: { type: 'string' }, heads: { type: 'string' }, size: { type: 'string' }, out: { type: 'string' } },
   })
   if (command === 'serve') {
     build()
-    const { url } = await serve(Number(values.port ?? 4396), true)
+    const file = values.wardrobe ? path.resolve(values.wardrobe) : WARDROBE
+    parseWardrobe(JSON.parse(fs.readFileSync(file, 'utf8')), file)
+    const { url } = await serve(Number(values.port ?? 4396), true, file)
+    console.log(`wardrobe: ${file}`)
     return console.log(url)
   }
-  if (command === 'shot') return shot(positionals[0] ?? fail('usage: shot <id|CALLSIGN|blank>'), values)
+  if (command === 'shot') return shot(positionals[0] ?? fail('usage: shot <outfit|body|id|CALLSIGN>'), values)
   fail('usage: npm run tool:dresser -- serve | shot (see scripts/dresser.ts)')
 }
 
