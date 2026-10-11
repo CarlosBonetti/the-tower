@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { act } from './acts.ts'
-import { avatar, lookOf, type Avatar } from './avatar.ts'
+import { avatar, type Avatar } from './avatar.ts'
+import { WARDROBE } from './closet.ts'
 import { pick, roll } from './hashed.ts'
 import type { Desk } from './desk.ts'
 import { DESK, WALL, carBox, colliders, coreFront, danceSpot, floorOfProject, levelY, partySpots, rateLimitBoxes, walkway, type Box, type Level, type Plan } from './layout.ts'
@@ -8,6 +9,7 @@ import type { Card } from './api.ts'
 import { SOUNDS, type Sound } from './cards.ts'
 import { instance, type Models } from './models.ts'
 import { pose, type Pose } from './rig.ts'
+import { lookOf } from './wardrobe.ts'
 
 /**
  * Life in the building: three cats roaming its floors, workers walking in from the elevator and out to it, and the
@@ -75,7 +77,7 @@ export type Leaver = { group: THREE.Group; models: Models; avatar: Avatar; level
 
 /** A leaver from the desk at `desk` on `level`, starting where its worker stands (both world space). */
 export function leaver(p: Plan, id: string, level: number, desk: THREE.Vector3, from: THREE.Vector3, models: Models): Leaver {
-  const w = avatar(models, lookOf(id, models.cast.slots))
+  const w = avatar(models, lookOf(id, WARDROBE, models.catalogue), WARDROBE)
   w.bulb.color.set('#3a4458')
   const group = new THREE.Group()
   group.add(w.root)

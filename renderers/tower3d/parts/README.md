@@ -26,7 +26,8 @@ A part is one mesh object in its slot's collection, named `<Slot>_<Name>` with l
 | Slot | How it's attached | Worn |
 |---|---|---|
 | `Head` | skinned like the pack's heads | instead of the body's head; keep skin in swatch (0,0) and hair in (1,0) |
-| `Helm` | rigid on `head` | instead of a hat: helmets, headsets |
+| `Helm` | rigid on `head` | covering the head, instead of a hat: helmets, headsets |
+| `Hat` | rigid on `head` | on top of the head: caps, beanies (a `.blend` built before the slot has no `Hat` collection: add one inside `Wardrobe`) |
 | `Face` | rigid on `head` | glasses, masks |
 | `Cape` | rigid on `chest` | |
 | `Gear` | rigid on `handslot.r` | held while standing, put away while seated |
@@ -65,9 +66,11 @@ Neither stops a part from exporting.
 Each look hashes, from a worker's session id, whether it wears something in a slot, and which part of the slot's
 pool: the part scoring highest for that worker (rendezvous hashing, `hashed.ts`). A new part takes about one in N+1 of
 the slot's wearers (N parts before it) and everyone else keeps what they wore; removing a part re-dresses only its
-wearers. How many workers wear something in a slot never changes with the pool. The bots
-wear only their own hats and faces (`models/wear.py`). A part is drawn at the size it was made: a worker's build
-scales it with the body.
+wearers. How many workers wear something in a slot never changes with the pool. The chances, pools and named outfits
+are data in `renderers/tower3d/wardrobe.json` (`src/wardrobe.ts`), with each part's fit: a move, turn or scale over
+where it was made to sit, by default and per head (or other part) it is worn with. The bots wear only the hats and
+glasses of `models/wear.py`. A part is drawn at the size it was made, under its fit: a worker's build scales it with
+the body.
 
 ## Files
 

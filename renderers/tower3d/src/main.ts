@@ -26,6 +26,7 @@ import { PET_IN, PET_MS, dropHearts, makeHearts, petProgress, petSpot, placeHear
 import { idle, sharing, startShare, stopShare } from './tv.ts'
 import { CABINET, DESK, EYE, bigScreens, cabinetOf, carBox, colliders, coreFront, deskOf, loungeSpots, deskSpot, inside, kioskOf, levelHeight, levelOfCard, levelOfShell, levelY, plan, walls, type Box, type Plan } from './layout.ts'
 import { loadModels } from './models.ts'
+import { checkWardrobe } from './closet.ts'
 import { bloom } from './light/bloom.ts'
 import { contactShadows } from './light/contact.ts'
 import { rigFrame } from './light/rig.ts'
@@ -2714,6 +2715,7 @@ $('draft-note').addEventListener('click', (e) => {
 watchPanelSize($('desk-screen'))
 idle(tower.framed)
 Promise.all([loadModels(), tower.recall(), loadFaces(), loadKit(), tower.renderer()]).then(([m, kept, , kit, renderer]) => {
+  checkWardrobe(m.catalogue)
   s.models = m
   s.catNames = (renderer?.settings.cats ?? {}) as CatNames
   s.kit = kit

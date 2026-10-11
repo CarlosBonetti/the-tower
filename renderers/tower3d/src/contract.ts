@@ -40,14 +40,15 @@ export const ADVENTURER_PARTS = [...ADVENTURERS.flatMap((a) => BODY_PARTS.map((p
 
 /**
  * What a look fills, part by part. A part made in parts/parts.blend is named after its slot (`Face_RoundGlasses`), and
- * joins the pack's parts of that slot: a whole head; on the head bone, a helm worn instead of a hat or a face piece; a
- * cape on the chest; gear held in the right hand; a prop worn on any bone; an outfit skinned over the body.
+ * joins the pack's parts of that slot: a whole head; on the head bone, a helm covering it, a hat on top of it or a face
+ * piece; a cape on the chest; gear held in the right hand; a prop worn on any bone; an outfit skinned over the body.
+ * The pieces of models/wear.py join `Hat` and `Face` (`HATS`, `FACES`).
  */
-export const SLOTS = ['Head', 'Helm', 'Face', 'Cape', 'Gear', 'Prop', 'Outfit'] as const
+export const SLOTS = ['Head', 'Helm', 'Hat', 'Face', 'Cape', 'Gear', 'Prop', 'Outfit'] as const
 export type Slot = (typeof SLOTS)[number]
 export const slotOf = (part: string) => SLOTS.find((s) => part.startsWith(`${s}_`))
 /** The pack's parts in each slot. */
-export const PACK_SLOTS: Record<Slot, readonly string[]> = { Head: HEADS, Helm: HELMS, Face: [], Cape: CAPES, Gear: GEAR, Prop: [], Outfit: [] }
+export const PACK_SLOTS: Record<Slot, readonly string[]> = { Head: HEADS, Helm: HELMS, Hat: [], Face: [], Cape: CAPES, Gear: GEAR, Prop: [], Outfit: [] }
 /** The materials parts are painted with: an adventurer's atlas each, by name. */
 export const ATLASES = ADVENTURERS.map((a) => `${a.toLowerCase()}_texture`)
 

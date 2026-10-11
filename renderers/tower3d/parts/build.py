@@ -21,7 +21,7 @@ from kit import cylinder, sphere, torus
 
 ADVENTURERS_GLB = os.path.join(HERE, "..", "kaykit", "Characters", "adventurers.glb")
 """The slots, as `SLOTS` in src/contract.ts: a part's name starts with its slot and `_`."""
-SLOTS = ("Head", "Helm", "Face", "Cape", "Gear", "Prop", "Outfit")
+SLOTS = ("Head", "Helm", "Hat", "Face", "Cape", "Gear", "Prop", "Outfit")
 BODY_PARTS = ("Body", "ArmLeft", "ArmRight", "LegLeft", "LegRight")
 """Who stands where along x: the stage (real objects, at the origin) and the line-up (instances)."""
 LINEUP = {"Mage": -4.4, "Rogue": -2.2, "Rogue Hooded": 2.2, "Barbarian": 4.4}

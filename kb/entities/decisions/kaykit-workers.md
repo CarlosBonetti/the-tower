@@ -14,7 +14,16 @@
     "hub/renderers/tower3d/src/rig.ts#pose",
     "hub/renderers/tower3d/src/rig.ts#wearSkinned",
     "hub/renderers/tower3d/src/rig.ts#wearModel",
-    "hub/renderers/tower3d/src/avatar.ts#lookOf",
+    "hub/renderers/tower3d/src/wardrobe.ts#lookOf",
+    "hub/renderers/tower3d/src/wardrobe.ts#Wardrobe",
+    "hub/renderers/tower3d/src/wardrobe.ts#fitFrom",
+    "hub/renderers/tower3d/src/wardrobe.ts#FIT_PRECEDENCE",
+    "hub/renderers/tower3d/src/wardrobe.ts#formatWardrobe",
+    "hub/renderers/tower3d/src/catalogue.ts#catalogueOf",
+    "hub/renderers/tower3d/src/avatar.ts#fitted",
+    "hub/renderers/tower3d/src/closet.ts#WARDROBE",
+    "hub/renderers/tower3d/wardrobe.json",
+    "hub/test/wardrobe.test.ts",
     "hub/renderers/tower3d/src/avatar.ts#avatar",
     "hub/renderers/tower3d/src/avatar.ts#seatedAt",
     "hub/renderers/tower3d/src/rig.ts#seatOf",
@@ -62,13 +71,22 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   other clips fades in over it in 0.3 s of sim time (sitting down after walking in, turning from typing to waving,
   a new dance move), eased like a desk's turn, so `?stepped` still repeats. Bones are posed only on the levels
   drawn ([[tower3d-levels]]); everyone still moves where it goes on every level.
-- Looks are data ([`lookOf`](ref:hub/renderers/tower3d/src/avatar.ts#lookOf), hashed from the session id): a bot
-  one time in five; else an adventurer's body, sometimes repainted in another's atlas, a head that may be another's
-  (the rogue's hooded too), maybe a helm, a cape, gear in hand while standing, the old wear (hats, glasses), and a
-  skin and hair colour, which a shader multiplies into the atlas's first two swatches. The record is what a
-  wardrobe will supply later. KayKit's heads share one width and one eye line, so the old wear hangs where it would on
-  the Knight's head, the one parts are made on, whichever head is worn, drawn at the size that makes its beanie's and
-  cap's domes as wide as that head (`models/wear.py` made them 0.56 across).
+- Looks are data: the wardrobe, `renderers/tower3d/wardrobe.json`, one document checked by a zod schema
+  ([`Wardrobe`](ref:hub/renderers/tower3d/src/wardrobe.ts#Wardrobe)) as the bundle loads it
+  ([`WARDROBE`](ref:hub/renderers/tower3d/src/closet.ts#WARDROBE)), over a catalogue of parts derived from the files at load
+  and never stored ([`catalogueOf`](ref:hub/renderers/tower3d/src/catalogue.ts#catalogueOf): the pack's, the made
+  ones and `models/wear.py`'s hats and glasses, each with its slot, its attachment, skinned or rigid on a bone at its made
+  placement, and its atlas; a wear piece's made placement is the top or the face of the head parts are made on, the
+  Knight's, at the size that makes its beanie as wide as that head). Three layers: **fits** (a move, turn and scale over a rigid part's made placement, none yet), **outfits** (named looks: body, paint, colours, build and a
+  part or bare per slot, anything left out hashed), and the **mix**: the bot's share and what it wears, the outfits'
+  share, the bodies, colours and build range, and a rule per slot (its chance, a `group` of exclusive slots sharing one
+  roll, a `seed` it hashes under, its pool and exclusions, `unless`: bare when the look wears one of these, as the hooded
+  head keeps hats and helms off). [`lookOf`](ref:hub/renderers/tower3d/src/wardrobe.ts#lookOf) hashes a session id
+  into it: a bot one time in five; else maybe an outfit, the rest from the mix. The roof's bartender and DJ are outfits
+  kept out of the share, dressed by name. One function, `avatar(models, look, wardrobe)`, dresses every look, and keeps
+  each rigid part it hangs by name with its made placement (`worn`), so the dresser re-fits a part live. Saved through
+  [`formatWardrobe`](ref:hub/renderers/tower3d/src/wardrobe.ts#formatWardrobe) (keys in a fixed order), the file diffs
+  by what changed. The skin and hair colours are multiplied by a shader into the atlas's first two swatches.
 - Draw calls. The skinned parts of one atlas merge into one mesh per worker (geometry cached per combination);
   the bot's rigid parts (`models/bot.py`, built in the rig's rest pose, a pivot per bone) are skinned to their bones
   at load, one mesh per material ([`wearModel`](ref:hub/renderers/tower3d/src/rig.ts#wearModel)). Each worker
@@ -87,8 +105,7 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   ones, so a part reaches looks with no code. Whether a worker wears something in a slot is its own roll; which
 part is the rendezvous of the pool ([`rendezvous`](ref:hub/renderers/tower3d/src/hashed.ts#rendezvous): the part
 scoring highest for the worker), so a part added to a slot of N takes about one in N+1 of its wearers and the rest
-keep theirs, whatever the order of the GLB's names. Bots don't wear
-  them. Examples to copy: round glasses, a headset, a coffee mug, a vest cut from the Knight's body keeping its
+keep theirs, whatever the order of the GLB's names. Bots wear only the hats and glasses of `models/wear.py`, at their model's own anchors. Examples to copy: round glasses, a headset, a coffee mug, a vest cut from the Knight's body keeping its
   weights.
 - Poses: at the desk, `Type` while working, `Waving:arms` while asking (turned round), `Cheering:arms` while holding
   up a showing, the seated clip leaned back watching or slumped idle or failed

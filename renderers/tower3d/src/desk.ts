@@ -5,8 +5,10 @@ import type { Card } from './api.ts'
 import { WORLD, branchLine, bubbleOf, pairLine, glanceOf, onStatusColor, speechLines, speechOf, statusColor, statusName } from './cards.ts'
 import { DESK, SEAT_OFFSET } from './layout.ts'
 import { ASLEEP, OFFLINE, OPEN_DESK, screenTexture } from './screens.ts'
-import { avatar, lookOf, seatedAt, type Avatar, type Look } from './avatar.ts'
+import { avatar, seatedAt, type Avatar, type Look } from './avatar.ts'
+import { WARDROBE } from './closet.ts'
 import { instance, type Models } from './models.ts'
+import { lookOf } from './wardrobe.ts'
 import { pose, type Pose } from './rig.ts'
 import { posterOf, shownKey, type Shown } from './showing.ts'
 import { block, dispose, glowing, glows, mesh, sprite, toon } from './toon.ts'
@@ -104,9 +106,10 @@ export type Desk = {
 
 /** A subagent: a small one of its worker's kind, a look of its own, wearing nothing. */
 function mini(models: Models, parent: Look, id: string) {
-  const own = lookOf(id, models.cast.slots)
+  const own = lookOf(id, WARDROBE, models.catalogue)
   const look: Look = parent.species === 'bot' ? { ...parent, hue: own.species === 'bot' ? own.hue : parent.hue } : own.species === 'adventurer' ? own : parent
-  const a = avatar(models, { ...look, hat: undefined, face: undefined, ...(look.species === 'adventurer' && { gear: undefined }) })
+  const bare = look.parts.filter((p) => models.catalogue.parts[p].from !== 'wear' && models.catalogue.parts[p].slot !== 'Gear')
+  const a = avatar(models, { ...look, parts: bare }, WARDROBE)
   a.root.scale.setScalar(0.28)
   return a
 }
@@ -221,8 +224,8 @@ const PAPERS = { x: -0.58, z: -0.42, sheet: { width: 0.26, depth: 0.18, thick: 0
 
 /** The worker in its chair at a desk's seat, its subagents, speech and the papers it hasn't read, around `furniture`. */
 function seated(card: Card, models: Models, marks: Marks, furniture: Pick<Desk, 'group' | 'swivel' | 'strip' | 'screen' | 'side' | 'binder'>): Desk {
-  const look = lookOf(card.id, models.cast.slots)
-  const w = avatar(models, look)
+  const look = lookOf(card.id, WARDROBE, models.catalogue)
+  const w = avatar(models, look, WARDROBE)
   w.root.position.copy(SEAT)
   if (w.gear) w.gear.visible = false
   furniture.group.add(w.root)
@@ -385,7 +388,7 @@ function seatTwin(desk: Desk, run: string | undefined) {
   const group = new THREE.Group()
   const chair = instance(desk.models.desk).part('chair')
   chair.position.set(0, 0, 0)
-  const twin = avatar(desk.models, desk.look)
+  const twin = avatar(desk.models, desk.look, WARDROBE)
   twin.root.scale.setScalar(TWIN_SCALE)
   if (twin.gear) twin.gear.visible = false
   group.add(chair, twin.root)

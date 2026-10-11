@@ -5,7 +5,7 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import adventurersGlb from '../kaykit/Characters/adventurers.glb'
 import clipsGlb from '../kaykit/Characters/rig_medium.glb'
 import partsGlb from '../parts/parts.glb'
-import { ADVENTURERS, CLIPS, PACK_SLOTS, SLOTS, slotOf, type Adventurer, type Bone, type ClipName, type Slot } from './contract.ts'
+import { ADVENTURERS, CLIPS, type Adventurer, type Bone, type ClipName } from './contract.ts'
 
 /**
  * The skeleton every worker stands on (KayKit's Rig_Medium, kaykit/Characters), the parts the adventurers are dressed
@@ -31,8 +31,6 @@ export type Cast = {
    * painted in.
    */
   parts: Map<string, { mesh: THREE.Mesh; bone?: string; atlas: Adventurer }>
-  /** The parts a look may pick for each slot: the pack's, then the made ones named after it. */
-  slots: Record<Slot, readonly string[]>
   /** Skinned parts merged into one geometry, by their names: what a worker draws in one call per atlas. */
   merged: Map<string, THREE.BufferGeometry>
   /** The bones skinned parts are bound to, in order, and their inverse binds: the pack's rest pose. */
@@ -126,11 +124,7 @@ export async function loadCast(): Promise<Cast> {
   }
   collect(bones)
   const atlases = new Map(ADVENTURERS.map((a) => [a, atlasOf([...parts.values()].find((p) => p.atlas === a)!.mesh.material as THREE.MeshStandardMaterial)]))
-  const pack = new Set(parts.keys())
   collect(made.scene.getObjectByName('Rig')!)
-  const authored = [...parts.keys()].filter((n) => !pack.has(n))
-  const slots = { ...PACK_SLOTS }
-  for (const s of SLOTS) slots[s] = [...PACK_SLOTS[s], ...authored.filter((n) => slotOf(n) === s)]
   for (const { mesh } of parts.values()) mesh.removeFromParent()
   const { skeleton } = [...parts.values()].map((p) => p.mesh).find((m) => m instanceof THREE.SkinnedMesh) as THREE.SkinnedMesh
   const clips = new Map<ClipKey, THREE.AnimationClip>()
@@ -145,7 +139,7 @@ export async function loadCast(): Promise<Cast> {
     hips: sitting.getObjectByName('hips')!.getWorldPosition(new THREE.Vector3()),
     skin: joints.map((n, i) => sitting.getObjectByName(n)!.matrixWorld.clone().multiply(skeleton.boneInverses[i])),
   }
-  return { bones, parts, slots, merged: new Map(), joints, inverses: skeleton.boneInverses, atlases, clips, seated }
+  return { bones, parts, merged: new Map(), joints, inverses: skeleton.boneInverses, atlases, clips, seated }
 }
 
 /** The joints a seated body bears on: its pelvis and thighs on the seat, its back against a back rest. */

@@ -2,7 +2,8 @@ import * as THREE from 'three'
 import { act } from './acts.ts'
 import { WORLD } from './cards.ts'
 import type { Card } from './api.ts'
-import { avatar, lookOf, seatedAt, type Avatar, type Look } from './avatar.ts'
+import { avatar, seatedAt, type Avatar } from './avatar.ts'
+import { WARDROBE } from './closet.ts'
 import { walkPose, type GuestPlace } from './life.ts'
 import { DANCE_TILE, STRING_ROWS, partySpots, type DanceFloor, type Plan } from './layout.ts'
 import { BPM } from './music.ts'
@@ -10,6 +11,7 @@ import { instance, type Models } from './models.ts'
 import { pose, type Cast, type ClipKey, type Layer } from './rig.ts'
 import { tintOf } from './palette.ts'
 import { block, glows, sprite, toon } from './toon.ts'
+import { lookNamed, lookOf } from './wardrobe.ts'
 
 /**
  * The roof party: a puff on the decks, a bar and string lights, built with the roof (`buildParty`); a dance floor per
@@ -26,15 +28,6 @@ const PARTY_COLORS = ['#ff4fa3', '#c792ea', '#6cb6ff', '#5ee38f', '#ffb547', '#4
 
 /** What the party animates each frame: the neon and the DJ. */
 export type Party = { models: Models; neon: THREE.MeshBasicMaterial[]; dj: Avatar; bartender: Avatar }
-
-const BARTENDER: Look = {
-  species: 'adventurer', parts: ['Body', 'ArmLeft', 'ArmRight', 'LegLeft', 'LegRight', 'Head'].map((p) => ({ name: `Barbarian_${p}`, atlas: 'Barbarian' })),
-  gear: 'Mug', skin: '#bd8259', hair: '#4a3021', wear: '#2b2d42', hat: 'hat_cap', build: { width: 1.04, height: 1 },
-}
-const DJ: Look = {
-  species: 'adventurer', parts: [...['Body', 'ArmLeft', 'ArmRight', 'LegLeft', 'LegRight'].map((p) => ({ name: `Mage_${p}`, atlas: 'Rogue' as const })), { name: 'Rogue_Head', atlas: 'Rogue' }],
-  skin: '#efbf98', hair: '#e05fa8', wear: '#ff4fa3', face: 'face_shades', build: { width: 1, height: 1 },
-}
 
 function stringLights(p: Plan) {
   const bulbs: THREE.Vector3[] = []
@@ -62,10 +55,10 @@ export function buildParty(p: Plan, models: Models, pickables: THREE.Object3D[])
   bar.root.position.set(spots.bar.x, 0, spots.bar.z)
   const barStrip = bar.material<THREE.MeshBasicMaterial>('strip_glow_own')!
   barStrip.color.set('#ff4fa3')
-  const bartender = avatar(models, BARTENDER)
+  const bartender = avatar(models, lookNamed('bartender', WARDROBE, models.catalogue), WARDROBE)
   bartender.root.position.set(spots.bar.x, 0, spots.bar.z - 0.6)
   bartender.body.position.y = 0.5
-  const dj = avatar(models, DJ)
+  const dj = avatar(models, lookNamed('dj', WARDROBE, models.catalogue), WARDROBE)
   dj.root.position.set(spots.dj.x, 0.55, spots.dj.z - 0.5)
   dj.bulb.color.set('#ffd9a0')
   const sign = sprite('ROOFTOP BAR', 0.35, { color: '#0b1020', bg: '#ff4fa3', px: 48 })
@@ -167,7 +160,7 @@ export function mug() {
 }
 
 export function makeGuest(card: Card, models: Models): Guest {
-  const w = avatar(models, lookOf(card.id, models.cast.slots))
+  const w = avatar(models, lookOf(card.id, WARDROBE, models.catalogue), WARDROBE)
   w.bulb.color.copy(PARTY_COLORS[card.id.length % PARTY_COLORS.length])
   const group = new THREE.Group()
   group.add(w.root)

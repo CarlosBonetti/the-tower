@@ -1,65 +1,20 @@
 import * as THREE from 'three'
-import { ADVENTURERS, BODY_PARTS, FACES, HATS, type Adventurer, type Slot } from './contract.ts'
-import { pick, rendezvous, roll } from './hashed.ts'
 import { instance, type Models } from './models.ts'
 import { RIG_SCALE, rigOf, seatOf, skinned, wearModel, wearRigid, wearSkinned, type Cast, type Rig, type Sitting } from './rig.ts'
 import { glowing, toonMapped } from './toon.ts'
+import type { Adventurer } from './contract.ts'
+import { bodyParts, fitOf, hueOf as hueDegrees, wornBy, type Anchor, type Fit, type Look, type Placement, type Wardrobe } from './wardrobe.ts'
 
 /**
- * How workers look. Every worker stands on KayKit's Rig_Medium (rig.ts): an adventurer dressed from the KayKit
- * Adventurers' parts, or the bot (models/bot.py), whose parts ride the same bones. What it wears from models/wear.py
- * hangs on its `hat` and `face` anchors. A look is plain data, hashed from the session id by `lookOf`.
+ * How workers look. Every worker stands on KayKit's Rig_Medium (rig.ts): an adventurer dressed from the catalogue's
+ * parts (catalogue.ts), or the bot (models/bot.py), whose parts ride the same bones. A look is plain data
+ * (wardrobe.ts); `avatar` dresses a rig in it, every rigid part at its made placement under its fit.
  */
 
-/** A part, painted with an adventurer's atlas: its own unless `atlas` names another, which recolours it. */
-export type Part = { name: string; atlas?: Adventurer }
-type Common = { hat?: string; face?: string; wear: string; build: { width: number; height: number } }
-export type Look =
-  | (Common & { species: 'adventurer'; parts: Part[]; gear?: string; skin: string; hair: string })
-  | (Common & { species: 'bot'; hue: string })
-
-const WEAR_COLORS = ['#ff6b6b', '#ffd166', '#06d6a0', '#4cc9f0', '#b388ff', '#f78c6c', '#f4f1ea', '#2b2d42']
-export const SKINS = ['#f6cfb0', '#efbf98', '#d9a077', '#bd8259', '#9a6340', '#734628', '#4f2f1c']
-export const HAIRS = ['#2b2522', '#4a3021', '#7a4b2a', '#c99a55', '#e2c784', '#a8452a', '#b9b4ae', '#f2efe9', '#4f7cff', '#e05fa8', '#3fb489']
+export type { Look }
 
 /** A worker's own color, hashed from its session id: who it is. Its status shows on its bulb, bubble and pose. */
-export const hueOf = (id: string) => {
-  let h = 0
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return new THREE.Color().setHSL((h % 360) / 360, 0.55, 0.62)
-}
-
-/**
- * A worker's look, hashed from its session id: the same on every board and every reload. One in five is a bot. An
- * adventurer takes its body from one adventurer, now and then repainted in another's atlas, a head that may be
- * another's, maybe a helm or a cape, a face piece, a prop or an outfit, maybe gear in hand, and a skin and hair colour
- * of its own. Whether it wears something in a slot is a roll of its own; which part, the `rendezvous` of the slot's
- * (the cast's `slots`): a part added to a slot dresses only the share of its wearers it wins, the rest keep theirs.
- */
-export function lookOf(id: string, slots: Record<Slot, readonly string[]>): Look {
-  const r = (what: string) => roll(id, what)
-  const build = { width: 0.94 + r('width') * 0.12, height: 0.94 + r('height') * 0.12 }
-  const wear = pick(WEAR_COLORS, r('wear'))
-  const faced = r('face') < 0.25
-  if (r('species') < 0.2) return { species: 'bot', hue: `#${hueOf(id).getHexString()}`, hat: r('hat') < 0.55 ? pick(HATS, r('which hat')) : undefined, face: faced ? pick(FACES, r('which face')) : undefined, wear, build }
-  const face = faced ? rendezvous(id, 'face', [...FACES, ...slots.Face]) : undefined
-  const some = (slot: Slot, chance: number) => (slots[slot].length > 0 && r(slot) < chance ? rendezvous(id, slot, slots[slot]) : undefined)
-  const body = pick(ADVENTURERS, r('body'))
-  const paint = r('repaint') < 0.3 ? pick(ADVENTURERS, r('paint')) : body
-  const head = r('head') < 0.4 ? rendezvous(id, 'head', slots.Head) : `${body}_Head`
-  const hooded = head === 'Rogue_Head_Hooded'
-  const hatRoll = r('hat')
-  const helm = !hooded && hatRoll < 0.2 ? rendezvous(id, 'helm', slots.Helm) : undefined
-  const hat = !hooded && !helm && hatRoll < 0.45 ? pick(HATS, r('which hat')) : undefined
-  const cape = r('cape') < 0.2 ? rendezvous(id, 'cape', slots.Cape) : undefined
-  const made = face !== undefined && slots.Face.includes(face)
-  const parts: Part[] = [
-    ...BODY_PARTS.map((p) => ({ name: `${body}_${p}`, atlas: paint })),
-    ...[head, helm, cape, made ? face : undefined, some('Prop', 0.25), some('Outfit', 0.3)].filter((p) => p !== undefined).map((name) => ({ name })),
-  ]
-  const gear = r('gear') < 0.35 ? rendezvous(id, 'gear', slots.Gear) : undefined
-  return { species: 'adventurer', parts, gear, skin: pick(SKINS, r('skin')), hair: pick(HAIRS, r('hair')), hat, face: made ? undefined : face, wear, build }
-}
+export const hueOf = (id: string) => new THREE.Color().setHSL(hueDegrees(id) / 360, 0.55, 0.62)
 
 export type Avatar = {
   root: THREE.Object3D
@@ -73,6 +28,8 @@ export type Avatar = {
   bulb: THREE.MeshBasicMaterial
   /** How its body sits (`seatOf`): the lowest of its parts under it, the furthest back of them behind it. */
   seat: Sitting
+  /** Every rigid part it wears, by name: a fit edited live is `place(object, fitted(made, fit))`. */
+  worn: Map<string, Worn>
 }
 
 /** The atlas cells a skin and hair colour replace: each adventurer paints faces in its first swatch, hair in its second. */
@@ -118,76 +75,106 @@ function tinted(atlas: THREE.Texture, skin: string, hair: string) {
   return m
 }
 
-/**
- * The head every head part is made on (parts/parts.blend's stage). KayKit's heads share its width and its eyes, so
- * what fits it fits them all, wherever their hair or beard reaches.
- */
-const MADE_ON = 'Knight_Head'
-
-/** How wide a head the pieces of models/wear.py fit: their beanie's and cap's domes, 0.28 in radius. */
-const WEAR_HEAD = 0.56
-
-/**
- * Where an adventurer wears things, the same on every head, in its head bone's space: the top and the face (its front,
- * at eye height) of the head parts are made on; and how much bigger the pieces of models/wear.py are drawn there.
- */
-function wearingOn(cast: Cast, rig: Rig) {
-  const { geometry } = cast.parts.get(MADE_ON)!.mesh
-  if (!geometry.boundingBox) geometry.computeBoundingBox()
-  const box = geometry.boundingBox!
-  const bone = rig.bone('head')
-  rig.root.updateMatrixWorld(true)
-  const local = (v: THREE.Vector3) => bone.worldToLocal(rig.root.localToWorld(v))
-  return {
-    top: local(new THREE.Vector3(0, box.max.y, 0)),
-    face: local(new THREE.Vector3(0, box.min.y + (box.max.y - box.min.y) * 0.42, box.max.z)),
-    fits: (box.max.x - box.min.x) / WEAR_HEAD,
-  }
-}
-
 /** How far above its head (or what it wears there) a worker's status light floats, rig units. */
 const BULB_LIFT = 0.42
 
-function anchor(bone: THREE.Object3D, at: THREE.Vector3, scale: number) {
-  const a = new THREE.Object3D()
-  a.position.copy(at)
-  a.scale.setScalar(scale)
-  bone.add(a)
-  return a
+/** A rigid part a worker wears: what is placed on its bone, and where it was made to sit there, before its fit. */
+export type Worn = { object: THREE.Object3D; made: Placement }
+
+const DEG = Math.PI / 180
+
+/**
+ * Where a fit puts a rigid part, over its made placement in its bone's space, about the part's own origin: `at` moves
+ * it, `turn` turns it about the bone's axes, `scale` multiplies its scale along its own axes. An empty fit leaves it
+ * where it was made.
+ */
+export function fitted(made: Placement, fit: Fit): Placement {
+  const { at, turn, scale } = fit
+  return {
+    at: at ? [made.at[0] + at[0], made.at[1] + at[1], made.at[2] + at[2]] : made.at,
+    quaternion: turn
+      ? (new THREE.Quaternion().setFromEuler(new THREE.Euler(turn[0] * DEG, turn[1] * DEG, turn[2] * DEG)).multiply(new THREE.Quaternion().fromArray(made.quaternion)).toArray() as Placement['quaternion'])
+      : made.quaternion,
+    scale: scale === undefined ? made.scale : typeof scale === 'number' ? [made.scale[0] * scale, made.scale[1] * scale, made.scale[2] * scale] : [made.scale[0] * scale[0], made.scale[1] * scale[1], made.scale[2] * scale[2]],
+  }
 }
 
-/** What dressing a rig hangs on it: anchors for what it wears, its status light, and gear in hand. */
-type Dressed = { hat: THREE.Object3D; face: THREE.Object3D; bulb: THREE.MeshBasicMaterial; gear?: THREE.Object3D }
+/** Sets an object's position, rotation and scale to a placement. */
+export function place(object: THREE.Object3D, p: Placement) {
+  object.position.fromArray(p.at)
+  object.quaternion.fromArray(p.quaternion)
+  object.scale.fromArray(p.scale)
+}
 
-function adventurer(models: Models, rig: Rig, look: Extract<Look, { species: 'adventurer' }>): Dressed {
-  const { cast } = models
+/** What dressing a rig hangs on it: its status light, gear in hand, and every rigid part by name. */
+type Dressed = { bulb: THREE.MeshBasicMaterial; gear?: THREE.Object3D; worn: Map<string, Worn> }
+
+/**
+ * The pieces of models/wear.py a look wears, each hung on the head bone at the wearer's anchor of its kind, under its
+ * fit, in the look's wear colour.
+ */
+function wearPieces(models: Models, rig: Rig, look: Look, w: Wardrobe, worn: Map<string, Worn>) {
+  const { catalogue } = models
+  for (const name of look.parts) {
+    const { attach } = catalogue.parts[name]
+    if (!('anchor' in attach)) continue
+    const made = catalogue.anchors[look.species][attach.anchor as Anchor]
+    const holder = new THREE.Object3D()
+    place(holder, fitted(made, fitOf(w, catalogue, name, wornBy(look))))
+    rig.bone('head').add(holder)
+    const piece = instance(models.wear.getObjectByName(name)!)
+    piece.material<THREE.MeshToonMaterial>('wear_own')?.color.set(look.wear)
+    piece.root.position.set(0, 0, 0)
+    holder.add(piece.root)
+    worn.set(name, { object: holder, made })
+  }
+}
+
+/** A rigid part of the cast on its bone under its fit, recorded as worn. */
+function rigid(models: Models, rig: Rig, look: Look, w: Wardrobe, name: string, material: THREE.Material, worn: Map<string, Worn>) {
+  const { catalogue } = models
+  const { attach } = catalogue.parts[name]
+  const made = (attach as { made: Placement }).made
+  const object = wearRigid(models.cast, rig, name, material)
+  place(object, fitted(made, fitOf(w, catalogue, name, wornBy(look))))
+  worn.set(name, { object, made })
+  return object
+}
+
+function adventurer(models: Models, rig: Rig, look: Extract<Look, { species: 'adventurer' }>, w: Wardrobe): Dressed {
+  const { cast, catalogue } = models
   const materials = new Map<Adventurer, THREE.Material>()
   const materialOf = (atlas: Adventurer) => {
     if (!materials.has(atlas)) materials.set(atlas, tinted(cast.atlases.get(atlas)!, look.skin, look.hair))
     return materials.get(atlas)!
   }
-  const atlasOf = (p: Part) => p.atlas ?? cast.parts.get(p.name)!.atlas
-  for (const atlas of new Set(look.parts.map(atlasOf))) {
-    const names = look.parts.filter((p) => atlasOf(p) === atlas).map((p) => p.name)
+  const worn = new Map<string, Worn>()
+  const painted = [
+    ...bodyParts(look.body).map((name) => ({ name, atlas: look.paint })),
+    ...look.parts.filter((n) => catalogue.parts[n].atlas && catalogue.parts[n].slot !== 'Gear').map((name) => ({ name, atlas: catalogue.parts[name].atlas! })),
+  ]
+  for (const atlas of new Set(painted.map((p) => p.atlas))) {
+    const names = painted.filter((p) => p.atlas === atlas).map((p) => p.name)
     const soft = names.filter((n) => skinned(cast, n))
     if (soft.length) wearSkinned(cast, rig, soft, materialOf(atlas))
-    for (const n of names.filter((n) => !skinned(cast, n))) wearRigid(cast, rig, n, materialOf(atlas))
+    for (const n of names.filter((n) => !skinned(cast, n))) rigid(models, rig, look, w, n, materialOf(atlas), worn)
   }
-  const space = wearingOn(cast, rig)
-  const helmed = look.parts.some((p) => cast.slots.Helm.includes(p.name))
+  const helmed = look.parts.some((p) => catalogue.parts[p].slot === 'Helm')
   const bulb = glowing('#ffffff')
   const light = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8), bulb)
-  light.position.copy(space.top).add(new THREE.Vector3(0, helmed ? BULB_LIFT * 1.6 : BULB_LIFT, 0))
+  light.position.fromArray(catalogue.anchors.adventurer.hat.at).add(new THREE.Vector3(0, helmed ? BULB_LIFT * 1.6 : BULB_LIFT, 0))
   rig.bone('head').add(light)
-  const gear = look.gear === undefined ? undefined : wearRigid(cast, rig, look.gear, materialOf(cast.parts.get(look.gear)!.atlas))
-  return { hat: anchor(rig.bone('head'), space.top, space.fits), face: anchor(rig.bone('head'), space.face, space.fits), bulb, gear }
+  const held = look.parts.find((p) => catalogue.parts[p].slot === 'Gear')
+  const gear = held === undefined ? undefined : rigid(models, rig, look, w, held, materialOf(catalogue.parts[held].atlas!), worn)
+  wearPieces(models, rig, look, w, worn)
+  return { bulb, gear, worn }
 }
 
 /**
  * The bot's parts skinned to the bones they are named after, as it stands in the rig's rest pose, its hue and status
- * light its own; what it wears hangs where its model puts `hat` and `face`.
+ * light its own; what it wears hangs at its model's `hat` and `face` anchors.
  */
-function bot(models: Models, rig: Rig, look: Extract<Look, { species: 'bot' }>): Dressed {
+function bot(models: Models, rig: Rig, look: Extract<Look, { species: 'bot' }>, w: Wardrobe): Dressed {
   const own = new Map<string, THREE.Material>()
   wearModel(models.cast, rig, models.bot, (m) => {
     if (!m.name.endsWith('_own')) return m
@@ -195,12 +182,9 @@ function bot(models: Models, rig: Rig, look: Extract<Look, { species: 'bot' }>):
     return own.get(m.name)!
   })
   ;(own.get('hue_own') as THREE.MeshToonMaterial).color.set(look.hue)
-  rig.root.updateMatrixWorld(true)
-  const at = (name: string) => {
-    const pivot = models.bot.getObjectByName(name)!
-    return anchor(rig.bone('head'), rig.bone('head').worldToLocal(pivot.getWorldPosition(new THREE.Vector3())), pivot.scale.x)
-  }
-  return { hat: at('hat'), face: at('face'), bulb: own.get('bulb_glow_own') as THREE.MeshBasicMaterial }
+  const worn = new Map<string, Worn>()
+  wearPieces(models, rig, look, w, worn)
+  return { bulb: own.get('bulb_glow_own') as THREE.MeshBasicMaterial, worn }
 }
 
 /** How much bigger than life what a worker holds is drawn, to read in its big hands. */
@@ -226,17 +210,13 @@ function sittingOf(cast: Cast, rig: Rig): Sitting {
   return { under: Math.min(...sits.map((s) => s.under)), back: Math.min(...sits.map((s) => s.back)) }
 }
 
-/** A worker dressed in its look, standing at the origin, facing +z. */
-export function avatar(models: Models, look: Look): Avatar {
+/**
+ * A worker dressed in its look, standing at the origin, facing +z, every rigid part placed by its fit in `wardrobe`.
+ * Cheap to call again: geometry is shared through the cast, so a new look or wardrobe is a new avatar.
+ */
+export function avatar(models: Models, look: Look, wardrobe: Wardrobe): Avatar {
   const rig = rigOf(models.cast)
-  const dressed: Dressed = look.species === 'bot' ? bot(models, rig, look) : adventurer(models, rig, look)
-  for (const [anchor, name] of [['hat', look.hat], ['face', look.face]] as const) {
-    if (!name) continue
-    const piece = instance(models.wear.getObjectByName(name)!)
-    piece.material<THREE.MeshToonMaterial>('wear_own')?.color.set(look.wear)
-    piece.root.position.set(0, 0, 0)
-    dressed[anchor].add(piece.root)
-  }
+  const dressed: Dressed = look.species === 'bot' ? bot(models, rig, look, wardrobe) : adventurer(models, rig, look, wardrobe)
   rig.root.scale.set(RIG_SCALE * look.build.width, RIG_SCALE * look.build.height, RIG_SCALE * look.build.width)
   const body = new THREE.Group()
   body.add(rig.root)
@@ -246,5 +226,5 @@ export function avatar(models: Models, look: Look): Avatar {
   hand.rotation.z = Math.PI / 2
   hand.scale.setScalar(HELD_SCALE / RIG_SCALE)
   rig.bone('handslotr').add(hand)
-  return { root, body, rig, hand, gear: dressed.gear, bulb: dressed.bulb, seat: sittingOf(models.cast, rig) }
+  return { root, body, rig, hand, gear: dressed.gear, bulb: dressed.bulb, worn: dressed.worn, seat: sittingOf(models.cast, rig) }
 }

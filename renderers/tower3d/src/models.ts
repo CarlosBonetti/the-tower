@@ -16,6 +16,8 @@ import tvGlb from '../assets/tv.glb'
 import tuxedoGlb from '../assets/tuxedo.glb'
 import wearGlb from '../assets/wear.glb'
 import type { ModelName } from './contract.ts'
+import type { Catalogue } from './wardrobe.ts'
+import { catalogueOf } from './catalogue.ts'
 import { loadCast, type Cast } from './rig.ts'
 import { glowing, toon } from './toon.ts'
 
@@ -26,8 +28,8 @@ import { glowing, toon } from './toon.ts'
  */
 
 const BYTES: Record<ModelName, Uint8Array> = { bar: barGlb, bookcase: bookcaseGlb, bot: botGlb, calico: calicoGlb, console: consoleGlb, couch: couchGlb, desk: deskGlb, dj: djGlb, hands: handsGlb, kiosk: kioskGlb, plane: planeGlb, tabby: tabbyGlb, tv: tvGlb, tuxedo: tuxedoGlb, wear: wearGlb }
-/** The Blender models by name, and the cast workers are made of. */
-export type Models = Record<ModelName, THREE.Group> & { cast: Cast }
+/** The Blender models by name, the cast workers are made of, and the catalogue of what they wear. */
+export type Models = Record<ModelName, THREE.Group> & { cast: Cast; catalogue: Catalogue }
 
 const tokens = (m: THREE.Material) => new Set(m.name.split('_'))
 
@@ -53,7 +55,8 @@ async function parse(bytes: Uint8Array) {
 
 export async function loadModels(): Promise<Models> {
   const [entries, cast] = await Promise.all([Promise.all(Object.entries(BYTES).map(async ([name, bytes]) => [name, await parse(bytes)] as const)), loadCast()])
-  return { ...(Object.fromEntries(entries) as Record<ModelName, THREE.Group>), cast }
+  const models = Object.fromEntries(entries) as Record<ModelName, THREE.Group>
+  return { ...models, cast, catalogue: catalogueOf(cast, models.bot) }
 }
 
 /** A copy of a model, or a part of one, sharing its geometry and shared materials, with its `own` materials its own. */
