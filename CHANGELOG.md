@@ -12,6 +12,32 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.21.0
+
+The tower reads your quota while no session runs, Tower 3D starts under a loading screen, and fixes across both
+renderers. **host restart**: a pty's read error no longer takes the host down (`tower down`, then `tower up`; sessions
+can be resumed). **config**: a new key, `probes`. The renderer API moves to 1.44, additions. Rebuild Tower 3D
+(`npm run tower3d`). The tower folds every log once on its first start (the fold's code changed).
+
+- Probes: the tower reads the account's weekly and 5-hour quota every 10 minutes while no session reports it, through
+  the sessions' own `argv` (`claude -p` with only a usage request: no prompt, $0), and keeps each answer in
+  `~/.tower/streams/system/probe.quota/`. The board's rate limits, the weekly budget and its pace read sessions and
+  probes alike, so the budget has no holes while you're away; `board.rateLimitsFrom` says which read is newest. On by
+  default; `probes.quota.off` turns it off. `streams/projects/` is reserved for a project's own streams (decision
+  `probes`, API 1.44).
+- `tower.relay(frame, url, …)` in `tower.js` frames a shelf page with the board and the API; the tower page relays
+  through it, and Tower 3D's `html` shelf entries now get the board and the API too (they got neither). API 1.43.
+- Tower 3D starts under a loading screen, the elevator panel lighting a floor per stage, and compiles its shaders
+  before the first draw: the half-loaded city and most of the start's freeze are gone (decision `tower3d-start`).
+- Tower 3D: walls, glass and shut landing doors stop your aim, so a shelf behind a wall no longer offers its acts.
+  Shadows stay on while the camera flies home from a panel. The ✕ closes a review thread and a logbook. Far
+  skyline buildings leave out detail thinner than a pixel, so they flicker less as you walk.
+- A pty's read error ends that session or shell, never the host or the terms daemon.
+- The tower page holds the next wait's row in place in its short layout too.
+- Workers: a bare `tower kept` gives each collection's count and its 5 latest items (`tower kept <collection>` lists
+  all); `tower <verb> --help`; `tower thread` names the repos a note's anchors take. CI lists a pull request's own kb
+  suspects as warnings.
+
 ## v1.20.1
 
 Tower 3D's floor signs read at night again. No host restart, no config change, the renderer API is unchanged.
