@@ -14,6 +14,7 @@
     "hub/src/bridge/stats.ts#weeklyBudget",
     "hub/src/bridge/stats.ts#pace",
     "hub/src/bridge/stats.ts#today",
+    "hub/src/bridge/probes.ts#probeFacts",
     "hub/src/shared/api.ts#QUERIES",
     "hub/src/tower/server.ts#statsRead",
     "hub/src/bridge/landed.ts#parseLog",
@@ -55,7 +56,8 @@ and they are computable from the logs, so they are computed ([[logs-are-facts]])
   to each bucket) for the wall time anyone worked (`busyHours`), the workers working at once on average over it
   (`atOnce`: turn time over busy time) and the most at once (`peak`, per bucket in `series.peak`). Subagents' turns
   are not workers and are not counted. [`weeklyBudget`](ref:hub/src/bridge/stats.ts#weeklyBudget) reads the `seven_day` limit from
-  every session's readings (it is the account's, so `/stats?project=` filters the stats and never the budget): over the window it is in, the spend from its first reading to the
+  every session's readings and every probe's reads ([[probes]]: the quota is read while no session's turn reads it)
+  (it is the account's, so `/stats?project=` filters the stats and never the budget): over the window it is in, the spend from its first reading to the
   latest where it moved, divided by the percent it climbed, is what 1% buys; the percent left times that is "$ left
   this week". Its `pace` ([`pace`](ref:hub/src/bridge/stats.ts#pace)) says whether the day's spending lasts: `perDay`, the
   even daily spend that spends what is left at the reset, and `runsOutAt`, when what is left runs out at today's rate

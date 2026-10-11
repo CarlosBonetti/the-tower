@@ -79,6 +79,7 @@ import { attachShell } from '../shared/client.ts'
 import { sessionKeys, type FromHost, type ToHost } from '../shared/protocol.ts'
 import { SHELL_SIZE, type FromTerms, type ShellStream, type ToTerms } from '../shared/terms.ts'
 import { readConfig as readConfigFile, watchSystem } from '../system.ts'
+import { runProbes } from '../probes.ts'
 import { everyEvent, logFileOf, readLog } from '../tail.ts'
 import { shelfFiles, shelfServes, shownServes } from '../shelf.ts'
 import { archiveLog } from '../archive.ts'
@@ -208,7 +209,7 @@ const currentBoard = (): string => {
   }
 }
 
-const boardOf = () => board(readConfig(), system.sessions(), system.live(), system.running(), system.peers(), system.shells(), system.items(), system.threads(), system.repos(), system.logs(), paths, Date.now())
+const boardOf = () => board(readConfig(), system.sessions(), system.live(), system.running(), system.peers(), system.shells(), system.items(), system.threads(), system.repos(), system.logs(), [...system.probes().values()], paths, Date.now())
 
 /** Every session's card, the ones the board leaves out included. */
 const everyCard = (now: number) => allCards(readConfig(), system.sessions(), system.live(), system.running(), system.peers(), system.shells(), system.threads(), system.repos(), now)
@@ -277,7 +278,7 @@ async function statsRead(res: http.ServerResponse, search: string) {
   const reads = await Promise.all(dirs.map((dir) => readLanded(dir, from, to)))
   const read = new Map(dirs.map((dir, i) => [dir, reads[i]]))
   const landed = Object.fromEntries(projects.map(([id, p]) => [id, projectDirs(p).map((dir) => read.get(dir)!)]))
-  res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ ...stats(scoped, landed, { from, to, bucket }), budget: weeklyBudget(sessions, now) }))
+  res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ ...stats(scoped, landed, { from, to, bucket }), budget: weeklyBudget(sessions, [...system.probes().values()], now) }))
 }
 
 /** The contract for renderers in any language. */
@@ -345,6 +346,7 @@ const schedulePublish = () => {
 }
 
 const system = await watchSystem(paths, schedulePublish)
+runProbes(paths, readConfig, system.sessions, system.probes)
 setInterval(schedulePublish, CLOCK_PUBLISH_MS)
 
 /** A board client observes the machine while it holds the board, so its first board already says what runs. */

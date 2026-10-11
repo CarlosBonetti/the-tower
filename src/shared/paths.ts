@@ -8,6 +8,11 @@ export type SystemPaths = {
   collections: string
   /** What is computed from the stored state and kept to skip computing it again: safe to delete at any time. */
   cache: string
+  /**
+   * Logs of facts the tower observes that belong to no session, one writer each: `system/<stream>/YYYY-MM.jsonl`, the
+   * system's (`probe.quota`), and `projects/<project>/<stream>/…`, reserved for a project's.
+   */
+  streams: string
   control: string
   hooks: string
   terms: string
@@ -33,6 +38,7 @@ export const systemPaths = (config: string): SystemPaths => {
     sessions: path.join(root, 'sessions'),
     collections: path.join(root, 'collections'),
     cache: path.join(root, 'cache'),
+    streams: path.join(root, 'streams'),
     control: path.join(root, 'control.sock'),
     hooks: path.join(root, 'hooks.sock'),
     terms: path.join(root, 'terms.sock'),
@@ -49,3 +55,6 @@ export const systemPaths = (config: string): SystemPaths => {
 export const projectCollectionsPath = (paths: SystemPaths, project: string): string => path.join(paths.collections, project)
 
 export const sessionLogPath = (paths: SystemPaths, id: string): string => path.join(paths.sessions, `${id}.jsonl`)
+
+/** The directory of the system's streams, one directory each. */
+export const systemStreamsPath = (paths: SystemPaths): string => path.join(paths.streams, 'system')

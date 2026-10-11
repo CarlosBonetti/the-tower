@@ -4,8 +4,8 @@
   "name": "Log reductions",
   "summary": "Pure functions over session logs: status, facts, screens, conversations, resume chains, leftovers and peer names.",
   "in": "bridge",
-  "reviewed": "2026-10-10",
-  "refs": ["hub/src/bridge/status.ts#nextState", "hub/src/bridge/blocked.ts#blockedBy", "hub/src/bridge/board.ts#waitingOrder", "hub/src/bridge/facts.ts#factsAfter", "hub/src/bridge/facts.ts#latestRateLimits", "hub/src/bridge/stats.ts#stats", "hub/src/bridge/messages.ts#deliveries", "hub/src/bridge/messages.ts#delivered", "hub/src/bridge/messages.ts#receipts", "hub/test/stats.test.ts", "hub/src/bridge/screen.ts#snapshot", "hub/src/bridge/screen.ts#lastFrame", "hub/src/bridge/screen.ts#mirrorOf", "hub/test/screen.test.ts", "hub/src/bridge/conversation.ts#conversationsAfter", "hub/src/bridge/chains.ts#threads", "hub/src/bridge/resources.ts#resources", "hub/src/bridge/resources.ts#peers", "hub/src/bridge/board.ts#board", "hub/src/bridge/verbs.ts"]
+  "reviewed": "2026-10-11",
+  "refs": ["hub/src/bridge/status.ts#nextState", "hub/src/bridge/blocked.ts#blockedBy", "hub/src/bridge/board.ts#waitingOrder", "hub/src/bridge/facts.ts#factsAfter", "hub/src/bridge/probes.ts#accountLimits", "hub/src/bridge/stats.ts#stats", "hub/src/bridge/messages.ts#deliveries", "hub/src/bridge/messages.ts#delivered", "hub/src/bridge/messages.ts#receipts", "hub/test/stats.test.ts", "hub/src/bridge/screen.ts#snapshot", "hub/src/bridge/screen.ts#lastFrame", "hub/src/bridge/screen.ts#mirrorOf", "hub/test/screen.test.ts", "hub/src/bridge/conversation.ts#conversationsAfter", "hub/src/bridge/chains.ts#threads", "hub/src/bridge/resources.ts#resources", "hub/src/bridge/resources.ts#peers", "hub/src/bridge/board.ts#board", "hub/src/bridge/verbs.ts"]
 }
 ---
 `src/bridge`. Each reduction is written as a fold step, so a log can be folded whole, from a checkpoint
@@ -86,8 +86,9 @@ or one event at a time as it is tailed:
   whether the host is up and speaks the clients' protocol (`hostUp`, `hostOutdated`), each card's `claude`
   and whether it is outside the tested range (`claudeUntested`), and once per untested release a live worker runs
   (`board.claudeUntested`, [[new-claude-release]]),
-  rate limits (the latest reading of any session, [`latestRateLimits`](ref:hub/src/bridge/facts.ts#latestRateLimits),
-  with when it was read as `rateLimitsAt`: a reading arrives only with a turn, so renderers show its age),
+  rate limits (the latest reading of any session's turn or any probe's read, [`accountLimits`](ref:hub/src/bridge/probes.ts#accountLimits),
+  with when it was read as `rateLimitsAt` and whose it is as `rateLimitsFrom`: a reading arrives only with a turn
+  or a probe's read ([[probes]]), so renderers show its age),
   `today` (today's spend, agent-hours, waits and the weekly budget, [[stats]]) and shells. The tower draws it and relays it to shelf pages ([[shelf-page-contract]]).
 
 Fixtures in `test/fixtures/*.jsonl` are real recorded sessions; `npm test` replays them against hand-written

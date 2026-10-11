@@ -80,7 +80,7 @@ test('stats over a window: summaries, buckets, the hours of the day and the week
   const sessions = ['resume-source', 'resumed', 'clear'].map(session)
   const from = bucketStart(sessions[0].header.startedAt, 'day')
   const now = Date.parse('2026-10-04T12:00:00Z')
-  const s = { ...stats(sessions, {}, { from, to: from + 2 * 86400_000, bucket: 'day' }), budget: weeklyBudget(sessions, now) }
+  const s = { ...stats(sessions, {}, { from, to: from + 2 * 86400_000, bucket: 'day' }), budget: weeklyBudget(sessions, [], now) }
   const sum = s.all.summary
   assert.equal(s.buckets.length, 2)
   assert.deepEqual([sum.sessions, sum.worked, sum.resumes, sum.turns], [3, 3, 1, 4])
@@ -101,8 +101,8 @@ test('stats over a window: summaries, buckets, the hours of the day and the week
   close(s.budget!.spent, 0.0382443)
   close(s.budget!.usdPerPercent!, 0.0382443)
   close(s.budget!.usdLeft!, 83 * 0.0382443)
-  assert.equal(weeklyBudget(sessions, Date.parse('2026-10-05T00:00:00Z')), undefined)
-  const day = today(sessions, sessions[2].header.startedAt + 20_000)
+  assert.equal(weeklyBudget(sessions, [], Date.parse('2026-10-05T00:00:00Z')), undefined)
+  const day = today(sessions, [], sessions[2].header.startedAt + 20_000)
   close(day.spend, sum.spend)
   assert.deepEqual(day.waits, { n: 1, p50: sum.waits.p50 })
 })

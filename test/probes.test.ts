@@ -1,0 +1,106 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import { test } from 'node:test'
+import { accountLimits, due, NO_READS, probeFacts, probesOf, readingsOf, usageAnswer, type Probe, type ProbeFacts } from '../src/bridge/probes.ts'
+import { weeklyBudget } from '../src/bridge/stats.ts'
+import { ConfigError, type Config } from '../src/shared/model.ts'
+
+const text = (name: string) => readFileSync(path.join(import.meta.dirname, 'fixtures', name), 'utf8')
+
+const MIN = 60_000
+const QUOTA: Probe = { name: 'quota', reads: 'claude.usage', every: 10 * MIN, off: false }
+const NOW = Date.parse('2026-10-11T12:00:00Z')
+const NO_LIMITS = { rateLimitsAt: undefined, rateLimitsFrom: undefined }
+const readAt = (at: number, rest: Partial<ProbeFacts> = {}): ProbeFacts => ({ ...NO_READS, lastAt: at, ...rest })
+
+test("get_usage answers with the account's limits and costs nothing: no API time, $0", () => {
+  const read = usageAnswer(text('probe-usage.out'))
+  assert.ok('answer' in read)
+  const answer = read.answer as { session: { total_cost_usd: number; total_api_duration_ms: number }; rate_limits: Record<string, unknown> }
+  assert.deepEqual([answer.session.total_cost_usd, answer.session.total_api_duration_ms], [0, 0])
+  assert.equal(answer.rate_limits.seven_day_opus, undefined, 'nulls are dropped')
+  assert.deepEqual(usageAnswer('{"type":"control_response","response":{"subtype":"error","request_id":"usage","error":"unknown subtype"}}\n'), { error: 'unknown subtype' })
+  assert.deepEqual(usageAnswer(''), { error: 'claude printed no answer to get_usage' })
+})
+
+test("a read's limits are the session's shape, its reset to the second, so a window is one whichever read it", () => {
+  const read = usageAnswer(text('probe-usage.out')) as { answer: unknown }
+  const facts = probeFacts([[NOW, { reads: 'claude.usage', ms: 1411, ok: true, answer: read.answer }]])
+  assert.deepEqual(facts.rateLimits, {
+    at: NOW,
+    limits: [
+      { kind: 'five_hour', percentUsed: 11, resetsAt: '2026-10-11T15:40:00.000Z' },
+      { kind: 'seven_day', percentUsed: 89, resetsAt: '2026-10-11T22:00:00.000Z' },
+    ],
+  })
+  assert.deepEqual(facts.limitReadings.seven_day, [[NOW, 89, '2026-10-11T22:00:00.000Z']])
+})
+
+test('the board reads the newest of the sessions and the probes, and says whose it is', () => {
+  const limits = [{ kind: 'seven_day', percentUsed: 88 }]
+  const session = { rateLimits: { at: NOW - MIN, limits } }
+  const probe = readAt(NOW, { rateLimits: { at: NOW, limits: [{ kind: 'seven_day', percentUsed: 89 }] } })
+  assert.deepEqual(accountLimits([session], [probe]), { rateLimits: probe.rateLimits!.limits, rateLimitsAt: NOW, rateLimitsFrom: 'probe' })
+  assert.deepEqual(accountLimits([session], [NO_READS]), { rateLimits: limits, rateLimitsAt: NOW - MIN, rateLimitsFrom: 'session' })
+  assert.deepEqual(accountLimits([], []), { rateLimits: [], rateLimitsAt: undefined, rateLimitsFrom: undefined })
+})
+
+test('a probe is due with no read yet, then once every `every` after its last read', () => {
+  assert.equal(due(QUOTA, NO_READS, NO_LIMITS, NOW), true)
+  assert.equal(due(QUOTA, readAt(NOW - 9 * MIN), NO_LIMITS, NOW), false)
+  assert.equal(due(QUOTA, readAt(NOW - 10 * MIN), NO_LIMITS, NOW), true)
+  assert.equal(due({ ...QUOTA, off: true }, NO_READS, NO_LIMITS, NOW), false)
+})
+
+test("the quota probe waits while a session's reading is newer than its interval, and not on its own reading", () => {
+  assert.equal(due(QUOTA, NO_READS, { rateLimitsAt: NOW - 5 * MIN, rateLimitsFrom: 'session' }, NOW), false)
+  assert.equal(due(QUOTA, NO_READS, { rateLimitsAt: NOW - 10 * MIN, rateLimitsFrom: 'session' }, NOW), true)
+  assert.equal(due(QUOTA, readAt(NOW - 10 * MIN), { rateLimitsAt: NOW - 10 * MIN, rateLimitsFrom: 'probe' }, NOW), true)
+})
+
+test('failures in a row back off from the third: 10 min, doubling to an hour; an account with no limits waits 6 h', () => {
+  const failed = (fails: number, ago: number) => due({ ...QUOTA, every: 2 * MIN }, readAt(NOW - ago, { failsInRow: fails }), NO_LIMITS, NOW)
+  assert.equal(failed(2, 2 * MIN), true)
+  assert.deepEqual([failed(3, 9 * MIN), failed(3, 10 * MIN)], [false, true])
+  assert.deepEqual([failed(4, 19 * MIN), failed(4, 20 * MIN)], [false, true])
+  assert.deepEqual([failed(9, 59 * MIN), failed(9, 60 * MIN)], [false, true])
+  const unavailable = (ago: number) => due(QUOTA, readAt(NOW - ago, { unavailable: true }), NO_LIMITS, NOW)
+  assert.deepEqual([unavailable(359 * MIN), unavailable(360 * MIN)], [false, true])
+})
+
+test('a last read dated after now (the clock moved back) makes the probe due', () => {
+  assert.equal(due(QUOTA, readAt(NOW + 60 * MIN), NO_LIMITS, NOW), true)
+})
+
+test('the core declares the quota probe, on; the config overrides its fields, and a probe the tower cannot run is a config error', () => {
+  const config = (probes?: Config['probes']) => ({ argv: ['claude'], env: {}, projects: {}, probes }) as Config
+  assert.deepEqual(probesOf(config()), [QUOTA])
+  assert.deepEqual(probesOf(config({ quota: { off: true } })), [{ ...QUOTA, off: true }])
+  assert.deepEqual(probesOf(config({ quota: { every: '1h' } })), [{ ...QUOTA, every: 60 * MIN }])
+  assert.throws(() => probesOf(config({ quota: { every: '30s' } })), (e) => e instanceof ConfigError && /under the floor of 60s/.test(e.message))
+  assert.throws(() => probesOf(config({ quota: { every: '10' } })), /"every" takes how often it reads/)
+  assert.throws(() => probesOf(config({ mine: { every: '10m' } })), /"reads" takes one of the readers: claude.usage/)
+})
+
+test("a probe's stream, read by a tower: two answers, then three failures; the fold keeps the limits and counts the failures", () => {
+  const readings = readingsOf(text('probe-quota.jsonl'))
+  const at = (i: number) => readings[i][0]
+  assert.deepEqual(readings.map(([, r]) => [r.reads, r.ok]), [['claude.usage', true], ['claude.usage', true], ['claude.usage', false], ['claude.usage', false], ['claude.usage', false]])
+  const facts = probeFacts(readings)
+  assert.deepEqual([facts.lastAt, facts.failsInRow, facts.unavailable], [at(4), 3, false])
+  assert.deepEqual(facts.limitReadings, {
+    five_hour: [[at(0), 12, '2026-10-11T15:40:00.000Z'], [at(1), 13, '2026-10-11T15:40:00.000Z']],
+    seven_day: [[at(0), 89, '2026-10-11T22:00:00.000Z']],
+  })
+  assert.equal(facts.rateLimits?.at, at(1))
+  const every2m = { ...QUOTA, every: 2 * MIN }
+  assert.deepEqual([due(every2m, facts, NO_LIMITS, at(4) + 2 * MIN), due(every2m, facts, NO_LIMITS, at(4) + 10 * MIN)], [false, true])
+  assert.deepEqual(probeFacts(readings.slice(0, 2)).failsInRow, 0)
+})
+
+test("with no session, the weekly budget is read from the probe's reads", () => {
+  const facts = probeFacts(readingsOf(text('probe-quota.jsonl')))
+  const budget = weeklyBudget([], [facts], Date.parse('2026-10-11T12:00:00Z'))
+  assert.deepEqual([budget?.percentUsed, budget?.resetsAt, budget?.since, budget?.spent], [89, '2026-10-11T22:00:00.000Z', facts.limitReadings.seven_day[0][0], 0])
+})

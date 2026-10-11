@@ -1,0 +1,84 @@
+---
+{
+  "type": "decision",
+  "name": "Probes: periodic readings the tower takes, kept as facts in a stream",
+  "summary": "A probe is a named reader from a closed set in the core, run by the tower while due: a pure due(probe, its stream, the board, now) decides each read, each read (Claude's answer or why there is none) is appended to the probe's own log under streams/system/, and the bridge folds it into the same limit readings sessions give, so the rate limits, the weekly budget and its pace have no holes while no session runs.",
+  "in": "tower",
+  "status": "accepted",
+  "date": "2026-10-11",
+  "reviewed": "2026-10-11",
+  "refs": [
+    "hub/src/bridge/probes.ts#due",
+    "hub/src/bridge/probes.ts#waitOf",
+    "hub/src/bridge/probes.ts#probeFacts",
+    "hub/src/bridge/probes.ts#accountLimits",
+    "hub/src/bridge/probes.ts#probesOf",
+    "hub/src/bridge/probes.ts#usageAnswer",
+    "hub/src/probes.ts#runProbes",
+    "hub/src/system.ts#watchSystem",
+    "hub/src/shared/paths.ts#systemStreamsPath",
+    "hub/src/shared/model.ts#ProbeConfig",
+    "hub/test/fixtures/probe-usage.out",
+    "hub/test/fixtures/probe-quota.jsonl",
+    "hub/test/probes.test.ts"
+  ],
+  "links": [
+    { "to": "logs-are-facts", "verb": "amends", "carries": "one writer per log: the tower writes streams/" },
+    { "to": "stats", "verb": "feeds", "carries": "seven_day readings from probe reads" },
+    { "to": "env-scrub", "verb": "follows", "carries": "the probe's claude runs with the parent session scrubbed" }
+  ]
+}
+---
+**Problem.** The account's rate limits arrive only with a session's turn (`session.measure`). While nobody works the
+board's limits age, and the weekly budget's history has holes exactly when use happens elsewhere (claude.ai, the
+desktop app, a phone) or when the user is away: the moment standing work would need a fresh reading.
+
+**Why.** The readings are facts about the account the system can observe on its own, at no cost: Claude Code answers
+the `get_usage` control request with `/usage`'s data, `total_cost_usd: 0` and no API time (measured, kept in the
+fixture). Facts go in a log ([[logs-are-facts]]); what they mean is folded.
+
+**How.**
+- *A probe, as data.* `config.probes.<name> = { reads, every, off }` ([`ProbeConfig`](ref:hub/src/shared/model.ts#ProbeConfig)).
+  The core declares `quota` (`reads: "claude.usage"`, `every: "10m"`), on; the config overrides its fields or adds
+  probes, read live ([`probesOf`](ref:hub/src/bridge/probes.ts#probesOf)). A probe the tower can't run (an unknown
+  reader, an `every` under 60 s) is a config error, which `tower config check` prints at `probes`. The sandbox
+  writes `{ "quota": { "off": true } }`, so a throwaway system never reads the real account. Top-level `probes` is
+  the system's; a project's own probes will go under `projects.<p>.probes`, not built yet.
+- *Readers are code, a closed set.* `claude.usage` is the only one: `claude -p --input-format stream-json` with no
+  tools, no setting sources, no MCP, no slash commands and nothing saved, run from the temp dir, its env the parent
+  session scrubbed with the config's `env` merged ([[env-scrub]]), sent one line, the control request, and nothing
+  else; killed by its pid at 30 s ([`runProbes`](ref:hub/src/probes.ts#runProbes)). The answer is taken from its stdout
+  ([`usageAnswer`](ref:hub/src/bridge/probes.ts#usageAnswer)). No reader sends a prompt, starts a session or calls a
+  verb. A reader a program the user writes could be is left for later: the core can't promise it only reads.
+- *Due, from facts.* Every 30 s the tower runs the first probe [`due`](ref:hub/src/bridge/probes.ts#due) at `now`:
+  never while `off`, nor while its reader can wait on the board (`claude.usage`: a session's reading newer than
+  `every`); else once its wait ([`waitOf`](ref:hub/src/bridge/probes.ts#waitOf)) has passed since its stream's last
+  read: `every`; after 3 failures in a row 10 min doubling to 1 h; 6 h after an answer saying the account has no rate
+  limits (`rate_limits_available: false`: an API key, a cloud provider, signed out). Backoff is read from the
+  stream, so a restart doesn't reset it. A last read dated after `now` (the clock moved back) is due. The tower holds
+  only the read in flight (one at a time across all probes) and when the last one started: reads start at least
+  60 s apart whatever the config, the stream or the clock say.
+- *A stream per probe, one writer.* `streams/system/probe.<name>/YYYY-MM.jsonl` (the file's UTC month): a header
+  `{stream, startedAt, version}`, `startedAt` the month's start, then `[t, "p", read]` events, `read` the reader's
+  name, the ms it took, and `{ok: true, answer}` (Claude's answer as it came, nulls dropped, so a later fold reads
+  every past read) or `{ok: false, error}`. Skipped reads are not logged: they follow from the session logs. Project
+  streams are reserved at `streams/projects/<project>/<stream>/`, none written yet.
+- *Folded beside the sessions.* [`watchSystem`](ref:hub/src/system.ts#watchSystem) watches `streams/system/` and
+  folds each probe's months in order ([`probeFacts`](ref:hub/src/bridge/probes.ts#probeFacts)): `limitReadings` and
+  `rateLimits` in the sessions' shape (`five_hour`, `seven_day`, each reset rounded to the second as the mod reports
+  it, so a window is one whichever read it), the last read, failures in a row. The board's `rateLimits` are the newest
+  of sessions ∪ probes ([`accountLimits`](ref:hub/src/bridge/probes.ts#accountLimits)), with `rateLimitsFrom`
+  (`session` or `probe`); `weeklyBudget` and `pace` read the readings of both ([[stats]]).
+
+**Alternatives considered.** A timer in the host: it must stay small, its changes kill sessions, and it knows no
+Claude flags ([[host-knows-no-flags]]). A mod hook: runs only while a session runs, the gap itself. A daemon of its
+own, cron or launchd: another process to supervise, blind to the board. Calling the OAuth usage endpoint: the tower
+would handle the user's tokens. Readings in memory: no history. Readings in a pseudo-session's log: it would show on
+the board, in chains and in Tidy. A collection: collections are the user's and workers' files, edited and deleted by
+the user, and these are observed facts.
+
+**Impact.** A fourth directory of logs, not a fourth kind of state: config (intent), logs (facts, `sessions/` by the
+host and `streams/` by the tower), collections (files kept for later). The limits on the board stay current while no
+session runs, at one ~1.5 s `claude` process per read and ~1.7 KB per read kept. Not built yet: the probes' status on
+the board, `GET /probe/<name>`, `tower probes`, a doctor line, Tidy archiving closed months, per-model weeks and
+outside use.

@@ -196,7 +196,7 @@ const spent = (facts: Facts, usd: number): number => {
 }
 
 /** Each limit's readings, a reading kept only where its percent or its window moved. */
-const limitsRead = (readings: Facts['limitReadings'], at: number, limits: RateLimit[]): Facts['limitReadings'] =>
+export const limitsRead = (readings: Facts['limitReadings'], at: number, limits: RateLimit[]): Facts['limitReadings'] =>
   limits.reduce((next, { kind, percentUsed, resetsAt = '' }) => {
     const last = next[kind]?.at(-1)
     return last && last[1] === percentUsed && last[2] === resetsAt ? next : { ...next, [kind]: [...(next[kind] ?? []), [at, percentUsed, resetsAt]] }
@@ -368,7 +368,3 @@ export const factsAfter = (startedAt: number) => (facts: Facts, event: FoldEvent
 }
 
 export const factsOf = ({ header, events }: { header: SessionHeader; events: FoldEvent[] }): Facts => events.reduce(factsAfter(header.startedAt), initialFacts(header))
-
-/** Rate limits belong to the account: the most recent reading of any session stands for all of them. */
-export const latestRateLimits = (facts: Facts[]): Facts['rateLimits'] =>
-  facts.reduce<Facts['rateLimits']>((latest, f) => (f.rateLimits && (!latest || f.rateLimits.at > latest.at) ? f.rateLimits : latest), undefined)

@@ -1,0 +1,89 @@
+/**
+ * The tower's probes, run on a tick: the first probe due by its stream and the board reads, one read at a time, and
+ * what it read is appended to its stream. A read only reads: none sends a prompt, starts a session or calls a verb.
+ */
+import { spawn } from 'node:child_process'
+import { appendFileSync, existsSync, mkdirSync } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import type { Session } from './bridge/facts.ts'
+import {
+  accountLimits, due, eventLine, FLOOR_MS, monthFile, monthStart, NO_READS, probesOf, streamName, usageAnswer, USAGE_REQUEST,
+  type ProbeFacts, type ProbeRead, type Reader, type StreamHeader,
+} from './bridge/probes.ts'
+import { withoutParentSession } from './shared/env.ts'
+import type { Config } from './shared/model.ts'
+import { systemStreamsPath, type SystemPaths } from './shared/paths.ts'
+
+const TICK_MS = 30_000
+const READ_TIMEOUT_MS = 30_000
+
+/** Claude in print mode answering control requests on stdin: no tools, no settings, no MCP, no slash commands, nothing saved. */
+const USAGE_ARGS = [
+  '-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
+  '--tools', '', '--setting-sources', '', '--strict-mcp-config', '--disable-slash-commands', '--no-session-persistence',
+]
+
+/**
+ * Asks Claude for `/usage`'s data: the request is its only input, and it exits as its stdin closes. Run from the temp
+ * dir, with the config's `env` and the parent session scrubbed, and killed if it has not exited within the timeout.
+ */
+const readUsage = (config: Config): Promise<{ answer: unknown } | { error: string }> =>
+  new Promise((resolve) => {
+    const child = spawn('claude', USAGE_ARGS, { cwd: os.tmpdir(), env: withoutParentSession({ ...process.env, ...config.env }), stdio: ['pipe', 'pipe', 'pipe'] })
+    let out = ''
+    let err = ''
+    let timedOut = false
+    const timer = setTimeout(() => ((timedOut = true), child.kill('SIGKILL')), READ_TIMEOUT_MS)
+    child.stdout.on('data', (chunk) => (out += chunk))
+    child.stderr.on('data', (chunk) => (err += chunk))
+    child.on('error', (e) => (clearTimeout(timer), resolve({ error: e.message })))
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      if (timedOut) return resolve({ error: `no answer within ${READ_TIMEOUT_MS / 1000}s` })
+      const read = usageAnswer(out)
+      resolve('error' in read && code ? { error: `${read.error}: claude exited ${code}: ${err.trim().split('\n').at(-1) ?? ''}` } : read)
+    })
+    /** A claude that exits before reading its stdin says why as it closes. */
+    child.stdin.on('error', () => {})
+    child.stdin.end(`${JSON.stringify(USAGE_REQUEST)}\n`)
+  })
+
+const READS: Record<Reader, (config: Config) => Promise<{ answer: unknown } | { error: string }>> = { 'claude.usage': readUsage }
+
+/** Appends a read to its probe's stream, in the file of its month, which starts with its header. */
+const append = (paths: SystemPaths, probe: string, at: number, read: ProbeRead) => {
+  const dir = path.join(systemStreamsPath(paths), streamName(probe))
+  const file = path.join(dir, monthFile(at))
+  mkdirSync(dir, { recursive: true })
+  const header: StreamHeader = { stream: streamName(probe), startedAt: monthStart(at), version: 1 }
+  appendFileSync(file, `${existsSync(file) ? '' : `${JSON.stringify(header)}\n`}${eventLine(at, read)}\n`)
+}
+
+/**
+ * Runs the probes until the process ends. The one read in flight and when the last one started are all it holds:
+ * whatever the config or a stream says, reads start at least `FLOOR_MS` apart.
+ */
+export const runProbes = (paths: SystemPaths, readConfig: () => Config, sessions: () => Session[], probes: () => Map<string, ProbeFacts>) => {
+  let reading = false
+  let lastStart = -Infinity
+  const tick = async () => {
+    const now = Date.now()
+    if (reading || now - lastStart < FLOOR_MS) return
+    const config = readConfig()
+    const facts = probes()
+    const board = accountLimits(sessions().map((s) => s.facts), [...facts.values()])
+    const probe = probesOf(config).find((p) => due(p, facts.get(p.name) ?? NO_READS, board, now))
+    if (!probe) return
+    reading = true
+    lastStart = now
+    try {
+      const read = await READS[probe.reads](config)
+      const ms = Date.now() - now
+      append(paths, probe.name, now, 'answer' in read ? { reads: probe.reads, ms, ok: true, answer: read.answer } : { reads: probe.reads, ms, ok: false, error: read.error })
+    } finally {
+      reading = false
+    }
+  }
+  setInterval(() => void tick().catch((err) => console.error('probes:', err)), TICK_MS)
+}

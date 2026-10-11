@@ -4,7 +4,7 @@
   "name": "Data model",
   "summary": "The shared types and pure builders: projects and config, the session header and log events, the host and terms protocols, and spawn/resume requests.",
   "in": "bridge",
-  "reviewed": "2026-10-09",
+  "reviewed": "2026-10-11",
   "refs": ["hub/src/shared/model.ts", "hub/src/shared/model.ts#projectCollections", "hub/src/shared/protocol.ts#ToHost", "hub/src/shared/protocol.ts#HOST_PROTOCOL", "hub/src/shared/protocol.ts#promptPastes", "hub/src/shared/terms.ts#ToTerms", "hub/src/shared/launch.ts#spawnRequest", "hub/src/shared/env.ts#withoutParentSession", "hub/src/shared/model.ts#sessionDirs", "hub/src/shared/model.ts#inProject", "hub/src/shared/model.ts#worktreesConfig", "hub/src/shared/launch.ts#worktreeBrief", "hub/src/shared/model.ts#projectPlugins", "hub/src/shared/model.ts#editorArgv", "hub/src/shared/model.ts#configuredCallsigns", "hub/src/shared/model.ts#callsignsOf"]
 }
 ---
@@ -29,7 +29,7 @@ predicate, which the board asks of every past worker's `cwd` before it offers a 
 project; [`worktreesConfig`](ref:hub/src/shared/model.ts#worktreesConfig) merges them per key, the project's winning,
 `tower/` as the default prefix, cutting by default. `HiringConfig` (`depth`, `live`) merges the same way through
 [`hiringConfig`](ref:hub/src/shared/model.ts#hiringConfig), 2 and 3 by default ([[hiring-limits]]), and `BriefConfig`
-(`pairs`) through [`briefConfig`](ref:hub/src/shared/model.ts#briefConfig), 2 by default ([[brief-turns]]). `user.name`
+(`pairs`) through [`briefConfig`](ref:hub/src/shared/model.ts#briefConfig), 2 by default ([[brief-turns]]). `ProbeConfig` (`reads`, `every`, `off`) sits at the top level only, by probe name, over the core's `quota` ([[probes]]). `user.name`
 is read through [`configuredUser`](ref:hub/src/shared/model.ts#configuredUser), which throws a `ConfigError` for a name
 no note heading can carry ([[the-user]], [[board-errors]]), and the top-level `callsigns` through
 [`configuredCallsigns`](ref:hub/src/shared/model.ts#configuredCallsigns), which throws one for a list that can't name

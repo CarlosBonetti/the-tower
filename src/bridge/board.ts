@@ -9,7 +9,8 @@ import { claudeRange } from '../shared/claude.ts'
 import type { SystemPaths } from '../shared/paths.ts'
 import { shellActivity, type Shell } from '../shared/terms.ts'
 import { continuations, lineage, namer, threads, type SessionRef, type Thread } from './chains.ts'
-import { latestRateLimits, type RateLimit, type Session, type Shown, type SubagentRun } from './facts.ts'
+import { accountLimits, type LimitsFrom, type ProbeFacts } from './probes.ts'
+import { type RateLimit, type Session, type Shown, type SubagentRun } from './facts.ts'
 import type { Peer, Resource } from './resources.ts'
 import { bucketStart, nextBucket, today, type Today } from './stats.ts'
 import { isMidTurn, waitsOnSomeone, withLiveness, type Status } from './status.ts'
@@ -287,10 +288,12 @@ export type Board = {
   archiveAt: number
   rateLimits: RateLimit[]
   /**
-   * When the rate limits were read (epoch ms): a reading arrives only with a session's turn, so it ages while
-   * nobody works.
+   * When the rate limits were read (epoch ms): a session's turn reads them, and the quota probe while no turn does,
+   * so they age only while neither reads.
    */
   rateLimitsAt?: number
+  /** Whose reading the rate limits are: a session's turn, or a probe's read. */
+  rateLimitsFrom?: LimitsFrom
   /** Today so far, every project's: it moves with the facts the board moves with, so it is as of the last change. */
   today: Today
   hostUp: boolean
@@ -677,6 +680,7 @@ export const board = (
   threads: { project: string; id: string; thread: ReviewThread }[],
   repos: Map<string, RepoRead>,
   logs: Map<string, LogFile>,
+  probes: ProbeFacts[],
   paths: Pick<SystemPaths, 'config' | 'collections'>,
   now: number,
 ): Board => {
@@ -686,7 +690,6 @@ export const board = (
   const kept = onBoard(bucketStart(now, 'day'))
   const keptBy = keepers(sessions, namer(continued, callsignsOf(config)))
   const occupants = occupantsOf(cards, shells)
-  const reading = latestRateLimits(sessions.map((s) => s.facts))
   return {
     user: { name: userName(config) },
     keys: configuredKeys(config),
@@ -725,9 +728,8 @@ export const board = (
     }),
     waiting: waitingOrder(cards),
     archiveAt: archiveAtOf(cards, cards.filter((c) => !kept(c))),
-    rateLimits: reading?.limits ?? [],
-    rateLimitsAt: reading?.at,
-    today: today(sessions, now),
+    ...accountLimits(sessions.map((s) => s.facts), probes),
+    today: today(sessions, probes, now),
     hostUp: host !== undefined,
     hostOutdated: host !== undefined && host.protocol !== HOST_PROTOCOL,
     claudeUntested: [...new Set(cards.filter((c) => c.live && c.claudeUntested).map((c) => c.claude!))],

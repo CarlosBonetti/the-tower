@@ -115,6 +115,8 @@ function freshConfig(port: number) {
 function prepareConfig(port: number | undefined) {
   const config = existsSync(CONFIG) ? JSON.parse(readFileSync(CONFIG, 'utf8')) : freshConfig(port ?? 4399)
   if (port !== undefined) config.port = port
+  /** A sandbox's probes would read the real account: one is turned on by hand to try it. */
+  config.probes ??= { quota: { off: true } }
   writeFileSync(CONFIG, JSON.stringify(config, null, 2))
 }
 

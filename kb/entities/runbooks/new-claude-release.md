@@ -4,7 +4,7 @@
   "name": "New Claude release",
   "summary": "A Claude Code release outside the tested range: the board flags each worker on it and says so once, doctor names it, and the range moves only after the fixture set is recorded again on it and replays clean.",
   "in": "tower",
-  "reviewed": "2026-10-10",
+  "reviewed": "2026-10-11",
   "refs": ["hub/src/shared/claude.ts#CLAUDE_TESTED", "hub/src/shared/claude.ts#CLAUDE_SURFACES", "hub/src/shared/claude.ts#claudeRange", "hub/src/mod/hooks/register.js#register", "hub/src/bridge/facts.ts#hookFacts", "hub/src/bridge/board.ts#board", "hub/src/shared/cards.ts#claudeUntestedHtml", "hub/test/fixtures/", "hub/scripts/sandbox.ts"]
 }
 ---
@@ -48,7 +48,9 @@ the screens a fresh directory raises with [`blocked.ts`](ref:hub/src/bridge/bloc
    what an older one had raises `lowest` too.
 5. Re-check each surface in `CLAUDE_SURFACES` that a fixture doesn't exercise (the paste limit, the peer
    registry, the fullscreen TUI: a session's log enables `?1049h` and `?1006h`, and the wheel over the tower page's
-   terminal scrolls the transcript), and update the list if the tower now reads something new.
+   terminal scrolls the transcript, the quota probe's `get_usage` answer: record it again into
+   `test/fixtures/probe-usage.out` with the request in [[probes]] and diff it), and update the list if the tower now
+   reads something new.
 
 The draft tagged `lanky-delta` (Haiku scenario runs recorded as fixtures, with a drift table) is this
 runbook as an unattended night shift: once it lands, its recordings are the step-2 set.

@@ -2,12 +2,13 @@
 {
   "type": "library",
   "name": "Live system",
-  "summary": "watchSystem: every session log folded and tailed, every collection's items, the host's live set, the terms daemon's shells, leftover processes and the peer names of running Claudes, with an onChange for renderers.",
+  "summary": "watchSystem: every session log folded and tailed, every probe's stream folded, every collection's items, the host's live set, the terms daemon's shells, leftover processes and the peer names of running Claudes, with an onChange for renderers.",
   "in": "bridge",
-  "reviewed": "2026-10-10",
-  "refs": ["hub/src/system.ts#watchSystem", "hub/src/collections.ts#scanCollections", "hub/src/tail.ts#tailLog", "hub/src/tail.ts#factEvents", "hub/src/checkpoints.ts#foldLog", "hub/src/machine.ts#hostLive", "hub/src/machine.ts#scanProcesses", "hub/src/machine.ts#resourcesIn", "hub/src/machine.ts#peersIn", "hub/src/system.ts#serially", "hub/src/worktrees.ts#readRepo", "hub/src/logged.ts"],
+  "reviewed": "2026-10-11",
+  "refs": ["hub/src/system.ts#watchSystem", "hub/src/collections.ts#scanCollections", "hub/src/tail.ts#tailLog", "hub/src/tail.ts#factEvents", "hub/src/checkpoints.ts#foldLog", "hub/src/machine.ts#hostLive", "hub/src/machine.ts#scanProcesses", "hub/src/machine.ts#resourcesIn", "hub/src/machine.ts#peersIn", "hub/src/system.ts#serially", "hub/src/bridge/probes.ts#probeFacts", "hub/src/worktrees.ts#readRepo", "hub/src/logged.ts"],
   "links": [
     { "to": "system-root", "verb": "reads", "carries": "every sessions/*.jsonl, read to its last full line from its checkpoint on, then tailed while the session runs; collections/ rescanned on any change" },
+    { "to": "system-root", "verb": "reads", "carries": "streams/system/probe.*/YYYY-MM.jsonl, watched recursively and folded again once a write settles, a file at the same size not read again" },
     { "to": "system-root", "verb": "writes", "carries": "cache/facts/<id>.v8, each log's checkpoint, moved on by every fold that read past it" },
     { "to": "host-daemon", "verb": "calls", "carries": "live (ids of running sessions and the host protocol it speaks) every 1 s" },
     { "to": "terms-daemon", "verb": "calls", "carries": "list (shells with foreground process and title) every 1 s" },
@@ -37,7 +38,9 @@ content: output changes no fact but a blocking screen
 signals only a newly tracked log. The collections directory is watched recursively (one FSEvents stream on macOS, no descriptor per file) and
 rescanned once changes settle for 100 ms ([`scanCollections`](ref:hub/src/collections.ts#scanCollections): every
 item with its size and mtime; ~0.3 ms for 50 items, ~39 ms for 10,000), so a burst of writes costs one rescan,
-signalling only when the listing differs; the store doesn't read the config, so the board picks the declared ones. Leftover processes and the peer names of sessions' Claudes are re-read every 5 s, from one `ps` scan ([[agent-directory]]), run
+signalling only when the listing differs; the store doesn't read the config, so the board picks the declared ones. The system's streams (`streams/system/`) are watched the same way: each probe's month files are folded in order
+([`probeFacts`](ref:hub/src/bridge/probes.ts#probeFacts), [[probes]]) once a write settles, a file whose size is
+unchanged kept as read, signalling only when a probe's facts differ. Leftover processes and the peer names of sessions' Claudes are re-read every 5 s, from one `ps` scan ([[agent-directory]]), run
 off the event loop (`ps -E` and `lsof` take about 260 ms on a machine of 1,150 processes). The config's directory is
 watched for the config file (an editor's save replaces it), and a change signals: the board reads the config, and a
 config fixed after it broke brings the board back ([[board-errors]]). [`readConfig`](ref:hub/src/system.ts#readConfig)

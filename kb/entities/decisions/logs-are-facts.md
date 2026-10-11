@@ -6,7 +6,7 @@
   "in": "tower",
   "status": "accepted",
   "date": "2026-09-30",
-  "reviewed": "2026-10-10",
+  "reviewed": "2026-10-11",
   "refs": ["hub/src/shared/model.ts#LogEvent", "hub/src/bridge/facts.ts#factsOf", "hub/src/bridge/chains.ts#resumes"]
 }
 ---
@@ -30,6 +30,11 @@ Amended on 2026-10-06 (D2): a checkpoint (a screen snapshot or a fold's result a
 cache, not a fourth kind of stored state. Logs are append-only, so a checkpoint keyed by its log, offset and
 the version of the reduction that made it stays valid; it is never authoritative, always safe to delete, and
 recomputed from the log when missing. The facts fold's checkpoints: [[fold-checkpoints]].
+
+Amended on 2026-10-11 by [[probes]]: a log is append-only facts with one writer per file. The host writes the
+session logs (`sessions/`) and stays the single writer of everything about a session; the tower writes the logs of
+what it observes that belong to no session (`streams/`, the quota probe's reads first). Still three kinds of stored
+state: a stream is a log.
 
 **Consequences.** A new fact is a new fold step, and it applies to every past session retroactively. Logs
 are replayed to answer questions, which costs time on large logs (`/screen` replays the whole log).

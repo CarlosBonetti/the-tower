@@ -1,18 +1,19 @@
 /**
  * A running view of the whole system: every session folded from its log and kept current as the host appends
- * to it, the items of every collection, the host's live set, the terms daemon's shells, what sessions left
- * running on the machine, and what git says about the tower's worktrees in every project dir.
+ * to it, every probe's stream folded, the items of every collection, the host's live set, the terms daemon's shells,
+ * what sessions left running on the machine, and what git says about the tower's worktrees in every project dir.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, watch } from 'node:fs'
 import path from 'node:path'
 import { factsAfter, type Session } from './bridge/facts.ts'
 import { foldLog } from './checkpoints.ts'
+import { probeFacts, readingsOf, type ProbeFacts, type ProbeReading } from './bridge/probes.ts'
 import type { Peer, Resource } from './bridge/resources.ts'
 import type { RepoRead } from './bridge/worktrees.ts'
 import { readItem, scanCollections } from './collections.ts'
 import { hostLive, peersIn, resourcesIn, scanProcesses, termsShells } from './machine.ts'
 import { ConfigError, projectDirs, type CollectionItem, type Config } from './shared/model.ts'
-import type { SystemPaths } from './shared/paths.ts'
+import { systemStreamsPath, type SystemPaths } from './shared/paths.ts'
 import type { HostLive } from './shared/protocol.ts'
 import { parseThread, REVIEWS, type ReviewThread } from './shared/reviews.ts'
 import type { Shell } from './shared/terms.ts'
@@ -77,6 +78,37 @@ const threadsIn = (paths: SystemPaths, items: CollectionItem[], held: ThreadFile
       return text === undefined ? [] : [{ project, id, modifiedAt, thread: parseThread(text) }]
     })
 
+const PROBE_STREAM = /^probe\.([\w-]+)$/
+const MONTH_FILE = /^\d{4}-\d{2}\.jsonl$/
+
+/** A stream file's reads, as of its size. */
+type StreamFile = { bytes: number; readings: ProbeReading[] }
+
+/**
+ * Each probe's stream folded, by probe name, from its month files in order, and the files as read: a file `held` at
+ * the same size is not read again.
+ */
+const probesIn = (root: string, held: Map<string, StreamFile>): { probes: Map<string, ProbeFacts>; files: Map<string, StreamFile> } => {
+  const files = new Map<string, StreamFile>()
+  const probes = new Map<string, ProbeFacts>()
+  for (const stream of readdirSync(root)) {
+    const name = PROBE_STREAM.exec(stream)?.[1]
+    if (!name) continue
+    const readings = readdirSync(path.join(root, stream))
+      .filter((f) => MONTH_FILE.test(f))
+      .sort()
+      .flatMap((f) => {
+        const file = path.join(root, stream, f)
+        const bytes = statSync(file).size
+        const read = held.get(file)?.bytes === bytes ? held.get(file)! : { bytes, readings: readingsOf(readFileSync(file, 'utf8')) }
+        files.set(file, read)
+        return read.readings
+      })
+    probes.set(name, probeFacts(readings))
+  }
+  return { probes, files }
+}
+
 export type System = {
   /** Newest first. */
   sessions: () => Session[]
@@ -87,6 +119,8 @@ export type System = {
   items: () => CollectionItem[]
   /** Every review thread on disk, parsed, read again when its file changes. */
   threads: () => ThreadFile[]
+  /** Each probe's stream folded, by probe name, read again when it grows. */
+  probes: () => Map<string, ProbeFacts>
   /** `undefined` while no host is running. */
   live: () => HostLive | undefined
   running: () => Resource[]
@@ -116,7 +150,7 @@ export type System = {
 }
 
 /**
- * `onChange` is called after anything the system holds changes: a logged event, a collection's items, the live set,
+ * `onChange` is called after anything the system holds changes: a logged event, a probe's read, a collection's items, the live set,
  * the shells, the processes, git, or the config file.
  */
 export const watchSystem = async (paths: SystemPaths, notify: () => void): Promise<System> => {
@@ -131,6 +165,8 @@ export const watchSystem = async (paths: SystemPaths, notify: () => void): Promi
   const tails = new Map<string, () => void>()
   let items: CollectionItem[] = []
   let threads: ThreadFile[] = []
+  let streamFiles = new Map<string, StreamFile>()
+  let probes = new Map<string, ProbeFacts>()
   let live: HostLive | undefined
   let running: Resource[] = []
   let peers: Peer[] = []
@@ -227,6 +263,19 @@ export const watchSystem = async (paths: SystemPaths, notify: () => void): Promi
     )
   }
 
+  /** A probe's read appends a line: its stream is folded again once the write settles. */
+  let streamsTimer: NodeJS.Timeout | undefined
+  const rescanStreams = () => {
+    const next = probesIn(systemStreamsPath(paths), streamFiles)
+    streamFiles = next.files
+    if (asJson(next.probes) === asJson(probes)) return
+    probes = next.probes
+    onChange()
+  }
+  const scheduleStreams = () => {
+    streamsTimer ??= setTimeout(logged('streams', () => ((streamsTimer = undefined), rescanStreams())), RESCAN_DEBOUNCE_MS)
+  }
+
   /** Every read below that fails keeps its last read, and the failure goes to the tower's log: the next poll reads again. */
   const refreshLive = loggedRead('host', async () => {
     const next = await hostLive(paths)
@@ -310,6 +359,9 @@ export const watchSystem = async (paths: SystemPaths, notify: () => void): Promi
   items = scanCollections(paths)
   threads = threadsIn(paths, items, threads)
   watchedOrExit(watch(paths.collections, { recursive: true }, scheduleRescan), paths.collections)
+  mkdirSync(systemStreamsPath(paths), { recursive: true })
+  rescanStreams()
+  watchedOrExit(watch(systemStreamsPath(paths), { recursive: true }, scheduleStreams), systemStreamsPath(paths))
   watchedOrExit(watch(path.dirname(paths.config), logged('config', (_: string, file: string | null) => file === path.basename(paths.config) && onChange())), paths.config)
   await refreshLive()
   await refreshShells()
@@ -322,6 +374,7 @@ export const watchSystem = async (paths: SystemPaths, notify: () => void): Promi
     logs: () => logs,
     items: () => items,
     threads: () => threads,
+    probes: () => probes,
     live: () => live,
     running: () => running,
     peers: () => peers,

@@ -6,6 +6,7 @@
  */
 import { existsSync, statSync } from 'node:fs'
 import path from 'node:path'
+import { probesOf } from './bridge/probes.ts'
 import { defaultRenderer, renderersOf } from './renderers.ts'
 import { SHELF_KINDS, shelfProblem } from './shelf.ts'
 import { callsignsOf, CONFIG_KEYS, ConfigError, configuredUser, editorArgv, projectCollections, PROJECT_KEYS, towerPort, type Config, type EditorAction, type Project, type Renderer } from './shared/model.ts'
@@ -138,6 +139,7 @@ export const configProblems = (config: Config): ConfigProblem[] => {
     ...counts('hiring', config.hiring, ['depth', 'live']),
     ...counts('brief', config.brief, ['pairs']),
     ...counts('retention', config.retention, ['days']),
+    ...(config.probes === undefined || isObject(config.probes) ? checked('probes', () => probesOf(config)) : [fail('probes', 'takes an object of probes by name, such as { "quota": { "off": true } }')]),
     ...directories('plugins', config.plugins, 'absolute plugin directories'),
     ...(config.keys === undefined ? [] : keysProblems(config.keys).map(({ level, at, problem }) => ({ level, key: `keys${at}`, problem }))),
     ...projects.flatMap(([id, project]) => projectProblems(config, id, project, renderers)),

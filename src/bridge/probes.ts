@@ -1,0 +1,179 @@
+/**
+ * Probes: readings the tower takes on its own while due, each appended as a fact to the probe's stream
+ * (`streams/system/probe.<name>/YYYY-MM.jsonl`). What a stream says of the account, and whether its probe reads now,
+ * are folded here from its reads and the board.
+ */
+import { ConfigError, type Config, type ProbeConfig } from '../shared/model.ts'
+import type { Board } from './board.ts'
+import { limitsRead, type Facts, type RateLimit } from './facts.ts'
+
+/** The readers the core knows, a closed set: each only reads, and none sends a prompt, starts a session or calls a verb. */
+export const READERS = ['claude.usage'] as const
+export type Reader = (typeof READERS)[number]
+
+/** A stream's first line: each event's `t` is seconds since `startedAt` (epoch ms), the start of the file's UTC month. */
+export type StreamHeader = { stream: string; startedAt: number; version: 1 }
+
+/** One read: the reader's answer as it came (nulls dropped), or why there is none, and how long it took. */
+export type ProbeRead = { reads: Reader; ms: number } & ({ ok: true; answer: unknown } | { ok: false; error: string })
+
+export type StreamEvent = [t: number, code: 'p', read: ProbeRead]
+
+/** A read at its moment, epoch ms. */
+export type ProbeReading = [at: number, read: ProbeRead]
+
+/** What a probe's stream says. */
+export type ProbeFacts = {
+  lastAt?: number
+  /** The reads at the stream's end that failed. */
+  failsInRow: number
+  /** The last answer says the account has no rate limits to read: an API key, a cloud provider, nobody signed in. */
+  unavailable: boolean
+  limitReadings: Facts['limitReadings']
+  rateLimits?: Facts['rateLimits']
+}
+
+export const NO_READS: ProbeFacts = { failsInRow: 0, unavailable: false, limitReadings: {} }
+
+export const streamName = (probe: string): string => `probe.${probe}`
+
+/** The start of `at`'s UTC month: a stream's file is named by it, and its events counted from it. */
+export const monthStart = (at: number): number => {
+  const d = new Date(at)
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)
+}
+
+export const monthFile = (at: number): string => `${new Date(at).toISOString().slice(0, 7)}.jsonl`
+
+/** The line a read is appended as, to the file of its month. */
+export const eventLine = (at: number, read: ProbeRead): string => JSON.stringify([Math.round(at - monthStart(at)) / 1000, 'p', read] satisfies StreamEvent)
+
+/** A stream file's reads; the text after the last newline is a line still being written. */
+export const readingsOf = (text: string): ProbeReading[] => {
+  const [header, ...events] = text.split('\n').slice(0, -1).map((line) => JSON.parse(line)) as [StreamHeader, ...StreamEvent[]]
+  return events.map(([t, , read]) => [header.startedAt + t * 1000, read])
+}
+
+/** Claude's answer to `get_usage`, as much of it as the fold reads. */
+type UsageAnswer = { rate_limits_available?: boolean; rate_limits?: Record<string, { utilization?: number; resets_at?: string } | undefined> }
+
+const USAGE_WINDOWS = ['five_hour', 'seven_day']
+
+/** Claude answers a window's reset to the microsecond and a session measures it to the second: a window is known by its reset in both. */
+const toSecond = (iso: string): string => new Date(Math.round(Date.parse(iso) / 1000) * 1000).toISOString()
+
+/** What each reader's answer says, and when its read can wait: pure, so the fold and `due` read them. */
+const READ_AS: Record<Reader, { limits: (answer: unknown) => RateLimit[]; unavailable: (answer: unknown) => boolean; skip: (board: LimitsAge, every: number, now: number) => boolean }> = {
+  'claude.usage': {
+    limits: (answer) =>
+      USAGE_WINDOWS.flatMap((kind) => {
+        const window = (answer as UsageAnswer).rate_limits?.[kind]
+        return window?.utilization === undefined ? [] : [{ kind, percentUsed: window.utilization, ...(window.resets_at && { resetsAt: toSecond(window.resets_at) }) }]
+      }),
+    unavailable: (answer) => (answer as UsageAnswer).rate_limits_available === false,
+    /** A session's turn measures the same limits: no read while its reading is newer than `every`. */
+    skip: (board, every, now) => board.rateLimitsFrom === 'session' && board.rateLimitsAt !== undefined && now - board.rateLimitsAt < every,
+  },
+}
+
+export const probeFacts = (readings: ProbeReading[]): ProbeFacts =>
+  readings.reduce<ProbeFacts>((facts, [at, read]) => {
+    if (!read.ok) return { ...facts, lastAt: at, failsInRow: facts.failsInRow + 1 }
+    const limits = READ_AS[read.reads].limits(read.answer)
+    return {
+      lastAt: at,
+      failsInRow: 0,
+      unavailable: READ_AS[read.reads].unavailable(read.answer),
+      limitReadings: limitsRead(facts.limitReadings, at, limits),
+      rateLimits: limits.length ? { at, limits } : facts.rateLimits,
+    }
+  }, NO_READS)
+
+export type LimitsFrom = 'session' | 'probe'
+
+/** The board's account limits: the newest reading of any session's measure or any probe's read. */
+export type LimitsRead = Pick<Board, 'rateLimits' | 'rateLimitsAt' | 'rateLimitsFrom'>
+
+/** Rate limits belong to the account: the newest reading, a session's or a probe's, stands for every one. */
+/** How old the board's limits are, and whose reading they are. */
+type LimitsAge = Pick<LimitsRead, 'rateLimitsAt' | 'rateLimitsFrom'>
+
+export const accountLimits = (sessions: Pick<Facts, 'rateLimits'>[], probes: ProbeFacts[]): LimitsRead => {
+  const newest = (from: LimitsFrom, readings: Facts['rateLimits'][]) =>
+    readings.reduce<{ at: number; limits: RateLimit[]; from: LimitsFrom } | undefined>((latest, r) => (r && (!latest || r.at > latest.at) ? { ...r, from } : latest), undefined)
+  const [session, probe] = [newest('session', sessions.map((f) => f.rateLimits)), newest('probe', probes.map((f) => f.rateLimits))]
+  const latest = session && (!probe || session.at >= probe.at) ? session : probe
+  return { rateLimits: latest?.limits ?? [], rateLimitsAt: latest?.at, rateLimitsFrom: latest?.from }
+}
+
+/** A probe as the tower runs it: `every` in ms. */
+export type Probe = { name: string; reads: Reader; every: number; off: boolean }
+
+/** No probe reads more often than this, whatever the config or its stream says. */
+export const FLOOR_MS = 60_000
+const FAILS_BEFORE_BACKOFF = 3
+const BACKOFF_MS = 10 * 60_000
+const BACKOFF_MAX_MS = 60 * 60_000
+const UNAVAILABLE_WAIT_MS = 6 * 60 * 60_000
+
+/** How long after its last read a probe waits: `every`, longer after failures in a row (doubling) or while the account has nothing to read. */
+export const waitOf = (probe: Probe, facts: ProbeFacts): number =>
+  facts.unavailable
+    ? UNAVAILABLE_WAIT_MS
+    : facts.failsInRow >= FAILS_BEFORE_BACKOFF
+      ? Math.max(probe.every, Math.min(BACKOFF_MS * 2 ** (facts.failsInRow - FAILS_BEFORE_BACKOFF), BACKOFF_MAX_MS))
+      : probe.every
+
+/**
+ * Whether the probe reads at `now`, from its stream and the board: never while off or while its reader can wait on
+ * the board; otherwise once its wait has passed since its last read. A last read dated after `now` (the clock moved
+ * back) makes it due: the tower's floor keeps reads apart.
+ */
+export const due = (probe: Probe, facts: ProbeFacts, board: LimitsAge, now: number): boolean => {
+  if (probe.off || READ_AS[probe.reads].skip(board, probe.every, now)) return false
+  return facts.lastAt === undefined || facts.lastAt > now || now - facts.lastAt >= waitOf(probe, facts)
+}
+
+/** The probes the core declares: the account's quota, read while no session's turn reads it. */
+const BUILT_INS: Record<string, ProbeConfig> = { quota: { reads: 'claude.usage', every: '10m' } }
+
+const PROBE_NAME = /^[\w-]+$/
+const DURATION = /^(\d+)(s|m|h)$/
+const UNIT_MS: Record<string, number> = { s: 1000, m: 60_000, h: 3_600_000 }
+
+const isReader = (reads: unknown): reads is Reader => READERS.includes(reads as Reader)
+
+/** Every probe: the built-ins, then the config's own, a config probe overriding a built-in's fields. A probe the tower can't run is a config error. */
+export const probesOf = (config: Config): Probe[] => {
+  const declared: Record<string, ProbeConfig> = { ...BUILT_INS, ...config.probes }
+  return Object.keys(declared).map((name) => {
+    const at = `probes.${name} in the config`
+    if (!PROBE_NAME.test(name)) throw new ConfigError(`probes."${name}" in the config: a probe's name is letters, digits, "_" and "-"`)
+    const own = declared[name]
+    if (typeof own !== 'object' || own === null || Array.isArray(own)) throw new ConfigError(`${at}: takes an object: reads, every, off`)
+    const { reads, every, off = false } = { ...BUILT_INS[name], ...own }
+    if (!isReader(reads)) throw new ConfigError(`${at}: "reads" takes one of the readers: ${READERS.join(', ')}`)
+    const [, n, unit] = DURATION.exec(String(every)) ?? []
+    if (typeof every !== 'string' || !unit) throw new ConfigError(`${at}: "every" takes how often it reads, such as "10m" ("s", "m" or "h")`)
+    const ms = Number(n) * UNIT_MS[unit]
+    if (ms < FLOOR_MS) throw new ConfigError(`${at}: "every" is ${every}, under the floor of ${FLOOR_MS / 1000}s`)
+    if (typeof off !== 'boolean') throw new ConfigError(`${at}: "off" takes true or false`)
+    return { name, reads, every: ms, off }
+  })
+}
+
+/** The request Claude answers with `/usage`'s data, and nothing else: no prompt is sent. */
+export const USAGE_REQUEST = { type: 'control_request', request_id: 'usage', request: { subtype: 'get_usage', skip_behaviors: true } }
+
+const withoutNulls = (value: unknown): unknown => JSON.parse(JSON.stringify(value, (_, v) => (v === null ? undefined : v)))
+
+/** Claude's answer to `USAGE_REQUEST` among what it printed, nulls dropped; why there is none otherwise. */
+export const usageAnswer = (stdout: string): { answer: unknown } | { error: string } => {
+  const response = stdout
+    .split('\n')
+    .filter((line) => line.startsWith('{'))
+    .map((line) => JSON.parse(line))
+    .find((m) => m.type === 'control_response' && m.response?.request_id === USAGE_REQUEST.request_id)?.response
+  if (!response) return { error: 'claude printed no answer to get_usage' }
+  return response.subtype === 'success' ? { answer: withoutNulls(response.response) } : { error: String(response.error ?? 'get_usage failed') }
+}

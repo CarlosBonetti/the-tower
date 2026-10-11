@@ -90,7 +90,11 @@
         },
         "rateLimitsAt": {
           "type": "number",
-          "description": "When the rate limits were read (epoch ms): a reading arrives only with a session's turn, so it ages while nobody works."
+          "description": "When the rate limits were read (epoch ms): a session's turn reads them, and the quota probe while no turn does, so they age only while neither reads."
+        },
+        "rateLimitsFrom": {
+          "$ref": "#/definitions/LimitsFrom",
+          "description": "Whose reading the rate limits are: a session's turn, or a probe's read."
         },
         "today": {
           "$ref": "#/definitions/Today",
@@ -2222,6 +2226,13 @@
         "percentUsed"
       ],
       "additionalProperties": false
+    },
+    "LimitsFrom": {
+      "type": "string",
+      "enum": [
+        "session",
+        "probe"
+      ]
     },
     "Today": {
       "type": "object",

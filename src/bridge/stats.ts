@@ -4,6 +4,7 @@
  */
 import { addTokens, type Session, type Tokens } from './facts.ts'
 import { extensionOf, type RepoLanded } from './landed.ts'
+import type { ProbeFacts } from './probes.ts'
 
 export type Bucket = 'hour' | 'day'
 
@@ -246,11 +247,11 @@ const scopeStats = (sessions: Session[], landed: RepoLanded[], q: StatsQuery, bu
 }
 
 /**
- * The weekly budget from every session's readings of the weekly limit: the account's, whatever project read them.
- * None once the window of the latest reading has reset by `now`.
+ * The weekly budget from every reading of the weekly limit, a session's or a probe's: the account's, whatever read
+ * them. None once the window of the latest reading has reset by `now`.
  */
-export const weeklyBudget = (sessions: Session[], now: number): WeeklyBudget | undefined => {
-  const readings = sessions.flatMap((s) => s.facts.limitReadings[WEEKLY] ?? [])
+export const weeklyBudget = (sessions: Session[], probes: ProbeFacts[], now: number): WeeklyBudget | undefined => {
+  const readings = [...sessions.map((s) => s.facts), ...probes].flatMap((f) => f.limitReadings[WEEKLY] ?? [])
   const latest = readings.reduce<(typeof readings)[number] | undefined>((a, r) => (!a || r[0] > a[0] ? r : a), undefined)
   if (!latest || Date.parse(latest[2]) <= now) return undefined
   const [at, percentUsed, resetsAt] = latest
@@ -299,8 +300,8 @@ export const stats = (sessions: Session[], landed: Record<string, RepoLanded[]>,
  */
 export type Today = { since: number; spend: number; agentHours: number; waits: Pick<Spread, 'n' | 'p50'>; budget?: WeeklyBudget }
 
-export const today = (sessions: Session[], now: number): Today => {
+export const today = (sessions: Session[], probes: ProbeFacts[], now: number): Today => {
   const from = bucketStart(now, 'day')
   const { summary } = scopeStats(sessions, [], { from, to: nextBucket(from, 'day'), bucket: 'day' }, [from])
-  return { since: from, spend: summary.spend, agentHours: summary.agentHours, waits: { n: summary.waits.n, p50: summary.waits.p50 }, budget: weeklyBudget(sessions, now) }
+  return { since: from, spend: summary.spend, agentHours: summary.agentHours, waits: { n: summary.waits.n, p50: summary.waits.p50 }, budget: weeklyBudget(sessions, probes, now) }
 }
