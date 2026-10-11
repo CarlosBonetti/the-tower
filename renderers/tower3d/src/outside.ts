@@ -5,6 +5,7 @@ import { pick, roll } from './avatar.ts'
 import { random } from './random.ts'
 import { glows } from './toon.ts'
 import { LAYERS, skyline, type Layer } from './exterior/skyline.ts'
+import { inNeighbourhood, neighbourhood } from './exterior/neighbourhood.ts'
 import { riseRig, rigHour } from './light/rig.ts'
 import { LIT } from './light/setting.ts'
 
@@ -23,7 +24,7 @@ function paintSky(cv: HTMLCanvasElement, look: Sky) {
 /** The ground the airfield keeps clear of buildings, its approach and its climb-out: east of the ring road. */
 const FIELD_CLEAR = { minX: 58, maxX: 88, minZ: -100, maxZ: 100 }
 
-/** Where the city's buildings stand: footprint `w` square and height `h`, clear of the airfield. */
+/** Where the city's buildings stand: footprint `w` square and height `h`, clear of the airfield and the neighbourhood. */
 function sites() {
   const list: { i: number; x: number; z: number; w: number; h: number }[] = []
   for (let i = 0; i < 90; i++) {
@@ -33,6 +34,7 @@ function sites() {
     const h = 16 + ((i * 29) % 70)
     const [x, z] = [Math.cos(angle) * dist, Math.sin(angle) * dist]
     if (x + w / 2 > FIELD_CLEAR.minX && x - w / 2 < FIELD_CLEAR.maxX && z + w / 2 > FIELD_CLEAR.minZ && z - w / 2 < FIELD_CLEAR.maxZ) continue
+    if (inNeighbourhood(x, z, w)) continue
     list.push({ i, x, z, w, h })
   }
   return list
@@ -384,7 +386,8 @@ export function outside(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
   const cars = traffic(curve)
   cars.tick(0)
   const field = airfield()
-  scene.add(road.group, town.group, ring.mesh, cars.group, field.group)
+  const homes = neighbourhood(curve, ROAD.width / 2, (x) => x < FIELD_CLEAR.minX - 6)
+  scene.add(road.group, town.group, ring.mesh, cars.group, field.group, homes.group)
   let flying: ReturnType<typeof flight> | undefined
   const fly = (model: THREE.Group) => {
     flying = flight(model)
@@ -407,6 +410,7 @@ export function outside(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
     for (const m of town.built.day) m.color.copy(NIGHT.stone).lerp(DAY.stone, day)
     for (const m of town.built.glass) (m.color.copy(NIGHT.glass).lerp(DAY.glass, day), (m.emissiveIntensity = look.windows))
     road.ground.color.copy(NIGHT.ground).lerp(DAY.ground, day)
+    homes.light(day, look.windows)
     ring.material.color.setScalar(0.55 + 0.45 * day)
     cars.lamps.color.setScalar(THREE.MathUtils.clamp(2 - look.light, 0.15, 1))
     field.ground.color.setScalar(0.55 + 0.45 * day)

@@ -21,6 +21,8 @@
     "hub/renderers/tower3d/src/main.ts#lightFrame",
     "hub/renderers/tower3d/src/exterior/geo.ts",
     "hub/renderers/tower3d/src/exterior/skyline.ts#skyline",
+    "hub/renderers/tower3d/src/exterior/neighbourhood.ts#neighbourhood",
+    "hub/renderers/tower3d/src/exterior/neighbourhood.ts#inNeighbourhood",
     "hub/renderers/tower3d/src/exterior/shell.ts#frame",
     "hub/renderers/tower3d/src/exterior/roof.ts#roofPlant",
     "hub/renderers/tower3d/src/outside.ts#buildings",
@@ -44,6 +46,12 @@ measured. So anyone it annoys, or whose machine it slows, needs a way to turn it
   the glass comes to it (the walking camera's 70° on a canvas 800 px tall): fins whose sides stand less than a pixel
   proud, bands, and the thin roof plant (a tank's legs, an antenna's mast). Drawn thinner, they blink as the view
   moves; the far ring of the city keeps its windows, colours and silhouette without them.
+  West of the tower (the −x side, away from the airfield and behind the roof's big screen) the city gives way to a
+  neighbourhood ([`neighbourhood`](ref:hub/renderers/tower3d/src/exterior/neighbourhood.ts#neighbourhood)): gabled
+  houses along two curved lanes, an L-block, a stepped tower and a water tower behind them, all from constants and a
+  seed in four merged meshes, and street trees along the ring road's outer edge and in some back yards, two instanced
+  meshes. The city skips its sector ([`inNeighbourhood`](ref:hub/renderers/tower3d/src/exterior/neighbourhood.ts#inNeighbourhood)).
+  At night it stays dark and calm, a few house windows lit by the hour that lights the city's.
   The shell ([`frame`](ref:hub/renderers/tower3d/src/exterior/shell.ts#frame),
   `spandrel`, `parapet`) is capped mullions, panelled spandrels and a coping. The roof plant
   ([`roofPlant`](ref:hub/renderers/tower3d/src/exterior/roof.ts#roofPlant), placed by
