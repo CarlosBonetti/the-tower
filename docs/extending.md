@@ -54,7 +54,7 @@ the tower's origin, so it calls the API directly. `renderer` names the one `/` o
   `await tower.renderer()`, which answers `{ name, root, entry, available, settings }`.
 - A renderer is available while its entry exists. `GET /renderers` lists every one, and the tower page lists them at
   the foot of its sidebar.
-- A name the core declares (`page`, `tower3d`) overrides that renderer's fields: `{ "tower3d": { "settings": … } }`
+- A name the core declares (`page`, `week`, `tower3d`) overrides that renderer's fields: `{ "tower3d": { "settings": … } }`
   keeps its root.
 
 ### A new one
@@ -75,6 +75,10 @@ tower.subscribe((board) => {
 })
 </script>
 ```
+
+`renderers/week/` in the checkout is a renderer of this kind grown up: The Week, two files and a stylesheet over
+the board, `/stats` and the archives, with no build. Read it for a page that steps through windows of time and draws
+the Stats numbers its own way.
 
 The board is the whole system as one value, sent again whenever it changes: its type is `Board` in
 `src/bridge/board.ts`, described as JSON Schema by `tower api board` (each event is `{v, board}`, not the board itself). Each card, conversation and floor carries `verbs`, what can be done to it now, and `calls`,
@@ -207,15 +211,18 @@ Everything a renderer can do is an HTTP route on `http://127.0.0.1:<port>`:
   the tower answers 403, its guard against other web pages.
 - **Reads**: `GET /board` (SSE: `{v, board}`, again on every change), `/renderers`, `/stats`, `/changes/<id>` (`?scope=uncommitted` or a commit),
   `/conversations/<id>`, `/archive/<project>`, `/reviews/<project>`, `/collection/<project>/<collection>/<item>`,
-  `/origins`.
+  `/origins`. `/stats?from&to&bucket&project` (epoch ms, `bucket` `hour` or `day`) answers `Stats` of
+  `src/bridge/stats.ts`: a summary, a series per bucket and spend by hour of the day, for all and per project, and the
+  weekly budget. `/archive/<project>` answers the floor's cards the board leaves out, the board's `Card` shape, so the
+  workers of any past window are the board's cards and the archive's together.
 - **Streams**: a session's screen, an interactive terminal, a shell (`screen/<id>`, `terminal/<id>`, `shell/<id>`),
   multiplexed on one connection, `GET /mux`.
 - **Errors** are data: `{t: 'error', code, message}`. Branch on `code` (`invalid`, `not_found`, `refused`,
   `unavailable`…), never on `message`.
 
 `GET /schema` serves every verb's input and reply, and the error, as JSON Schema: a renderer or a script in any
-language learns the contract from the tower. `tower api` lists the verbs and reads, one line each, and
-`tower api <name>` prints one's schema. Every route is listed in the header of `src/tower/server.ts`.
+language learns the contract from the tower. `tower api` lists the verbs and the reads that take a query, one line
+each, and `tower api <name>` prints one's schema (a read's query: its reply is typed in the module its route's line names). Every route is listed in the header of `src/tower/server.ts`.
 
 The version is `major.minor`, the same on the board, `/schema` and `/tower.js`. An addition an older client reads past
 moves the minor; a rename, a removal or a changed meaning moves the major, with a line in `CHANGELOG.md` saying what to
@@ -261,7 +268,7 @@ served as one ES module bundled with what it imports, readable from a framed pag
 | `/design.css` | the design's tokens as custom properties (colours in both schemes, the type and spacing scales, corners), the faces, a few classes (`.needs`, `.pill`, `.eyebrow`…), and every button's pressed, held (`disabled`, `aria-disabled`) and busy (`aria-busy`) states |
 | `/design.js` | the design module: palettes, type, the type and spacing scales (`size`, `space`), the terminal's theme, the sky by hour, a document's stylesheet |
 | `/cards.js` | words about cards and floors, the spawn form, round-robin through waits, the ring and its sounds, why a verb can't run (`whyNot`) |
-| `/panels.js` | the Changes, Reviews and Stats panels as pure views, their stylesheet, and the data attributes you wire; a read that failed (`failedHtml`, also each view's `failed`) |
+| `/panels.js` | the Changes, Reviews and Stats panels as pure views, their stylesheet, and the data attributes you wire; a read that failed (`failedHtml`, also each view's `failed`); the Stats panel's money, hours and durations as words (`usd`, `hours`, `duration`) |
 | `/brief.js` | a worker's brief as a chat over `/conversations/<id>`: its stylesheet, what a viewer opened read back from the drawn html, copying a prompt or answer as written (`saidText`), and the viewer's rendered or raw choice in `tower.store` (`BRIEF_MARKDOWN_KEY`) |
 | `/drafts.js` | editing a floor's `drafts` collection over the generic `collection/*` verbs, keeping a prompt the new-worker form closed on (`keepUnsent`), and putting a deleted draft back (`discard` answers what it deleted, `restore`) |
 | `/items.js` | any collection's items as rows and trays (title, tag, who kept it, age), an item read by its type, and the question before deleting one |
