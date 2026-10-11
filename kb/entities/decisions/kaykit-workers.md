@@ -77,7 +77,7 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   and never stored ([`catalogueOf`](ref:hub/renderers/tower3d/src/catalogue.ts#catalogueOf): the pack's, the made
   ones and `models/wear.py`'s hats and glasses, each with its slot, its attachment, skinned or rigid on a bone at its made
   placement, and its atlas; a wear piece's made placement is the top or the face of the head parts are made on, the
-  Knight's, at the size that makes its beanie as wide as that head). Three layers: **fits** (a move, turn and scale over a rigid part's made placement, none yet), **outfits** (named looks: body, paint, colours, build and a
+  Knight's, at the size that makes its beanie as wide as that head). Three layers: **fits** (below), **outfits** (named looks: body, paint, colours, build and a
   part or bare per slot, anything left out hashed), and the **mix**: the bot's share and what it wears, the outfits'
   share, the bodies, colours and build range, and a rule per slot (its chance, a `group` of exclusive slots sharing one
   roll, a `seed` it hashes under, its pool and exclusions, `unless`: bare when the look wears one of these, as the hooded
@@ -88,6 +88,20 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   each rigid part it hangs by name with its made placement (`worn`), so the dresser re-fits a part live. Saved through
   [`formatWardrobe`](ref:hub/renderers/tower3d/src/wardrobe.ts#formatWardrobe) (keys in a fixed order), the file diffs
   by what changed. The skin and hair colours are multiplied by a shader into the atlas's first two swatches.
+- Fits are data, not code. Every worn piece used to hang from one anchor measured on the Knight's head, whose top is
+  its hair, at one scale on every head: hats floated over bald heads (the bartender's cap), glasses stood off the face
+  at the nose tip and sank into hoods, and each fix was a brute-forced script. A fit is `{ at, turn, scale }` over a
+  rigid part's made placement in its bone's space, about the part's own origin
+  ([`fitted`](ref:hub/renderers/tower3d/src/avatar.ts#fitted), the one function Tower 3D and the dresser apply it
+  with); `fits[part]["*"]` is its default, and `fits[part][other]` overrides it on a look that also wears `other`
+  (a head, an outfit, any part) or on a bot (`bot`). A look wears one part per slot, so at most one override per slot
+  matches; they resolve by the slot of their key ([`FIT_PRECEDENCE`](ref:hub/renderers/tower3d/src/wardrobe.ts#FIT_PRECEDENCE):
+  bot, Head, Outfit, Body, Helm, Hat, Face, Cape, Prop, Gear), field by field over `*`
+  ([`fitFrom`](ref:hub/renderers/tower3d/src/wardrobe.ts#fitFrom), which also says which key set each field). The
+  first pass lowers the hats onto each head's own top (each head measured in the head bone's space: the Mage's,
+  Rogue's and Barbarian's 0.11 to 0.13 rig units under the Knight's hair, the hood's 0.07), squashes the beanie and cap
+  a little on the lower heads, and moves the wear glasses and shades back from the nose to the eyes at 0.82 of their
+  size (0.74 in the hood); the bot keeps its own placement. Fits move rigid parts only; heads and outfits are skinned.
 - Draw calls. The skinned parts of one atlas merge into one mesh per worker (geometry cached per combination);
   the bot's rigid parts (`models/bot.py`, built in the rig's rest pose, a pivot per bone) are skinned to their bones
   at load, one mesh per material ([`wearModel`](ref:hub/renderers/tower3d/src/rig.ts#wearModel)). Each worker
@@ -136,6 +150,16 @@ keep theirs, whatever the order of the GLB's names. Bots wear only the hats and 
 - *A `none` candidate in each slot's rendezvous* (TURING-72's first suggestion): at equal weight the bare share
   shrinks with every part added (1 in N+1); weighted to hold it, its weight changes with N and moves workers. A roll
   of its own for wearing keeps both stable.
+- *Fits derived from each head's measured shape* (no data): a rule good for one piece (a dome on the top) is wrong for
+  the next (a bow on the side, a crown in the hair), and a measured rule can't be adjusted by eye in the dresser.
+- *Override priority by the file's key order*: formatters, agents and the dresser reorder keys; precedence by slot is
+  order-free, and `formatWardrobe` writes a fixed order so a save diffs by what changed.
+- *Hats in the `Helm` slot*: a helm covers the head and lifts the status light, a hat sits on it; one roll group keeps
+  them exclusive.
+- *The wardrobe in the config or a collection*: it is the project's art, versioned with the parts it names, and
+  Tower 3D embeds it at build time; one repo file is what the dresser saves.
+- *Palettes picked by index*: adding a colour or a body recoloured most workers; rendezvous re-dresses only the
+  share it wins.
 - *Fitting the old wear to each worn head's bounding box* (the bean's rule): beards and hair stretch the box, so
   pieces sank or floated per head, and it assumed a 0.36 head where the pieces fit a 0.56 one, so on KayKit heads
   everything worn was drawn nearly twice its size.

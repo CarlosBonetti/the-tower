@@ -1,5 +1,158 @@
 {
-  "fits": {},
+  "fits": {
+    "Face_RoundGlasses": {
+      "*": {
+        "at": [0, 0, -0.05]
+      }
+    },
+    "face_glasses": {
+      "*": {
+        "at": [0, 0.02, -0.12],
+        "scale": 0.82
+      },
+      "Rogue_Head_Hooded": {
+        "scale": 0.74
+      },
+      "bot": {
+        "at": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    "face_shades": {
+      "*": {
+        "at": [0, 0.02, -0.12],
+        "scale": 0.82
+      },
+      "Rogue_Head_Hooded": {
+        "scale": 0.74
+      },
+      "bot": {
+        "at": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    "hat_beanie": {
+      "*": {
+        "at": [0, -0.08, 0],
+        "scale": 0.92
+      },
+      "Barbarian_Head": {
+        "at": [0, -0.208, 0],
+        "scale": [0.92, 0.814, 0.92]
+      },
+      "Knight_Head": {
+        "at": [0, -0.05, 0]
+      },
+      "Mage_Head": {
+        "at": [0, -0.192, 0],
+        "scale": [0.92, 0.827, 0.92]
+      },
+      "Rogue_Head": {
+        "at": [0, -0.207, 0],
+        "scale": [0.92, 0.815, 0.92]
+      },
+      "Rogue_Head_Hooded": {
+        "at": [0, -0.149, 0],
+        "scale": [0.92, 0.863, 0.92]
+      },
+      "bot": {
+        "at": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    "hat_bow": {
+      "*": {
+        "at": [0, -0.06, 0]
+      },
+      "Barbarian_Head": {
+        "at": [0, -0.188, 0]
+      },
+      "Mage_Head": {
+        "at": [0, -0.172, 0]
+      },
+      "Rogue_Head": {
+        "at": [0, -0.187, 0]
+      },
+      "Rogue_Head_Hooded": {
+        "at": [0, -0.129, 0]
+      },
+      "bot": {
+        "at": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    "hat_cap": {
+      "*": {
+        "at": [0, -0.08, 0],
+        "scale": 0.92
+      },
+      "Barbarian_Head": {
+        "at": [0, -0.208, 0],
+        "scale": [0.92, 0.849, 0.92]
+      },
+      "Knight_Head": {
+        "at": [0, -0.05, 0]
+      },
+      "Mage_Head": {
+        "at": [0, -0.192, 0],
+        "scale": [0.92, 0.858, 0.92]
+      },
+      "Rogue_Head": {
+        "at": [0, -0.207, 0],
+        "scale": [0.92, 0.85, 0.92]
+      },
+      "Rogue_Head_Hooded": {
+        "at": [0, -0.149, 0],
+        "scale": [0.92, 0.882, 0.92]
+      },
+      "bot": {
+        "at": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    "hat_crown": {
+      "*": {
+        "at": [0, -0.13, 0]
+      },
+      "Barbarian_Head": {
+        "at": [0, -0.258, 0]
+      },
+      "Mage_Head": {
+        "at": [0, -0.242, 0]
+      },
+      "Rogue_Head": {
+        "at": [0, -0.257, 0]
+      },
+      "Rogue_Head_Hooded": {
+        "at": [0, -0.199, 0]
+      },
+      "bot": {
+        "at": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    "hat_flower": {
+      "*": {
+        "at": [0, -0.03, 0]
+      },
+      "Barbarian_Head": {
+        "at": [0, -0.132, 0]
+      },
+      "Mage_Head": {
+        "at": [0, -0.12, 0]
+      },
+      "Rogue_Head": {
+        "at": [0, -0.132, 0]
+      },
+      "Rogue_Head_Hooded": {
+        "at": [0, -0.085, 0]
+      },
+      "bot": {
+        "at": [0, 0, 0],
+        "scale": 1
+      }
+    }
+  },
   "outfits": {
     "bartender": {
       "body": "Barbarian",
