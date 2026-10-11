@@ -39,6 +39,35 @@ def dome(name, radius, height, base_y, material, parent):
 
 flat = (math.pi / 2, 0, 0)
 
+
+def rod(name, radius, a, b, material, parent):
+    """A thin cylinder from `a` to `b` (renderer coordinates)."""
+    mid = [(p + q) / 2 for p, q in zip(a, b)]
+    length = math.dist(a, b)
+    obj = cylinder(name, radius, length, (0, 0, 0), material, None, vertices=8, axis="z")
+    obj.rotation_mode = "QUATERNION"
+    obj.rotation_quaternion = at(0, 0, 1).rotation_difference(at(*(q - p for p, q in zip(a, b))))
+    obj.location = at(*mid)
+    if parent:
+        bpy.context.view_layer.update()
+        obj.parent = parent
+        obj.matrix_parent_inverse = parent.matrix_world.inverted()
+    return obj
+
+
+def temples(prefix, hinge_x, y, z, radius, material, parent):
+    """
+    Arms from each side of the frame to the ears of a KayKit head, at the fit glasses are worn at: out from the hinge,
+    back and slightly out to the ear line, then down behind the ear.
+    """
+    for side in (-1, 1):
+        hinge = (side * hinge_x, y, z)
+        corner = (side * 0.283, y, z - 0.012)
+        ear = (side * 0.336, y, -0.272)
+        tip = (side * 0.33, y - 0.065, -0.325)
+        for part, (a, b) in enumerate([(hinge, corner), (corner, ear), (ear, tip)]):
+            rod(f"{prefix}_temple_{side}_{part}", radius, a, b, material, parent)
+
 beanie = empty("hat_beanie", (0, 0, 0))
 dome("beanie_dome", 0.285, 0.25, -0.13, cloth, beanie)
 torus("beanie_rim", 0.28, 0.045, (0, -0.12, 0), cloth, beanie, rotation=flat)
@@ -70,13 +99,13 @@ sphere("flower_heart", 0.03, (-0.15, -0.04, 0.075), pollen, flower)
 glasses = empty("face_glasses", (0, 0, 0))
 for side in (-1, 1):
     torus(f"glasses_ring_{side}", 0.075, 0.012, (side * 0.12, 0, 0.03), ink, glasses)
-    cylinder(f"glasses_temple_{side}", 0.008, 0.22, (side * 0.19, 0.01, -0.08), ink, glasses, vertices=8, axis="z")
+temples("glasses", 0.19, 0.01, 0.03, 0.009, ink, glasses)
 box("glasses_bridge", (0.1, 0.016, 0.016), (0, 0.015, 0.03), ink, glasses)
 
 shades = empty("face_shades", (0, 0, 0))
 for side in (-1, 1):
     box(f"shades_lens_{side}", (0.16, 0.1, 0.025), (side * 0.11, 0, 0.035), lens, shades, bevel=0.03)
-    cylinder(f"shades_temple_{side}", 0.01, 0.22, (side * 0.18, 0.02, -0.075), lens, shades, vertices=8, axis="z")
+temples("shades", 0.185, 0.02, 0.035, 0.011, lens, shades)
 box("shades_bridge", (0.08, 0.02, 0.02), (0, 0.025, 0.035), lens, shades)
 
 path, shot = out_path()
