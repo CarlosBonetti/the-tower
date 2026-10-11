@@ -12,6 +12,11 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.25.2
+
+v1.25.1's fix, read as `window.origin`: the same origin in a browser, and what the tower's checks run (v1.25.1 failed
+them). Nothing else changes. Restart the tower (`tower down tower && tower up tower`) and reload.
+
 ## v1.25.1
 
 Pages framed on a shelf reach the tower again, Tower 3D among them. No host restart, no config change, the renderer
