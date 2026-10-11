@@ -84,6 +84,15 @@ const MONTH_FILE = /^\d{4}-\d{2}\.jsonl$/
 /** A stream file's reads, as of its size. */
 type StreamFile = { bytes: number; readings: ProbeReading[] }
 
+/** A stream file's reads: a line that is no JSON fails naming the file, which only a hand edit can break. */
+const streamReadings = (file: string): ProbeReading[] => {
+  try {
+    return readingsOf(readFileSync(file, 'utf8'))
+  } catch (err) {
+    throw new Error(`${file}: ${(err as Error).message}`, { cause: err })
+  }
+}
+
 /**
  * Each probe's stream folded, by probe name, from its month files in order, and the files as read: a file `held` at
  * the same size is not read again.
@@ -100,7 +109,7 @@ const probesIn = (root: string, held: Map<string, StreamFile>): { probes: Map<st
       .flatMap((f) => {
         const file = path.join(root, stream, f)
         const bytes = statSync(file).size
-        const read = held.get(file)?.bytes === bytes ? held.get(file)! : { bytes, readings: readingsOf(readFileSync(file, 'utf8')) }
+        const read = held.get(file)?.bytes === bytes ? held.get(file)! : { bytes, readings: streamReadings(file) }
         files.set(file, read)
         return read.readings
       })
