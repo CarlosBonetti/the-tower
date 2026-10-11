@@ -6,3 +6,4 @@ src/mod/tsconfig.json
 renderers/*/out/
 apps/*/out/
 __pycache__/
+*.blend1
