@@ -114,7 +114,7 @@ const STATIC: Record<string, [file: string, type: string]> = {
   '/marked.js': [path.join(packageDir('marked'), 'lib', 'marked.umd.js'), 'text/javascript'],
 }
 
-/** The design reaches shelf pages too, framed at an opaque origin: fonts and modules load only with CORS. */
+/** The design and the renderers reach framed pages too, at an opaque origin: fonts and modules load only with CORS. */
 const ANY_ORIGIN = { 'access-control-allow-origin': '*' }
 
 function design(res: http.ServerResponse, url: string) {
@@ -586,7 +586,7 @@ const rendered = (res: http.ServerResponse, name: string, file: string | undefin
     }
     const full = rendererFile(renderer, file || renderer.entry)
     if (!full || !statSync(full, { throwIfNoEntry: false })?.isFile()) return fail(res, 'not_found', `The renderer "${name}" serves no "${file}"`)
-    serveFile(res, full, {})
+    serveFile(res, full, ANY_ORIGIN)
   })
 
 /** Every renderer, and the one `/` opens. */
