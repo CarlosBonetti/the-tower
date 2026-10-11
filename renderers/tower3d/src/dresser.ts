@@ -247,17 +247,20 @@ function animate() {
   }
 }
 
-/** Points the camera at the stand from `view`: the face close-up at the head of the worker in the middle. */
-function frame() {
+/** The share of the canvas's width the side panels leave free, while they show. */
+const PANELS = 2 * 312
+
+/** Points the camera at the stand from `view`, filling the free share of the canvas's width: the face close-up at the heads. */
+function frame(free = Math.max(0.3, (innerWidth - PANELS) / innerWidth)) {
   stand.updateMatrixWorld(true)
   const box = new THREE.Box3()
   if (view === 'face') for (const f of figures) box.expandByPoint(f.avatar.rig.bone('head').getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.1, 0))).expandByScalar(0.45)
-  else for (const f of figures) box.expandByObject(f.avatar.root)
+  else for (const f of figures) box.expandByObject(f.avatar.root).union(f.chair.visible ? new THREE.Box3().setFromObject(f.chair) : new THREE.Box3())
   const center = box.getCenter(new THREE.Vector3())
   const size = box.getSize(new THREE.Vector3())
   const dir = new THREE.Vector3(...VIEWS[view]).normalize()
   const fov = camera.fov * DEG
-  const fit = Math.max(size.y / 2 / Math.tan(fov / 2), size.x / 2 / Math.tan(fov / 2) / camera.aspect)
+  const fit = Math.max(size.y / 2 / Math.tan(fov / 2), size.x / 2 / Math.tan(fov / 2) / camera.aspect / free)
   camera.position.copy(center).addScaledVector(dir, fit * 1.15 + size.z)
   orbit.target.copy(center)
   orbit.update()
@@ -516,11 +519,12 @@ async function shot({ w = 1200, h = 900 }: { w?: number; h?: number } = {}) {
   renderer.setSize(w, h, false)
   camera.aspect = w / h
   camera.updateProjectionMatrix()
-  frame()
+  frame(1)
   renderer.render(scene, camera)
   const data = canvas.toDataURL('image/png')
   helper.visible = was
   resize()
+  frame()
   return data
 }
 
