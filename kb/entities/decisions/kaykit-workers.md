@@ -2,7 +2,7 @@
 {
   "type": "decision",
   "name": "Workers as KayKit characters on one rig, posed by clips on the sim clock",
-  "summary": "Tower 3D's workers are KayKit Adventurers (CC0) dressed from hashed parts, heads, helms, capes, gear, atlases and skin and hair colours, or the bot, whose rigid parts are skinned to the same Rig_Medium bones. One shared set of KayKit clips (plus a typing clip derived at load) poses every worker through a mixer of its own, set from sim time each frame, so stepped frames repeat. The bean and the puff retired.",
+  "summary": "Tower 3D's workers are KayKit Adventurers (CC0) dressed from hashed parts, heads, helms, capes, gear, atlases and skin and hair colours, or the bot, whose rigid parts are skinned to the same Rig_Medium bones. One shared set of KayKit clips (plus a typing clip derived at load) poses every worker through a mixer of its own, set from sim time each frame, so stepped frames repeat. The bean and the puff retired. New parts are modelled by hand in a Blender kit (parts/parts.blend) and join a look's slots by their names, with no code.",
   "in": "web-tower",
   "status": "accepted",
   "date": "2026-10-11",
@@ -23,7 +23,12 @@
     "hub/renderers/tower3d/src/desk.ts#poseRigs",
     "hub/renderers/tower3d/src/life.ts#walkPose",
     "hub/renderers/tower3d/src/party.ts#poseGuest",
-    "hub/test/models.test.ts"
+    "hub/test/models.test.ts",
+    "hub/renderers/tower3d/src/contract.ts#SLOTS",
+    "hub/renderers/tower3d/parts/README.md",
+    "hub/renderers/tower3d/parts/build.py",
+    "hub/renderers/tower3d/parts/export.py",
+    "hub/scripts/tower3d-parts.ts"
   ],
   "links": [
     { "to": "office-kaykit", "verb": "uses", "carries": "the vendored KayKit folder, its characters beside the office's Bits" },
@@ -62,6 +67,20 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   the bot's rigid parts (`models/bot.py`, built in the rig's rest pose, a pivot per bone) are skinned to their bones
   at load, one mesh per material ([`wearModel`](ref:hub/renderers/tower3d/src/rig.ts#wearModel)). Each worker
   carries a glowing status light over its head.
+- Parts made by hand ([`parts/README.md`](ref:hub/renderers/tower3d/parts/README.md)). `parts/parts.blend`, built
+  once by [`build.py`](ref:hub/renderers/tower3d/parts/build.py) from `adventurers.glb`, holds the rig at rest, the
+  Knight on a stage and four other bodies in a line-up as collection instances of their body and of `Wardrobe`, a
+  collection per slot, so a part shows on five bodies at once and follows the rig's pose. The file is committed: it is
+  the source of the parts made in it. `npm run tower3d:parts` exports `Wardrobe`
+  ([`export.py`](ref:hub/renderers/tower3d/parts/export.py)) and
+  [`tower3d-parts.ts`](ref:hub/scripts/tower3d-parts.ts) writes `parts/parts.glb` in `adventurers.glb`'s terms
+  (its skeleton and skin, joints remapped by name, rigid parts re-hung on its bones, the atlas named by the
+  material), refusing with the fix what the runtime could not wear. A part's name starts with its slot
+  ([`SLOTS`](ref:hub/renderers/tower3d/src/contract.ts#SLOTS): `Head`, `Helm`, `Face`, `Cape`, `Gear`, `Prop`,
+  `Outfit`); `loadCast` reads `parts.glb` beside the pack and every slot's pool is the pack's parts then the made
+  ones, so a part reaches looks with no code, and adding one reshuffles who wears what in its slot. Bots don't wear
+  them. Examples to copy: round glasses, a headset, a coffee mug, a vest cut from the Knight's body keeping its
+  weights.
 - Poses: at the desk, `Type` while working, `Waving:arms` while asking (turned round), `Cheering:arms` while holding
   up a showing, the seated clip leaned back watching or slumped idle or failed
   ([`poseDesk`](ref:hub/renderers/tower3d/src/desk.ts#poseDesk)); `Walking_A` walking in and out; on the roof,
@@ -75,11 +94,20 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   nothing per frame.
 - *Unmerged parts*: an adventurer was six skinned meshes; merged, the busy board draws no more calls than before.
 - *A far LOD (baked vertex animation)*: not needed at today's sizes (Impact).
+- *Made parts merged into `adventurers.glb`*: its packer reads the packs' own files, which live outside the repo;
+  a file of their own is rewritten whole on every export and never touches the pack's.
+- *The slot in glTF extras, or in a list in code*: the name is what the Outliner, the contract test and the runtime
+  all read; a list would have to be edited for every part.
+- *A rig per body in the `.blend`*: a part would need copying onto each; instances of `Wardrobe` show it on all.
+- *Blender's export as the runtime's file*: its skin orders joints its own way; normalizing keeps one skeleton and
+  lets skinned made parts merge with the pack's into one mesh.
 
 **Impact.** On `?board=busy&seed=1` (stepped, lit): draw calls 578 → 574 on a floor, 1272 → 1212 in the overview,
 468 → 466 on the roof; frame time on a floor 3.5 → 4.4 ms (medians of three, the same afternoon), of which posing
 only the levels drawn won back 0.4 ms. A reviewer sits 1.2 m beside its author and a fork's twin 1.05 m, clear of
 the wider bodies; seated heads top 1.84 m, over the 1.6 m eye, so from behind a worker what lies in front of it on
 the desk is aimed past its head, not through it. Every worker looks different from before, so `tool:frames` shows every stage with a worker
-changed. `npm test` checks both GLBs hold the contract's parts, bones and clips. The repo grew by 1.1 MB (1.5 MB of
-characters in, the bean and the puff out).
+changed. `npm test` checks both GLBs hold the contract's parts, bones and clips, and that `parts.glb`'s parts are named
+after a slot, painted in an atlas and hung on the clips' bones or the pack's skin. The repo grew by 1.1 MB (1.5 MB of
+characters in, the bean and the puff out), and the kit by 1.2 MB (`parts.blend` 1 MB, `parts.glb` 0.13 MB with the
+examples).
