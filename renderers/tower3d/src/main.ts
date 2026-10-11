@@ -693,7 +693,7 @@ function closeGame() {
 /**
  * A shelf entry where you stand: markdown to read, a page in a frame, a link in a new tab. A url opens outside this
  * page: a frame in it inherits the shelf sandbox (an opaque origin, no forms, no storage), which breaks most web apps.
- * A renderer reads the board, which only the framing tower relays: framed, the tower opens it; on its own, a new tab.
+ * An `html` entry gets the board and the API through `tower.relay`; a renderer opens in the tower's own view when framed, else in a new tab.
  */
 async function openShelf(project: string, n: number, file?: string) {
   const entry = s.board!.floors.find((f) => f.id === project)?.shelf?.[n]
