@@ -46,15 +46,25 @@ export type RigKind = (typeof RIGS)[number]
  * The atlases parts are painted in, each its material `<name in lowercase>_texture`. A colourway (`COLOURWAYS`) repaints
  * every part made in the atlas it is a colourway of.
  */
-export const ATLAS_NAMES = [...ADVENTURERS, 'Skeleton', 'Helpers', 'CombatMech', 'CombatMech_Alt', 'Clanker', 'Clanker_Alt'] as const
+/**
+ * The Clanker's family: eight variants of the Clanker another model generated from his file (kaykit/Characters/README.md),
+ * each a GLB of its own named after it (`kingbolt.glb` for `Clanker_KingBolt`): its atlas is a colourway of his, its
+ * eyes glow in a colour of its own, and its props are parts of his (`CLANKER_PROPS`).
+ */
+export const CLANKER_FAMILY = ['Clanker_Sentinel', 'Clanker_Tinker', 'Clanker_Brute', 'Clanker_Clanksworth', 'Clanker_Scout', 'Clanker_Frostbyte', 'Clanker_Sludge', 'Clanker_KingBolt'] as const
+
+export const ATLAS_NAMES = [...ADVENTURERS, 'Skeleton', 'Helpers', 'CombatMech', 'CombatMech_Alt', 'Clanker', 'Clanker_Alt', ...CLANKER_FAMILY] as const
 export type Atlas = (typeof ATLAS_NAMES)[number]
-export const COLOURWAYS: Partial<Record<Atlas, Atlas>> = { CombatMech_Alt: 'CombatMech', Clanker_Alt: 'Clanker' }
+export const COLOURWAYS: Partial<Record<Atlas, Atlas>> = { CombatMech_Alt: 'CombatMech', Clanker_Alt: 'Clanker', ...Object.fromEntries(CLANKER_FAMILY.map((a) => [a, 'Clanker'])) }
 export const textureOf = (atlas: Atlas) => `${atlas.toLowerCase()}_texture`
+/** The material an atlas's glowing parts are drawn with, `<name in lowercase>_glow`: a colourway glows in a colour of its own. */
+export const glowOf = (atlas: Atlas) => `${atlas.toLowerCase()}_glow`
 
 /**
  * KayKit characters beyond the Adventurers, packed from their packs' own files (scripts/tower3d-characters.ts): their
- * skinned body parts, their head and what is drawn with it (a skull's jaw and glowing eyes), and their other parts by
- * slot. Rig_Medium's parts mix with every Rig_Medium body, Rig_Large's with Rig_Large's.
+ * skinned body parts, their head and what is drawn with it (a skull's jaw and glowing eyes), their other parts by
+ * slot, those packed as one mesh from several of the file's (`joined`), and what the body wears unless a look says
+ * otherwise (`wears`, besides its head). Rig_Medium's parts mix with every Rig_Medium body, Rig_Large's with Rig_Large's.
  */
 export const KAYKIT = {
   Skeleton_Minion: { pack: 'skeletons', rig: 'medium', atlas: 'Skeleton', head: ['Skeleton_Minion_Head', 'Skeleton_Minion_Jaw', 'Skeleton_Minion_Eyes'], slots: { Cape: ['Skeleton_Minion_Cloak'] } },
@@ -64,34 +74,67 @@ export const KAYKIT = {
   Helper_A: { pack: 'series5', rig: 'medium', atlas: 'Helpers', head: ['Helper_A_Head'], slots: { Hat: ['Helper_A_Hat'] } },
   Helper_B: { pack: 'series5', rig: 'medium', atlas: 'Helpers', head: ['Helper_B_Head'], slots: { Hat: ['Helper_B_Hat'] } },
   CombatMech: { pack: 'series5', rig: 'medium', atlas: 'CombatMech', body: ['ShoulderLeft', 'ShoulderRight', 'WingLeft', 'WingRight'], head: ['CombatMech_Head'], slots: {} },
-  Clanker: { pack: 'series5', rig: 'large', atlas: 'Clanker', body: ['ExhaustLeft', 'ExhaustRight'], head: ['Clanker_Head', 'Clanker_Head_Glow'], slots: {} },
-} as const satisfies Record<string, { pack: string; rig: RigKind; atlas: Atlas; body?: readonly string[]; head: readonly string[]; slots: Partial<Record<Slot, readonly string[]>> }>
+  Clanker: {
+    pack: 'series5', rig: 'large', atlas: 'Clanker', head: ['Clanker_Head', 'Clanker_Head_Glow'],
+    slots: { Cape: ['Clanker_Exhausts', 'Clanker_ExhaustLeft'] },
+    joined: { Clanker_Exhausts: ['Clanker_ExhaustLeft', 'Clanker_ExhaustRight'] },
+    wears: { Cape: 'Clanker_Exhausts' },
+  },
+} as const satisfies Record<string, { pack: string; rig: RigKind; atlas: Atlas; body?: readonly string[]; head: readonly string[]; slots: Partial<Record<Slot, readonly string[]>>; joined?: Record<string, readonly string[]>; wears?: Partial<Record<Slot, string>> }>
+
+/**
+ * The Clanker family's props as parts of the Clanker, by name: the node of a variant's file each is packed from
+ * (`<variant>_<prop>`, in `<variant>.glb`), rigid on the bone it hangs on there, the slot it joins, and whether it glows
+ * (its glowing primitive packed apart as `<part>_Glow`, drawn with it).
+ */
+export const CLANKER_PROPS = {
+  Clanker_Antenna: { node: 'sentinel_antenna', slot: 'Hat', glows: true },
+  Clanker_TallAntenna: { node: 'scout_tallAntenna', slot: 'Hat', glows: true },
+  Clanker_TopHat: { node: 'clanksworth_topHat', slot: 'Hat', glows: false },
+  Clanker_Crown: { node: 'kingbolt_crown', slot: 'Hat', glows: true },
+  Clanker_Wrench: { node: 'tinker_wrench', slot: 'Gear', glows: false },
+  Clanker_Sledgehammer: { node: 'brute_hammer', slot: 'Gear', glows: false },
+  Clanker_Drill: { node: 'frostbyte_drill', slot: 'Prop', glows: false },
+  Clanker_ArmCannon: { node: 'kingbolt_cannon', slot: 'Prop', glows: false },
+  Clanker_Beacon: { node: 'scout_beacon', slot: 'Prop', glows: true },
+  Clanker_Canister: { node: 'sludge_canister', slot: 'Prop', glows: true },
+} as const satisfies Record<string, { node: string; slot: Slot; glows: boolean }>
+const propsIn = (slot: Slot) => (Object.keys(CLANKER_PROPS) as (keyof typeof CLANKER_PROPS)[]).filter((p) => CLANKER_PROPS[p].slot === slot)
 
 export const CHARACTERS = [...ADVENTURERS, ...(Object.keys(KAYKIT) as (keyof typeof KAYKIT)[])] as const
 export type Character = (typeof CHARACTERS)[number]
 
-/** What a character's body is: its rig, its skinned body parts, its own head, and the atlases its body may be painted in. */
-export type Body = { rig: RigKind; atlas: Atlas; parts: string[]; head: string; paints: Atlas[] }
+/**
+ * What a character's body is: its rig, its skinned body parts, what it wears unless a look says otherwise (its own head,
+ * and the Clanker his exhausts), and the atlases its body may be painted in.
+ */
+export type Body = { rig: RigKind; atlas: Atlas; parts: string[]; wears: Partial<Record<Slot, string>> & { Head: string }; paints: Atlas[] }
 
 const isAdventurer = (c: Character): c is Adventurer => (ADVENTURERS as readonly string[]).includes(c)
 
 export function bodyOf(c: Character): Body {
-  if (isAdventurer(c)) return { rig: 'medium', atlas: c, parts: BODY_PARTS.map((p) => `${c}_${p}`), head: `${c}_Head`, paints: [...ADVENTURERS] }
-  const k: { rig: RigKind; atlas: Atlas; body?: readonly string[]; head: readonly string[] } = KAYKIT[c]
+  if (isAdventurer(c)) return { rig: 'medium', atlas: c, parts: BODY_PARTS.map((p) => `${c}_${p}`), wears: { Head: `${c}_Head` }, paints: [...ADVENTURERS] }
+  const k: { rig: RigKind; atlas: Atlas; body?: readonly string[]; head: readonly string[]; wears?: Partial<Record<Slot, string>> } = KAYKIT[c]
   return {
     rig: k.rig,
     atlas: k.atlas,
     parts: [...BODY_PARTS, ...(k.body ?? [])].map((p) => `${c}_${p}`),
-    head: k.head[0],
+    wears: { Head: k.head[0], ...k.wears },
     paints: [k.atlas, ...ATLAS_NAMES.filter((a) => COLOURWAYS[a] === k.atlas)],
   }
 }
 
-/** Meshes drawn with a part wherever it is worn: a skull's jaw and eyes, a head's glowing parts. */
-export const DRAWN_WITH: Record<string, readonly string[]> = Object.fromEntries(Object.values(KAYKIT).map((k) => [k.head[0], k.head.slice(1)]))
+/** Meshes drawn with a part wherever it is worn: a skull's jaw and eyes, a head's or a prop's glowing parts. */
+export const DRAWN_WITH: Record<string, readonly string[]> = {
+  ...Object.fromEntries(Object.values(KAYKIT).map((k) => [k.head[0], k.head.slice(1)])),
+  ...Object.fromEntries(Object.entries(CLANKER_PROPS).flatMap(([p, { glows }]) => (glows ? [[p, [`${p}_Glow`]]] : []))),
+}
 
-/** Every mesh the characters beyond the Adventurers are packed with: their bodies, heads and slot parts. */
-export const KAYKIT_PARTS = (Object.keys(KAYKIT) as (keyof typeof KAYKIT)[]).flatMap((c) => [...bodyOf(c).parts, ...KAYKIT[c].head, ...Object.values(KAYKIT[c].slots as Partial<Record<Slot, readonly string[]>>).flat()])
+/** Every mesh the characters beyond the Adventurers are packed with: their bodies, heads and slot parts, and the Clanker family's props. */
+export const KAYKIT_PARTS = [
+  ...(Object.keys(KAYKIT) as (keyof typeof KAYKIT)[]).flatMap((c) => [...bodyOf(c).parts, ...KAYKIT[c].head, ...Object.values(KAYKIT[c].slots as Partial<Record<Slot, readonly string[]>>).flat()]),
+  ...Object.entries(CLANKER_PROPS).flatMap(([p, { glows }]) => [p, ...(glows ? [`${p}_Glow`] : [])]),
+]
 
 /**
  * What a look fills, part by part. A part made in parts/parts.blend is named after its slot (`Face_RoundGlasses`), and
@@ -102,7 +145,7 @@ export const KAYKIT_PARTS = (Object.keys(KAYKIT) as (keyof typeof KAYKIT)[]).fla
 export const SLOTS = ['Head', 'Helm', 'Hat', 'Face', 'Cape', 'Gear', 'Prop', 'Outfit'] as const
 export type Slot = (typeof SLOTS)[number]
 export const slotOf = (part: string) => SLOTS.find((s) => part.startsWith(`${s}_`))
-const kaykitIn = (slot: Slot) => Object.values(KAYKIT).flatMap((k) => [...((k.slots as Partial<Record<Slot, readonly string[]>>)[slot] ?? []), ...(slot === 'Head' ? [k.head[0]] : [])])
+const kaykitIn = (slot: Slot) => [...Object.values(KAYKIT).flatMap((k) => [...((k.slots as Partial<Record<Slot, readonly string[]>>)[slot] ?? []), ...(slot === 'Head' ? [k.head[0]] : [])]), ...propsIn(slot)]
 const ADVENTURER_SLOTS: Partial<Record<Slot, readonly string[]>> = { Head: HEADS, Helm: HELMS, Cape: CAPES, Gear: GEAR }
 /** The packs' parts in each slot. */
 export const PACK_SLOTS = Object.fromEntries(SLOTS.map((s) => [s, [...(ADVENTURER_SLOTS[s] ?? []), ...kaykitIn(s)]])) as Record<Slot, string[]>

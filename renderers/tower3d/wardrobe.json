@@ -198,8 +198,42 @@
         "Outfit": null
       }
     },
+    "brute": {
+      "body": "Clanker",
+      "paint": "Clanker_Brute",
+      "shape": {
+        "chest": [1.12, 1, 1.12],
+        "head": 0.82,
+        "upperarml": 1.32,
+        "upperarmr": 1.32
+      },
+      "slots": {
+        "Head": "Clanker_Head",
+        "Helm": null,
+        "Hat": null,
+        "Face": null,
+        "Cape": "Clanker_Exhausts",
+        "Gear": "Clanker_Sledgehammer",
+        "Prop": null,
+        "Outfit": null
+      }
+    },
     "clanker": {
       "body": "Clanker"
+    },
+    "clanksworth": {
+      "body": "Clanker",
+      "paint": "Clanker_Clanksworth",
+      "slots": {
+        "Head": "Clanker_Head",
+        "Helm": null,
+        "Hat": "Clanker_TopHat",
+        "Face": null,
+        "Cape": null,
+        "Gear": null,
+        "Prop": null,
+        "Outfit": null
+      }
     },
     "dj": {
       "body": "Mage",
@@ -219,6 +253,96 @@
         "Cape": null,
         "Gear": null,
         "Prop": null,
+        "Outfit": null
+      }
+    },
+    "frostbyte": {
+      "body": "Clanker",
+      "paint": "Clanker_Frostbyte",
+      "slots": {
+        "Head": "Clanker_Head",
+        "Helm": null,
+        "Hat": null,
+        "Face": null,
+        "Cape": "Clanker_Exhausts",
+        "Gear": null,
+        "Prop": "Clanker_Drill",
+        "Outfit": null
+      }
+    },
+    "kingbolt": {
+      "body": "Clanker",
+      "paint": "Clanker_KingBolt",
+      "build": {
+        "width": 1.12,
+        "height": 1.12
+      },
+      "shape": {
+        "chest": [1.08, 1, 1.08]
+      },
+      "slots": {
+        "Head": "Clanker_Head",
+        "Helm": null,
+        "Hat": "Clanker_Crown",
+        "Face": null,
+        "Cape": "Clanker_Exhausts",
+        "Gear": null,
+        "Prop": "Clanker_ArmCannon",
+        "Outfit": null
+      }
+    },
+    "scout": {
+      "body": "Clanker",
+      "paint": "Clanker_Scout",
+      "shape": {
+        "head": 0.95,
+        "upperlegl": [0.92, 1.3, 0.92],
+        "upperlegr": [0.92, 1.3, 0.92],
+        "lowerlegl": [1, 1.15, 1],
+        "lowerlegr": [1, 1.15, 1]
+      },
+      "slots": {
+        "Head": "Clanker_Head",
+        "Helm": null,
+        "Hat": "Clanker_TallAntenna",
+        "Face": null,
+        "Cape": null,
+        "Gear": null,
+        "Prop": "Clanker_Beacon",
+        "Outfit": null
+      }
+    },
+    "sentinel": {
+      "body": "Clanker",
+      "paint": "Clanker_Sentinel",
+      "shape": {
+        "upperlegl": [1, 1.18, 1],
+        "upperlegr": [1, 1.18, 1],
+        "lowerlegl": [1, 1.1, 1],
+        "lowerlegr": [1, 1.1, 1]
+      },
+      "slots": {
+        "Head": "Clanker_Head",
+        "Helm": null,
+        "Hat": "Clanker_Antenna",
+        "Face": null,
+        "Cape": "Clanker_Exhausts",
+        "Gear": null,
+        "Prop": null,
+        "Outfit": null
+      }
+    },
+    "sludge": {
+      "body": "Clanker",
+      "paint": "Clanker_Sludge",
+      "slots": {
+        "Head": "Clanker_Head",
+        "Helm": null,
+        "Hat": null,
+        "Face": null,
+        "Cape": "Clanker_ExhaustLeft",
+        "Gear": null,
+        "Prop": "Clanker_Canister",
         "Outfit": null
       }
     },
@@ -263,6 +387,27 @@
         "Prop": null,
         "Outfit": null
       }
+    },
+    "tinker": {
+      "body": "Clanker",
+      "paint": "Clanker_Tinker",
+      "shape": {
+        "head": 1.35,
+        "upperlegl": [1, 0.82, 1],
+        "upperlegr": [1, 0.82, 1],
+        "lowerlegl": [1, 0.85, 1],
+        "lowerlegr": [1, 0.85, 1]
+      },
+      "slots": {
+        "Head": "Clanker_Head",
+        "Helm": null,
+        "Hat": null,
+        "Face": null,
+        "Cape": "Clanker_Exhausts",
+        "Gear": "Clanker_Wrench",
+        "Prop": null,
+        "Outfit": null
+      }
     }
   },
   "mix": {
@@ -285,7 +430,10 @@
     },
     "outfits": {
       "share": 0,
-      "except": ["bartender", "dj", "clanker"]
+      "except": ["bartender", "dj", "clanker", "sentinel", "tinker", "brute", "clanksworth", "scout", "frostbyte", "sludge", "kingbolt"],
+      "bodies": {
+        "Clanker": ["clanker", "sentinel", "tinker", "brute", "clanksworth", "scout", "frostbyte", "sludge", "kingbolt"]
+      }
     },
     "bodies": {
       "Knight": 6,

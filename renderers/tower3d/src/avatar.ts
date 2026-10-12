@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { instance, type Models } from './models.ts'
-import { RIG_SCALES, rigOf, seatOf, skinned, wearModel, wearRigid, wearSkinned, type Cast, type Rig, type Sitting } from './rig.ts'
+import { RIG_SCALES, rigOf, seatOf, shapeRig, skinned, wearModel, wearRigid, wearSkinned, type Cast, type Rig, type Sitting } from './rig.ts'
 import { glowing, toonMapped } from './toon.ts'
 import { ADVENTURERS, COLOURWAYS, type Atlas } from './contract.ts'
 import { bodyParts, fitOf, hueOf as hueDegrees, rigOfLook, wornBy, type Anchor, type Fit, type Look, type Placement, type Wardrobe } from './wardrobe.ts'
@@ -133,20 +133,24 @@ function wearPieces(models: Models, rig: Rig, look: Look, w: Wardrobe, worn: Map
   }
 }
 
-/** A rigid part of the cast on its bone under its fit, recorded as worn. */
-function rigid(models: Models, rig: Rig, look: Look, w: Wardrobe, name: string, material: THREE.Material, worn: Map<string, Worn>) {
-  const { catalogue } = models
+/**
+ * A rigid part of the cast on its bone under its fit, recorded as worn; its rigid companions (what glows on it) ride it
+ * as made, in `companion`'s material.
+ */
+function rigid(models: Models, rig: Rig, look: Look, w: Wardrobe, name: string, material: THREE.Material, worn: Map<string, Worn>, companion: (part: string) => THREE.Material) {
+  const { catalogue, cast } = models
   const { attach } = catalogue.parts[name]
   const made = (attach as { made: Placement }).made
-  const object = wearRigid(models.cast, rig, name, material)
+  const object = wearRigid(cast, rig, name, material)
   place(object, fitted(made, fitOf(w, catalogue, name, wornBy(look))))
+  for (const n of (catalogue.parts[name].with ?? []).filter((n) => !skinned(cast, n))) object.add(new THREE.Mesh(cast.parts.get(n)!.mesh.geometry, companion(n)))
   worn.set(name, { object, made })
   return object
 }
 
 /**
  * A character's body parts in its paint, every part it wears in the atlas it was made in, or in the paint when that is
- * a colourway of it; each part's companions (a jaw, glowing eyes) beside it.
+ * a colourway of it; each part's companions (a jaw, glowing eyes) beside it, what glows in the glow of its paint.
  */
 function character(models: Models, rig: Rig, look: Extract<Look, { species: 'character' }>, w: Wardrobe): Dressed {
   const { cast, catalogue } = models
@@ -156,10 +160,11 @@ function character(models: Models, rig: Rig, look: Extract<Look, { species: 'cha
     return materials.get(atlas)!
   }
   const paintOf = (atlas: Atlas) => (COLOURWAYS[look.paint] === atlas ? look.paint : atlas)
+  const glowOf = (part: string) => glowing(`#${cast.glows.get(paintOf(cast.parts.get(part)!.atlas!))!.getHexString()}`)
   const worn = new Map<string, Worn>()
   const slotted = look.parts.filter((n) => catalogue.parts[n].atlas && catalogue.parts[n].slot !== 'Gear')
-  const meshes = [...bodyParts(look.body), ...slotted.flatMap((n) => [n, ...(catalogue.parts[n].with ?? [])])]
-  const glows = meshes.filter((n) => cast.parts.get(n)!.glow)
+  const meshes = [...bodyParts(look.body), ...slotted.flatMap((n) => [n, ...(catalogue.parts[n].with ?? []).filter((c) => skinned(cast, c))])]
+  const glows = meshes.filter((n) => cast.parts.get(n)!.glows)
   const painted = [
     ...bodyParts(look.body).map((name) => ({ name, atlas: look.paint })),
     ...meshes.slice(bodyParts(look.body).length).filter((n) => !glows.includes(n)).map((name) => ({ name, atlas: paintOf(cast.parts.get(name)!.atlas!) })),
@@ -168,9 +173,9 @@ function character(models: Models, rig: Rig, look: Extract<Look, { species: 'cha
     const names = painted.filter((p) => p.atlas === atlas).map((p) => p.name)
     const soft = names.filter((n) => skinned(cast, n))
     if (soft.length) wearSkinned(cast, rig, soft, materialOf(atlas))
-    for (const n of names.filter((n) => !skinned(cast, n))) rigid(models, rig, look, w, n, materialOf(atlas), worn)
+    for (const n of names.filter((n) => !skinned(cast, n))) rigid(models, rig, look, w, n, materialOf(atlas), worn, glowOf)
   }
-  for (const n of glows) wearSkinned(cast, rig, [n], glowing(`#${cast.parts.get(n)!.glow!.getHexString()}`))
+  for (const n of glows) wearSkinned(cast, rig, [n], glowOf(n))
   const unit = RIG_SCALES.medium / RIG_SCALES[rig.kind]
   const helmed = look.parts.some((p) => catalogue.parts[p].slot === 'Helm')
   const bulb = glowing('#ffffff')
@@ -178,7 +183,7 @@ function character(models: Models, rig: Rig, look: Extract<Look, { species: 'cha
   light.position.fromArray(catalogue.anchors[rig.kind].hat.at).add(new THREE.Vector3(0, (helmed ? BULB_LIFT * 1.6 : BULB_LIFT) * unit, 0))
   rig.bone('head').add(light)
   const held = look.parts.find((p) => catalogue.parts[p].slot === 'Gear')
-  const gear = held === undefined ? undefined : rigid(models, rig, look, w, held, materialOf(catalogue.parts[held].atlas!), worn)
+  const gear = held === undefined ? undefined : rigid(models, rig, look, w, held, materialOf(paintOf(catalogue.parts[held].atlas!)), worn, glowOf)
   wearPieces(models, rig, look, w, worn)
   return { bulb, gear, worn }
 }
@@ -229,6 +234,7 @@ function sittingOf(cast: Cast, rig: Rig): Sitting {
  */
 export function avatar(models: Models, look: Look, wardrobe: Wardrobe): Avatar {
   const rig = rigOf(models.cast, rigOfLook(look))
+  if (look.species === 'character' && look.shape) shapeRig(rig, look.shape)
   const dressed: Dressed = look.species === 'bot' ? bot(models, rig, look, wardrobe) : character(models, rig, look, wardrobe)
   const scale = RIG_SCALES[rig.kind]
   rig.root.scale.set(scale * look.build.width, scale * look.build.height, scale * look.build.width)

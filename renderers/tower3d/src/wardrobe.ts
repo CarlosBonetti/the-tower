@@ -17,6 +17,7 @@ const colour = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'a #rrggbb colour')
 const character = z.enum(CHARACTERS)
 const atlas = z.enum(ATLAS_NAMES)
 const build = z.object({ width: z.number(), height: z.number() })
+const shape = z.partialRecord(z.enum(BONES), z.union([z.number(), vec3])).describe('times each bone scale over what its pose sets, along its own axes (y runs along the bone)')
 
 export const Fit = z.object({
   at: vec3.optional().describe('added to the part made position, rig units in its bone space'),
@@ -40,6 +41,7 @@ export const Outfit = z.object({
   hair: colour.optional(),
   wear: colour.optional().describe('the colour of what it wears painted `wear_own`'),
   build: build.optional(),
+  shape: shape.optional(),
   slots: z.partialRecord(z.enum(SLOTS), z.string().nullable()).optional().describe('a part, or null for bare; a slot left out is hashed from the mix'),
 })
 
@@ -48,7 +50,11 @@ const slotRules = z.partialRecord(z.enum(SLOTS), Rule)
 export const Mix = z.object({
   bot: z.object({ share: z.number().min(0).max(1), slots: slotRules }),
   named: z.record(z.string(), z.string()).describe('the outfit a worker wears whose callsign has this name (CLANKER for CLANKER-07), whatever its session id rolls'),
-  outfits: z.object({ share: z.number().min(0).max(1), except: z.array(z.string()).optional().describe('outfits only worn by name') }),
+  outfits: z.object({
+    share: z.number().min(0).max(1),
+    except: z.array(z.string()).optional().describe('outfits only worn by name or by body'),
+    bodies: z.partialRecord(character, z.array(z.string()).min(1)).optional().describe('the outfits a worker the mix gives this body wears, one by rendezvous'),
+  }),
   bodies: z
     .partialRecord(character, z.number().positive())
     .refine((b) => Object.keys(b).length > 0, 'at least one body')
@@ -74,6 +80,7 @@ export type Outfit = z.infer<typeof Outfit>
 export type Mix = z.infer<typeof Mix>
 export type Wardrobe = z.infer<typeof Wardrobe>
 export type Build = z.infer<typeof build>
+export type Shape = z.infer<typeof shape>
 
 /** Where a rigid part sits in its bone's space, as three composes it: position, then rotation, then scale. */
 export type Placement = { at: Vec3; quaternion: [number, number, number, number]; scale: Vec3 }
@@ -105,9 +112,12 @@ export type Catalogue = {
   anchors: Record<RigKind | 'bot', Record<Anchor, Placement>>
 }
 
-/** A look: what a worker wears. `parts` are the slot parts worn, in `SLOTS` order; a character's body parts follow from `body` and `paint`. */
+/**
+ * A look: what a worker wears. `parts` are the slot parts worn, in `SLOTS` order; a character's body parts follow from
+ * `body` and `paint`, and its `shape` scales its bones.
+ */
 export type Look =
-  | { species: 'character'; outfit?: string; body: Character; paint: Atlas; parts: string[]; skin: string; hair: string; wear: string; build: Build }
+  | { species: 'character'; outfit?: string; body: Character; paint: Atlas; parts: string[]; skin: string; hair: string; wear: string; build: Build; shape?: Shape }
   | { species: 'bot'; hue: string; parts: string[]; wear: string; build: Build }
 
 export const bodyParts = (body: Character) => bodyOf(body).parts
@@ -189,7 +199,7 @@ function dressed(id: string, outfit: Outfit, name: string | undefined, w: Wardro
   const own = bodyOf(body)
   const paint = outfit.paint ?? (r('repaint') < mix.repaint ? rendezvous(id, 'paint', own.paints) : own.atlas)
   const slots = rolled(id, mix.slots, c, outfit.slots ?? {}, own.parts, own, Object.keys(mix.bodies))
-  if (!slots.has('Head') && !(outfit.slots && 'Head' in outfit.slots)) slots.set('Head', own.head)
+  for (const [slot, part] of Object.entries(own.wears) as [Slot, string][]) if (!slots.has(slot) && !(outfit.slots && slot in outfit.slots)) slots.set(slot, part)
   return {
     species: 'character',
     ...(name !== undefined && { outfit: name }),
@@ -200,13 +210,15 @@ function dressed(id: string, outfit: Outfit, name: string | undefined, w: Wardro
     hair: outfit.hair ?? rendezvous(id, 'hair', mix.hairs),
     wear: outfit.wear ?? rendezvous(id, 'wear', mix.wears),
     build: outfit.build ?? { width: within(mix.build.width, r('width')), height: within(mix.build.height, r('height')) },
+    ...(outfit.shape && { shape: outfit.shape }),
   }
 }
 
 /**
  * A worker's look, hashed from its session id: the same on every board and every reload. A bot by the mix's share,
  * wearing what its slots roll; else a character, in an outfit by the outfits' share (the one of those not kept
- * `except` that scores highest for it), with everything the outfit leaves open hashed from the mix.
+ * `except` that scores highest for it), or else in the one of its body's outfits (`outfits.bodies`) that scores
+ * highest for it, with everything the outfit leaves open hashed from the mix.
  */
 export function lookOf(id: string, w: Wardrobe, c: Catalogue): Look {
   const { mix } = w
@@ -221,7 +233,9 @@ export function lookOf(id: string, w: Wardrobe, c: Catalogue): Look {
     }
   }
   const names = Object.keys(w.outfits).filter((n) => !mix.outfits.except?.includes(n))
-  const name = names.length && roll(id, 'outfit') < mix.outfits.share ? rendezvous(id, 'outfit', names) : undefined
+  const shared = names.length && roll(id, 'outfit') < mix.outfits.share ? rendezvous(id, 'outfit', names) : undefined
+  const ofBody = mix.outfits.bodies?.[weighted(id, 'body', mix.bodies as Record<Character, number>)]
+  const name = shared ?? (ofBody && rendezvous(id, 'outfit', ofBody))
   return dressed(id, name === undefined ? {} : w.outfits[name], name, w, c)
 }
 
@@ -293,6 +307,12 @@ export function problems(w: Wardrobe, c: Catalogue): string[] {
     }
   }
   for (const n of w.mix.outfits.except ?? []) if (!(n in w.outfits)) out.push(`mix/outfits/except: no outfit ${n}`)
+  for (const [body, names] of Object.entries(w.mix.outfits.bodies ?? {})) {
+    for (const n of names) {
+      if (!(n in w.outfits)) out.push(`mix/outfits/bodies/${body}: no outfit ${n}`)
+      else if ((w.outfits[n].body ?? body) !== body) out.push(`mix/outfits/bodies/${body}: ${n} dresses a ${w.outfits[n].body}`)
+    }
+  }
   for (const [name, n] of Object.entries(w.mix.named)) if (!(n in w.outfits)) out.push(`mix/named/${name}: no outfit ${n}`)
   for (const [where, rules] of [['mix/bot/slots', w.mix.bot.slots], ['mix/slots', w.mix.slots]] as const) {
     for (const [slot, rule] of Object.entries(rules)) {

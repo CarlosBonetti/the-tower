@@ -49,7 +49,11 @@
     "hub/scripts/tower3d-parts.ts",
     "hub/renderers/tower3d/src/hashed.ts#rendezvous",
     "hub/renderers/tower3d/src/hashed.ts#weighted",
-    "hub/test/rendezvous.test.ts"
+    "hub/test/rendezvous.test.ts",
+    "hub/renderers/tower3d/src/contract.ts#CLANKER_FAMILY",
+    "hub/renderers/tower3d/src/contract.ts#CLANKER_PROPS",
+    "hub/renderers/tower3d/src/rig.ts#shapeRig",
+    "hub/renderers/tower3d/kaykit/Characters/clanker-family.json"
   ],
   "links": [
     { "to": "office-kaykit", "verb": "uses", "carries": "the vendored KayKit folder, its characters beside the office's Bits" },
@@ -70,8 +74,8 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   `renderers/tower3d/kaykit/Characters`: `adventurers.glb` (1.1 MB), every part the contract names from the five
   Adventurers files on one skeleton with their four atlases and no clips; `rig_medium.glb` (0.45 MB), the contract's
   [`CLIPS`](ref:hub/renderers/tower3d/src/contract.ts#CLIPS) on Rig_Medium's bones; `medium.glb` (2.4 MB), the
-  Skeletons' and the Series 5's Rig_Medium characters skinned to adventurers.glb's joints by name; `large.glb` (1.5 MB),
-  the Clanker on his own Rig_Large skeleton; `rig_large.glb` (0.45 MB), Rig_Medium's clips on it. It checks that every
+  Skeletons' and the Series 5's Rig_Medium characters skinned to adventurers.glb's joints by name; `large.glb` (1.7 MB),
+  the Clanker on his own Rig_Large skeleton, with his family's colourways and props; `rig_large.glb` (0.45 MB), Rig_Medium's clips on it. It checks that every
   character of a rig is skinned to the same joints, by name, in the same bind pose before moving a part onto the rig's
   one skeleton, splits a glowing primitive off as `<part>_Glow`, and packs only the parts the contract names, never a
   whole pack, each pack's licence beside them.
@@ -79,8 +83,9 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   Every KayKit character is built alike: Body, ArmLeft, ArmRight, LegLeft, LegRight skinned, a head, and extras. The
   contract names each character beyond the Adventurers: its rig, its atlas, its head and what is drawn with it (a
   skull's jaw and glowing eyes, the Clanker's glowing eyes), extras that belong to its body (the mech's shoulders and
-  wings, the Clanker's exhausts) and those that join a slot (helmets, hoods and the mage's hat as `Helm`, cloaks and
-  capes as `Cape`, the helpers' hats as `Hat`). Rig_Medium's parts mix on every Rig_Medium body (a skull on a knight);
+  wings), those that join a slot (helmets, hoods and the mage's hat as `Helm`, cloaks and capes as `Cape`, the helpers'
+  hats as `Hat`, the Clanker's exhausts as `Cape`, both joined into one part by the packer or the left one alone), and
+  what the body wears unless a look says otherwise (its own head; the Clanker his two exhausts). Rig_Medium's parts mix on every Rig_Medium body (a skull on a knight);
   parts made on Rig_Large only on Rig_Large's; the pieces of `models/wear.py` hang at an anchor and fit on any. A
   body's paints are its atlas's colourways ([`COLOURWAYS`](ref:hub/renderers/tower3d/src/contract.ts#COLOURWAYS): the
   Clanker's and the mech's `_Alt` textures repaint every part made in their atlas) or, for an adventurer, the four
@@ -92,7 +97,24 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   Rig_Medium's rest to the large rest by the ratio of the hips' heights. A rig carries its kind; `pose`, `seatedAt`
   and `seatOf` read that skeleton's clips and seated measurement, so no caller changed. Rig units to meters by skeleton
   ([`RIG_SCALES`](ref:hub/renderers/tower3d/src/rig.ts#RIG_SCALES)): the Clanker stands a head over a worker, his
-  status light and held things scaled to keep their size in meters.
+  status light and held things scaled to keep their size in meters (Rig_Large's rest stands 3.8 units, so at 0.48 m
+  a unit he is 1.8 m; at first 0.3 put him at 1.1 m, under a worker's 1.5).
+- The Clanker's family. Eight variants another model generated from the Clanker's file (Sentinel, Tinker, Brute, Sir
+  Clanksworth, Scout, Frostbyte, Sludge, King Bolt): his meshes vertex for vertex, each with a gradient atlas and an
+  eye glow of its own, props on his bones, exhausts dropped, and bone rest scales for its proportions. None of it is
+  copied as nine bodies: each atlas is a colourway of the Clanker's
+  ([`CLANKER_FAMILY`](ref:hub/renderers/tower3d/src/contract.ts#CLANKER_FAMILY)), the packer reading it and its glow from
+  the variant's file, and a colourway glows in its own colour (`<atlas>_glow`, the base's for a colourway without one),
+  so a part's glowing companion takes the glow of the paint it is drawn in. The props are the Clanker's slot parts
+  ([`CLANKER_PROPS`](ref:hub/renderers/tower3d/src/contract.ts#CLANKER_PROPS): the antennas, top hat and crown as `Hat`,
+  wrench and sledgehammer as `Gear`, drill, arm cannon, beacon and canister as `Prop`), rigid, so fits and the dresser
+  reach them, their glowing primitive riding them. The proportions are a look's `shape`, a scale per bone: KayKit's
+  clips key every bone's scale, so a rest scale vanishes under any pose; [`shapeRig`](ref:hub/renderers/tower3d/src/rig.ts#shapeRig)
+  hands them to the rig and [`pose`](ref:hub/renderers/tower3d/src/rig.ts#pose) multiplies them in after the mixer (over
+  the rest where no layer keys a bone, so nothing compounds). Each variant is an outfit (paint, slots, shape; King
+  Bolt's root scale is his build), and `mix.outfits.bodies` dresses every worker the mix makes a Clanker in one of the
+  Clanker's outfits by rendezvous, the plain one among them. The generator's table is kept as the family's provenance
+  (`kaykit/Characters/clanker-family.json`, the README says how it was made).
 - One rig. [`loadCast`](ref:hub/renderers/tower3d/src/rig.ts#loadCast) parses both, derives `Type` (both forearms on
   the keyboard tapping, aimed from the seated clip's first frame) and cuts every clip to its arms (`:arms`) or the
   rest (`:rest`), so an upper-body clip plays over a seated or idle one. A worker is a copy of the bones and a mixer;
@@ -172,7 +194,8 @@ keep theirs, whatever the order of the GLB's names. Bots wear only the hats and 
   into the clip's first frame and keeps the lowest point of what bears on the seat (hips and thighs) and the back of
   what leans on a back rest (hips, spine, chest); [`seatedAt`](ref:hub/renderers/tower3d/src/avatar.ts#seatedAt)
   puts that underside on the seat's top and that back against the back rest's face, or the hips over a stool's
-  middle. Every body, bot or outfit sits by its own mesh. The office chair's seat and back are a `swivel` pivot
+  middle. Every body, bot or outfit sits by its own mesh, measured at its rest proportions: a shape that lengthens
+  the legs lets the feet dangle lower, unmeasured. The office chair's seat and back are a `swivel` pivot
   (`models/desk.py`) turned with the worker, about the post, so a worker turned round to you stays in its chair.
 
 **Alternatives considered.**
@@ -215,6 +238,10 @@ keep theirs, whatever the order of the GLB's names. Bots wear only the hats and 
   drowning the adventurers; weights keep them a share RegiByte tunes.
 - *Heads mixed across characters on the floor*: a skeleton's body under a human head and a knight's helmet read as a
   glitch more than a look; mixing across characters stays a choice made by hand in the dresser.
+- *The Clanker's family as nine copies of his geometry* (+13 MB): the variants share his meshes vertex for vertex;
+  only atlases, glows, props and bone scales differ, each of which the look already models or now does.
+- *Bone rest scales in the file*: KayKit's clips key every bone's scale, so a pose would undo them; a shape applied
+  after the mixer survives every clip.
 - *Blender's export as the runtime's file*: its skin orders joints its own way; normalizing keeps one skeleton and
   lets skinned made parts merge with the pack's into one mesh.
 

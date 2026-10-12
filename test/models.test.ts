@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
-import { ADVENTURER_PARTS, ATLASES, ATLAS_NAMES, BONES, CLIPS, CONTRACT, KAYKIT, MODEL_NAMES, bodyOf, missing, slotOf, textureOf, type RigKind } from '../renderers/tower3d/src/contract.ts'
+import { ADVENTURER_PARTS, ATLASES, ATLAS_NAMES, BONES, CLANKER_FAMILY, CLANKER_PROPS, CLIPS, CONTRACT, KAYKIT, MODEL_NAMES, bodyOf, glowOf, missing, slotOf, textureOf, type RigKind } from '../renderers/tower3d/src/contract.ts'
 
 const TOWER3D = path.join(import.meta.dirname, '..', 'renderers', 'tower3d')
 const ASSETS = path.join(TOWER3D, 'assets')
@@ -58,6 +58,19 @@ for (const rig of ['medium', 'large'] satisfies RigKind[]) {
     assert.equal(gltfOf(path.join(CHARACTERS, `${rig}.glb`)).skins!.length, 1)
   })
 }
+
+test('large.glb holds the Clanker family: its props on the bones they hang on, its atlases and their glows', () => {
+  const json = gltfOf(path.join(CHARACTERS, 'large.glb'))
+  const held = namesIn(path.join(CHARACTERS, 'large.glb'))
+  const parts = Object.entries(CLANKER_PROPS).flatMap(([p, { glows }]) => [p, ...(glows ? [`${p}_Glow`] : [])])
+  assert.deepEqual(missing({ nodes: parts, materials: CLANKER_FAMILY.flatMap((a) => [textureOf(a), glowOf(a)]) }, held), [])
+  const parent = new Map(json.nodes.flatMap((n, i) => (n.children ?? []).map((c) => [c, i] as const)))
+  for (const [i, node] of json.nodes.entries()) {
+    if (!parts.includes(node.name!)) continue
+    assert.equal(node.skin, undefined, `${node.name} is skinned`)
+    assert.ok((BONES as readonly string[]).includes(sanitized(json.nodes[parent.get(i)!].name!)), `${node.name} hangs on no bone`)
+  }
+})
 
 test('rig_large.glb holds every clip poses play, on every bone', () => {
   const held = namesIn(path.join(CHARACTERS, 'rig_large.glb'))

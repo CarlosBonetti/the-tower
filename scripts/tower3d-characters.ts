@@ -9,27 +9,29 @@
  *                     bones, without its mannequin
  *   medium.glb        the parts of the contract's other Rig_Medium characters (`KAYKIT`), skinned to adventurers.glb's
  *                     joints, with their atlases and colourways
- *   large.glb         the parts of its Rig_Large characters, on the first one's skeleton
+ *   large.glb         the parts of its Rig_Large characters, on the first one's skeleton, with the Clanker family's
+ *                     props and colourways (`CLANKER_PROPS`, `CLANKER_FAMILY`)
  *   rig_large.glb     the clips of rig_medium.glb on that skeleton: rotations as they are, every translation moved
  *                     from Rig_Medium's rest to the large rest by the ratio of the hips' heights
  *
- *   tsx scripts/tower3d-characters.ts <adventurers> <animations> <skeletons> <series5>
+ *   tsx scripts/tower3d-characters.ts <adventurers> <animations> <skeletons> <series5> <clankers>
  *
  * `<adventurers>` holds Knight.glb, Mage.glb, Rogue.glb, Rogue_Hooded.glb, Barbarian.glb and LICENSE.txt (the pack's
  * GitHub release); `<animations>` the Rig_Medium_*.glb of the animations pack (itch.io); `<skeletons>` the KayKit
- * Skeletons 1.1 folder, `<series5>` the KayKit Mystery Monthly Series 5 folder, each with its License.txt. Every pack
- * is CC0. Every character of a rig is skinned to the same joints, by name, with the same inverse binds (to 1e-5):
- * checked, since a part moves onto the rig's one skeleton.
+ * Skeletons 1.1 folder, `<series5>` the KayKit Mystery Monthly Series 5 folder, each with its License.txt; `<clankers>`
+ * the Clanker family's GLBs, one per variant (sentinel.glb …), generated from the Clanker. Every pack is CC0. Every
+ * character of a rig is skinned to the same joints, by name, with the same inverse binds (to 1e-5): checked, since a
+ * part moves onto the rig's one skeleton.
  */
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { ADVENTURER_PARTS, ATLAS_NAMES, CLIPS, COLOURWAYS, KAYKIT, bodyOf, textureOf, type Atlas, type RigKind } from '../renderers/tower3d/src/contract.ts'
+import { ADVENTURER_PARTS, ATLAS_NAMES, CLANKER_FAMILY, CLANKER_PROPS, CLIPS, COLOURWAYS, KAYKIT, bodyOf, glowOf, textureOf, type RigKind } from '../renderers/tower3d/src/contract.ts'
 import { readGlb, writeGlb, writer, type Glb, type Json } from './glb.ts'
 
 const REPO = path.resolve(import.meta.dirname, '..')
 const OUT = path.join(REPO, 'renderers/tower3d/kaykit/Characters')
-const [adventurers, animations, skeletons, series5] = process.argv.slice(2).map((p) => path.resolve(p))
-if (!series5) throw new Error('tsx scripts/tower3d-characters.ts <adventurers> <animations> <skeletons> <series5>')
+const [adventurers, animations, skeletons, series5, clankers] = process.argv.slice(2).map((p) => path.resolve(p))
+if (!clankers) throw new Error('tsx scripts/tower3d-characters.ts <adventurers> <animations> <skeletons> <series5> <clankers>')
 const PACKS: Record<string, string> = { skeletons, series5 }
 
 const parentsOf = (json: Json) => {
@@ -169,8 +171,24 @@ function bonesOf(g: Glb) {
   return { nodes, root: index.get(root)!, joints: g.json.skins[0].joints.map((j: number) => g.json.nodes[j].name) as string[] }
 }
 
+/** An accessor's bytes, tightly packed, from an interleaved buffer view too. */
+function bytesOf(src: Glb, i: number) {
+  const a = src.json.accessors[i]
+  const v = src.json.bufferViews[a.bufferView]
+  const at = (v.byteOffset ?? 0) + (a.byteOffset ?? 0)
+  const size = { 5121: 1, 5123: 2, 5125: 4, 5126: 4 }[a.componentType as number]! * ({ SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 } as Record<string, number>)[a.type]
+  if (!v.byteStride || v.byteStride === size) return src.bin.subarray(at, at + a.count * size)
+  return Buffer.concat(Array.from({ length: a.count }, (_, n) => src.bin.subarray(at + n * v.byteStride, at + n * v.byteStride + size)))
+}
+
+/** An accessor copied as its bytes, tightly packed (`bytesOf`). */
+const copied = (out: ReturnType<typeof writer>, src: Glb, i: number) => {
+  const { componentType, normalized, count, type, min, max } = src.json.accessors[i]
+  return out.data({ componentType, normalized, count, type, min, max }, bytesOf(src, i))
+}
+
 /** A skinned primitive's joint indices, from its file's skin to the packed one's (`remap`, by position in the file's). */
-function remapped(out: ReturnType<typeof writer>, src: Glb, i: number, remap: number[]) {
+function remapped(src: Glb, i: number, remap: number[]) {
   const a = src.json.accessors[i]
   const v = src.json.bufferViews[a.bufferView]
   const size = a.componentType === 5121 ? 1 : 2
@@ -185,13 +203,48 @@ function remapped(out: ReturnType<typeof writer>, src: Glb, i: number, remap: nu
       else bytes.writeUInt16LE(j, (n * 4 + k) * 2)
     }
   }
-  return out.data({ componentType: a.componentType, count: a.count, type: 'VEC4' }, bytes)
+  return bytes
+}
+
+/**
+ * Skinned primitives of one file packed as one: each attribute's vertices one after another (joints remapped), indices
+ * moved past the vertices before them.
+ */
+function joined(out: ReturnType<typeof writer>, src: Glb, primitives: Json[], remap: number[]) {
+  const counts = primitives.map((p) => src.json.accessors[p.attributes.POSITION].count)
+  const attributes = Object.fromEntries(
+    Object.keys(primitives[0].attributes).map((name) => {
+      const parts = primitives.map((p) => p.attributes[name] as number)
+      const first = src.json.accessors[parts[0]]
+      const bytes = Buffer.concat(parts.map((i) => (name === 'JOINTS_0' ? remapped(src, i, remap) : bytesOf(src, i))))
+      const fields: Json = { componentType: first.componentType, normalized: first.normalized, count: counts.reduce((a, b) => a + b), type: first.type }
+      if (name === 'POSITION') {
+        const bounds = parts.map((i) => src.json.accessors[i])
+        fields.min = [0, 1, 2].map((k) => Math.min(...bounds.map((b) => b.min[k])))
+        fields.max = [0, 1, 2].map((k) => Math.max(...bounds.map((b) => b.max[k])))
+      }
+      return [name, out.data(fields, bytes)]
+    }),
+  )
+  const total = counts.reduce((a, b) => a + b)
+  if (total > 65535) throw new Error('joined primitives hold more vertices than 16-bit indices reach')
+  const indices: number[] = primitives.flatMap((p, n) => {
+    const a = src.json.accessors[p.indices]
+    const b = bytesOf(src, p.indices)
+    const before = counts.slice(0, n).reduce((x, y) => x + y, 0)
+    return Array.from({ length: a.count }, (_, k) => (a.componentType === 5121 ? b.readUInt8(k) : a.componentType === 5123 ? b.readUInt16LE(k * 2) : b.readUInt32LE(k * 4)) + before)
+  })
+  const bytes = Buffer.alloc(indices.length * 2)
+  indices.forEach((x, k) => bytes.writeUInt16LE(x, k * 2))
+  return { attributes, indices: out.data({ componentType: 5123, count: indices.length, type: 'SCALAR' }, bytes), mode: primitives[0].mode }
 }
 
 /**
  * The contract's KayKit characters on `rig`, from their packs' files, skinned to `base`'s skeleton by joint name: each
  * part a mesh of one material, a glowing primitive split off as `<part>_Glow`, painted in its character's atlas
- * (`<atlas>_texture`) or glowing (`<atlas>_glow`), with every colourway of those atlases beside them.
+ * (`<atlas>_texture`) or glowing (`<atlas>_glow`), with every colourway of those atlases beside them, each with its
+ * glow: the Clanker family's from its variant's file, any other in the glow of the atlas it repaints. On Rig_Large,
+ * the Clanker family's props, rigid on his bones as their files hang them.
  */
 function packKaykit(rig: RigKind, base: Glb, file: string) {
   const characters = (Object.keys(KAYKIT) as (keyof typeof KAYKIT)[]).filter((c) => KAYKIT[c].rig === rig)
@@ -223,7 +276,8 @@ function packKaykit(rig: RigKind, base: Glb, file: string) {
     }
     const remap = src.json.skins[0].joints.map((j: number) => skeleton.joints.indexOf(src.json.nodes[j].name))
     const parents = parentsOf(src.json)
-    const wanted = new Set<string>([...bodyOf(c).parts, ...k.head, ...Object.values(k.slots as Record<string, readonly string[]>).flat()])
+    const joins: Record<string, readonly string[]> = 'joined' in k ? k.joined : {}
+    const wanted = new Set<string>([...bodyOf(c).parts, ...k.head, ...Object.values(k.slots as Record<string, readonly string[]>).flat()].filter((n) => !(n in joins)))
     for (const [i, node] of src.json.nodes.entries() as IterableIterator<[number, Json]>) {
       if (node.mesh === undefined || !wanted.has(node.name)) continue
       src.json.meshes[node.mesh].primitives.forEach((p: Json, n: number) => {
@@ -234,7 +288,12 @@ function packKaykit(rig: RigKind, base: Glb, file: string) {
         const material = glow
           ? materialNamed(`${k.atlas.toLowerCase()}_glow`, () => ({ emissiveFactor: m.emissiveFactor, pbrMetallicRoughness: { baseColorFactor: [0, 0, 0, 1] } }))
           : materialNamed(textureOf(k.atlas), () => painted(out.image(src, src.json.textures[m.pbrMetallicRoughness.baseColorTexture.index].source)))
-        const attributes = Object.fromEntries(Object.entries(p.attributes).map(([a, at]) => [a, a === 'JOINTS_0' ? remapped(out, src, at as number, remap) : out.accessor(src, at as number)]))
+        const attributes = Object.fromEntries(
+          Object.entries(p.attributes).map(([a, at]) => {
+            const i = at as number
+            return [a, a === 'JOINTS_0' ? out.data({ componentType: src.json.accessors[i].componentType, count: src.json.accessors[i].count, type: 'VEC4' }, remapped(src, i, remap)) : out.accessor(src, i)]
+          }),
+        )
         json.meshes.push({ name, primitives: [{ attributes, indices: out.accessor(src, p.indices), material, mode: p.mode }] })
         const parent = node.skin === undefined ? nodeNamed(json, src.json.nodes[parents.get(i)!].name) : skeleton.root
         json.nodes.push({ name, mesh: json.meshes.length - 1, skin: node.skin === undefined ? undefined : 0, translation: node.translation, rotation: node.rotation, scale: node.scale })
@@ -243,13 +302,54 @@ function packKaykit(rig: RigKind, base: Glb, file: string) {
       })
     }
     if (wanted.size) throw new Error(`${c}.glb lacks ${[...wanted].join(', ')}`)
+    for (const [name, from] of Object.entries(joins)) {
+      const primitives = from.map((n) => {
+        const node = src.json.nodes[nodeNamed(src.json, n)]
+        if (node?.skin === undefined) throw new Error(`${c}.glb lacks a skinned ${n} to join into ${name}`)
+        const mesh = src.json.meshes[node.mesh]
+        if (mesh.primitives.length > 1) throw new Error(`${n} has a second primitive, which ${name} does not join`)
+        return mesh.primitives[0]
+      })
+      json.meshes.push({ name, primitives: [{ ...joined(out, src, primitives, remap), material: materialNamed(textureOf(k.atlas), () => { throw new Error(`${name} is joined before ${c}'s atlas is packed`) }) }] })
+      json.nodes.push({ name, mesh: json.meshes.length - 1, skin: 0 })
+      json.nodes[skeleton.root].children.push(json.nodes.length - 1)
+    }
+  }
+  if (rig === 'large') {
+    for (const [name, { node: from, glows }] of Object.entries(CLANKER_PROPS)) {
+      const src = readGlb(path.join(clankers, `${from.split('_')[0]}.glb`))
+      const i = nodeNamed(src.json, from)
+      if (i < 0) throw new Error(`${from.split('_')[0]}.glb lacks ${from}`)
+      const node = src.json.nodes[i]
+      const primitives: Json[] = src.json.meshes[node.mesh].primitives
+      const glowing = primitives.filter((p) => src.json.materials[p.material].name.startsWith('Glow'))
+      if (glowing.length !== (glows ? 1 : 0) || primitives.length !== glowing.length + 1) throw new Error(`${from} is not one painted primitive${glows ? ' and one glowing' : ''}`)
+      const parent = nodeNamed(json, src.json.nodes[parentsOf(src.json).get(i)!].name)
+      for (const p of primitives) {
+        const glow = glowing.includes(p)
+        const material = glow ? materials.get(glowOf('Clanker'))! : materials.get(textureOf('Clanker'))!
+        const attributes = Object.fromEntries(Object.entries(p.attributes).map(([a, at]) => [a, copied(out, src, at as number)]))
+        json.meshes.push({ name: glow ? `${name}_Glow` : name, primitives: [{ attributes, material, mode: p.mode }] })
+        json.nodes.push({ name: glow ? `${name}_Glow` : name, mesh: json.meshes.length - 1, translation: node.translation, rotation: node.rotation, scale: node.scale })
+        json.nodes[parent].children.push(json.nodes.length - 1)
+      }
+    }
   }
   for (const atlas of ATLAS_NAMES) {
     const of = COLOURWAYS[atlas]
     if (!of || !materials.has(textureOf(of))) continue
+    if ((CLANKER_FAMILY as readonly string[]).includes(atlas)) {
+      const src = readGlb(path.join(clankers, `${atlas.slice(of.length + 1).toLowerCase()}.glb`))
+      const glow = src.json.materials.find((m: Json) => m.name.startsWith('Glow'))
+      const image = src.json.bufferViews[src.json.images[0].bufferView]
+      materialNamed(textureOf(atlas), () => painted(out.png(textureOf(atlas), src.bin.subarray(image.byteOffset ?? 0, (image.byteOffset ?? 0) + image.byteLength))))
+      materialNamed(glowOf(atlas), () => ({ emissiveFactor: glow.emissiveFactor, pbrMetallicRoughness: { baseColorFactor: [0, 0, 0, 1] } }))
+      continue
+    }
     const pack = PACKS[Object.values(KAYKIT).find((k) => k.atlas === of)!.pack]
     const png = readFileSync(fileNamed(pack, `${textureOf(of)}${atlas.slice(of.length).toLowerCase()}.png`))
-    materialNamed(textureOf(atlas as Atlas), () => painted(out.png(textureOf(atlas as Atlas), png)))
+    materialNamed(textureOf(atlas), () => painted(out.png(textureOf(atlas), png)))
+    if (materials.has(glowOf(of))) materialNamed(glowOf(atlas), () => ({ ...json.materials[materials.get(glowOf(of))!], name: undefined }))
   }
   json.nodes.forEach((n: Json) => n.children?.length === 0 && delete n.children)
   writeGlb(path.join(OUT, file), json, out.bin())
@@ -304,12 +404,23 @@ CC0, its licence beside the files packed from it:
 - \`medium.glb\`: the Rig_Medium characters of KayKit Skeletons 1.1 (\`License-Skeletons.txt\`) and of the KayKit
   Mystery Monthly Series 5 (the Helpers and the Combat Mech, \`License-Series5.txt\`), skinned to adventurers.glb's
   joints, with their atlases and colourways.
-- \`large.glb\`: the Series 5's Clanker on his Rig_Large skeleton, with his atlas and its colourway.
+- \`large.glb\`: the Series 5's Clanker on his Rig_Large skeleton, with his atlas and its colourway, and his family.
 - \`rig_large.glb\`: rig_medium.glb's clips on that skeleton, retargeted by the packer.
 
 Only the parts Tower 3D uses are packed, never a whole pack. All are packed from the packs' own files by
-\`tsx scripts/tower3d-characters.ts <adventurers> <animations> <skeletons> <series5>\`, which takes the parts and clips
-\`renderers/tower3d/src/contract.ts\` names.
+\`tsx scripts/tower3d-characters.ts <adventurers> <animations> <skeletons> <series5> <clankers>\`, which takes the parts
+and clips \`renderers/tower3d/src/contract.ts\` names.
+
+## The Clanker family
+
+Eight variants of the Clanker (Sentinel, Tinker, Brute, Sir Clanksworth, Scout, Frostbyte, Sludge and King Bolt),
+generated by Claude from the CC0 Clanker by a script, with nothing else as their source: each repaints his gradient
+atlas and gives his eyes a glow of its own, scales some of his bones, drops exhausts and bolts low-poly props onto his
+bones. \`<clankers>\` holds one GLB per variant (\`sentinel.glb\` …); the packer takes from each
+its atlas and glow, a colourway of the Clanker's, and its props, parts of his. The bone scales and the parts each
+variant wears are its outfit in \`renderers/tower3d/wardrobe.json\`. \`clanker-family.json\` is the generator's table
+of the variants, kept as their provenance: names, palettes (gradient stops per atlas column), glow, bone scales, the
+props and where they were placed, and the parts removed.
 `
 
 mkdirSync(OUT, { recursive: true })

@@ -8,7 +8,7 @@ import mediumGlb from '../kaykit/Characters/medium.glb'
 import largeClipsGlb from '../kaykit/Characters/rig_large.glb'
 import clipsGlb from '../kaykit/Characters/rig_medium.glb'
 import partsGlb from '../parts/parts.glb'
-import { ATLAS_NAMES, CLIPS, RIGS, textureOf, type Atlas, type Bone, type ClipName, type RigKind } from './contract.ts'
+import { ATLAS_NAMES, CLIPS, RIGS, glowOf, textureOf, type Atlas, type Bone, type ClipName, type RigKind } from './contract.ts'
 
 /**
  * The skeletons workers stand on (KayKit's Rig_Medium, and Rig_Large for the big ones, kaykit/Characters), the parts
@@ -45,8 +45,8 @@ export type Skeleton = {
   seated: { hips: THREE.Vector3; skin: THREE.Matrix4[] }
 }
 
-/** A part as its file holds it: skinned to its skeleton's bones, or rigid on the bone it hangs on; painted in an atlas or glowing. */
-export type CastPart = { mesh: THREE.Mesh; rig: RigKind; bone?: string; atlas?: Atlas; glow?: THREE.Color }
+/** A part as its file holds it: skinned to its skeleton's bones, or rigid on the bone it hangs on; painted in an atlas, or glowing in its glow. */
+export type CastPart = { mesh: THREE.Mesh; rig: RigKind; bone?: string; atlas?: Atlas; glows?: true }
 
 export type Cast = {
   skeletons: Record<RigKind, Skeleton>
@@ -54,6 +54,8 @@ export type Cast = {
   /** Skinned parts merged into one geometry, by their names: what a worker draws in one call per atlas. */
   merged: Map<string, THREE.BufferGeometry>
   atlases: Map<Atlas, THREE.Texture>
+  /** The colour each atlas's glowing parts glow in. */
+  glows: Map<Atlas, THREE.Color>
 }
 
 const parse = (bytes: Uint8Array) =>
@@ -120,6 +122,7 @@ function atlasOf(material: THREE.MeshStandardMaterial) {
 }
 
 const atlasNamed = (material: THREE.Material) => ATLAS_NAMES.find((a) => material.name === textureOf(a))
+const glowNamed = (material: THREE.Material) => ATLAS_NAMES.find((a) => material.name === glowOf(a))
 
 /** A skeleton's bones, from the file whose skinned parts bind them, and its clips with those derived from them. */
 function skeletonOf(bones: THREE.Object3D, skin: THREE.Skeleton, animations: THREE.AnimationClip[]): Skeleton {
@@ -142,6 +145,7 @@ export async function loadCast(): Promise<Cast> {
   const [adventurers, made, medium, large, mediumClips, largeClips] = await Promise.all([adventurersGlb, partsGlb, mediumGlb, largeGlb, clipsGlb, largeClipsGlb].map(parse))
   const parts: Cast['parts'] = new Map()
   const atlases: Cast['atlases'] = new Map()
+  const glows: Cast['glows'] = new Map()
   const collect = (from: THREE.Object3D, rig: RigKind) => {
     from.updateMatrixWorld(true)
     from.traverse((o) => {
@@ -151,8 +155,9 @@ export async function loadCast(): Promise<Cast> {
       const material = o.material as THREE.MeshStandardMaterial
       const atlas = atlasNamed(material)
       if (atlas && !atlases.has(atlas)) atlases.set(atlas, atlasOf(material))
-      const glow = material.name.endsWith('_glow') ? material.emissive.clone() : undefined
-      parts.set(o.name, { mesh: o, rig, bone: o instanceof THREE.SkinnedMesh ? undefined : o.parent!.name, atlas, glow })
+      const glowing = glowNamed(material)
+      const bone = o instanceof THREE.SkinnedMesh ? undefined : o.parent!.name
+      parts.set(o.name, glowing ? { mesh: o, rig, bone, atlas: glowing, glows: true } : { mesh: o, rig, bone, atlas })
     })
   }
   const rigs = { medium: adventurers.scene.getObjectByName('Rig')!, large: large.scene.getObjectByName('Rig')! }
@@ -164,6 +169,8 @@ export async function loadCast(): Promise<Cast> {
     for (const m of (await file.parser.getDependencies('material')) as THREE.MeshStandardMaterial[]) {
       const atlas = atlasNamed(m)
       if (atlas && !atlases.has(atlas)) atlases.set(atlas, atlasOf(m))
+      const glowing = glowNamed(m)
+      if (glowing) glows.set(glowing, m.emissive.clone())
     }
   }
   for (const { mesh } of parts.values()) mesh.removeFromParent()
@@ -172,7 +179,7 @@ export async function loadCast(): Promise<Cast> {
     medium: skeletonOf(rigs.medium, skinOf('medium'), mediumClips.animations),
     large: skeletonOf(rigs.large, skinOf('large'), largeClips.animations),
   } satisfies Record<(typeof RIGS)[number], Skeleton>
-  return { skeletons, parts, merged: new Map(), atlases }
+  return { skeletons, parts, merged: new Map(), atlases, glows }
 }
 
 /** The joints a seated body bears on: its pelvis and thighs on the seat, its back against a back rest. */
@@ -225,6 +232,8 @@ export type Rig = {
   /** The last pose set, and the one it is fading in from since `at` (sim seconds), while the fade lasts. */
   last?: Pose
   fade?: { from: Pose; at: number }
+  /** Bones scaled over what every pose sets them to (a look's `shape`), with the scale they rest at. */
+  shaped: { bone: THREE.Object3D; by: THREE.Vector3; rest: THREE.Vector3 }[]
 }
 
 export function rigOf(cast: Cast, kind: RigKind): Rig {
@@ -233,7 +242,15 @@ export function rigOf(cast: Cast, kind: RigKind): Rig {
   const bones = new Map<string, THREE.Object3D>()
   root.traverse((o) => bones.set(o.name, o))
   const skeleton = new THREE.Skeleton(joints.map((n) => bones.get(n) as THREE.Bone), inverses)
-  return { kind, root, mixer: new THREE.AnimationMixer(root), bone: (name) => bones.get(name)!, skeleton, playing: new Map() }
+  return { kind, root, mixer: new THREE.AnimationMixer(root), bone: (name) => bones.get(name)!, skeleton, playing: new Map(), shaped: [] }
+}
+
+/** Scales a rig's bones by `shape` from its next pose on: each bone by its number, or along its own axes. */
+export function shapeRig(rig: Rig, shape: Partial<Record<Bone, number | [number, number, number]>>) {
+  rig.shaped = Object.entries(shape).map(([name, s]) => {
+    const bone = rig.bone(name as Bone)
+    return { bone, by: typeof s === 'number' ? new THREE.Vector3(s, s, s) : new THREE.Vector3(...s), rest: bone.scale.clone() }
+  })
 }
 
 /** Skinned parts of the pack dressed on a rig in one `material`, merged into one mesh on its bones. */
@@ -323,7 +340,8 @@ const clipsOf = (p: Pose) => p.layers.map((l) => l.clip).join('|')
 
 /**
  * Sets the rig to `next` at sim time `t`: every layer at its time, nothing else playing. A pose of other clips than
- * the last fades in over `FADE`, the last one held where it stopped and fading out under it.
+ * the last fades in over `FADE`, the last one held where it stopped and fading out under it. Shaped bones are scaled
+ * over what the layers set (or, where none of them scales a bone, over its rest).
  */
 export function pose(cast: Cast, rig: Rig, next: Pose, t: number) {
   if (rig.last && clipsOf(rig.last) !== clipsOf(next)) rig.fade = { from: rig.fade && t - rig.fade.at < FADE ? rig.fade.from : rig.last, at: t }
@@ -347,7 +365,9 @@ export function pose(cast: Cast, rig: Rig, next: Pose, t: number) {
     action.time = ((at % action.getClip().duration) + action.getClip().duration) % action.getClip().duration
     action.weight = weight
   }
+  for (const { bone, rest } of rig.shaped) bone.scale.copy(rest)
   rig.mixer.update(0)
+  for (const { bone, by } of rig.shaped) bone.scale.multiply(by)
   const lean = (next.lean ?? 0) * k + (k < 1 ? (rig.fade?.from.lean ?? 0) * (1 - k) : 0)
   if (lean) rig.bone('chest').quaternion.multiply(leaning.setFromAxisAngle(X, lean))
 }

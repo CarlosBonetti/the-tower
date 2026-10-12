@@ -132,12 +132,12 @@ function based(base: Base): Look {
   if (base === 'bot') return { species: 'bot', hue: look?.species === 'bot' ? look.hue : randomHue(), parts: [], wear, build }
   const was = look?.species === 'character' ? look : undefined
   const body = bodyOf(base)
-  return { species: 'character', body: base, paint: body.atlas, parts: [body.head], skin: was?.skin ?? mix.skins[1], hair: was?.hair ?? mix.hairs[1], wear, build }
+  return { species: 'character', body: base, paint: body.atlas, parts: SLOTS.flatMap((s) => body.wears[s] ?? []), skin: was?.skin ?? mix.skins[1], hair: was?.hair ?? mix.hairs[1], wear, build }
 }
 
 /** An outfit that dresses exactly this look: every slot set, a part or bare. */
 function outfitOf(l: Extract<Look, { species: 'character' }>): Outfit {
-  return { body: l.body, paint: l.paint, skin: l.skin, hair: l.hair, wear: l.wear, build: l.build, slots: Object.fromEntries(SLOTS.map((s) => [s, partIn(l, s) ?? null])) }
+  return { body: l.body, paint: l.paint, skin: l.skin, hair: l.hair, wear: l.wear, build: l.build, ...(l.shape && { shape: l.shape }), slots: Object.fromEntries(SLOTS.map((s) => [s, partIn(l, s) ?? null])) }
 }
 
 const DEG = Math.PI / 180
