@@ -1,13 +1,21 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { fitFrom, formatWardrobe, parseWardrobe, type Catalogue, type CataloguePart } from '../renderers/tower3d/src/wardrobe.ts'
+import { STAFF, fitFrom, formatWardrobe, parseWardrobe, type Catalogue, type CataloguePart } from '../renderers/tower3d/src/wardrobe.ts'
 
 const FILE = new URL('../renderers/tower3d/wardrobe.json', import.meta.url)
 
 test('the wardrobe parses, and is saved as formatWardrobe writes it', () => {
   const text = readFileSync(FILE, 'utf8')
   assert.equal(formatWardrobe(parseWardrobe(JSON.parse(text), 'wardrobe.json')), text)
+})
+
+test('the wardrobe keeps every outfit Tower 3D dresses by name, out of the mix', () => {
+  const w = parseWardrobe(JSON.parse(readFileSync(FILE, 'utf8')), 'wardrobe.json')
+  for (const n of STAFF) {
+    assert.ok(n in w.outfits, `no outfit ${n}`)
+    assert.ok(w.mix.outfits.except?.includes(n), `${n} is in the mix`)
+  }
 })
 
 test('a fit takes its * under the overrides of what it is worn with, by slot precedence, field by field', () => {

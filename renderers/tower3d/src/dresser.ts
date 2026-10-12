@@ -8,7 +8,7 @@ import { WARDROBE } from './closet.ts'
 import { instance, loadModels, type Models } from './models.ts'
 import { pose, type ClipKey, type Pose } from './rig.ts'
 import { block, dispose, toon } from './toon.ts'
-import { fitFrom, fitOf, formatWardrobe, lookNamed, lookOf, parseWardrobe, problems, wornBy, type Catalogue, type Fit, type Look, type Outfit, type Placement, type Vec3, type Wardrobe } from './wardrobe.ts'
+import { fitFrom, fitOf, formatWardrobe, lookNamed, lookOf, parseWardrobe, problems, STAFF, wornBy, type Catalogue, type Fit, type Look, type Outfit, type Placement, type Vec3, type Wardrobe } from './wardrobe.ts'
 
 /**
  * The dresser (dresser.html): a worker on a stand, dressed by the wardrobe as Tower 3D dresses it. Start from a body
@@ -338,8 +338,11 @@ function keepOutfit(name: string) {
 }
 
 /** An outfit under another name, in the mix's `except` too. */
+const locked = (name: string) => (STAFF as readonly string[]).includes(name)
+
 function renameOutfit(from: string, to: string) {
   if (!(from in wardrobe.outfits)) throw new Error(`no outfit "${from}"`)
+  if (locked(from)) throw new Error(`Tower 3D dresses the ${from} by name: it keeps its name`)
   if (!to) throw new Error('an outfit needs a name')
   if (to !== from && to in wardrobe.outfits) throw new Error(`there is an outfit "${to}" already`)
   const outfits = Object.fromEntries(Object.entries(wardrobe.outfits).map(([n, o]) => [n === from ? to : n, o]))
@@ -352,6 +355,7 @@ function renameOutfit(from: string, to: string) {
 }
 
 function unkeepOutfit(name: string) {
+  if (locked(name)) throw new Error(`Tower 3D dresses the ${name} by name: it stays`)
   const { [name]: _, ...outfits } = wardrobe.outfits
   const except = wardrobe.mix.outfits.except?.filter((n) => n !== name)
   wardrobe = { ...wardrobe, outfits, mix: { ...wardrobe.mix, outfits: { ...wardrobe.mix.outfits, except } } }
@@ -483,7 +487,7 @@ function renderLook() {
     <div class="outfits">${names.map((n) =>
       renaming === n
         ? `<div class="row"><input type="text" id="rename" value="${esc(n)}"><button data-rename-to="${esc(n)}">✓</button><button data-act="rename-cancel">✕</button></div>`
-        : `<div class="row"><button class="name ${n === outfit ? 'on' : ''}" data-outfit="${esc(n)}" title="${mix.outfits.except?.includes(n) ? 'worn only by name' : 'in the mix'}">${esc(n)}</button><button data-rename="${esc(n)}" title="rename">✎</button><button data-unkeep="${esc(n)}" title="delete">✕</button></div>`).join('')}</div>
+        : `<div class="row"><button class="name ${n === outfit ? 'on' : ''}" data-outfit="${esc(n)}" title="${mix.outfits.except?.includes(n) ? 'worn only by name' : 'in the mix'}">${esc(n)}</button>${locked(n) ? '<span class="muted" title="Tower 3D dresses it by name">locked</span>' : `<button data-rename="${esc(n)}" title="rename">✎</button><button data-unkeep="${esc(n)}" title="delete">✕</button>`}</div>`).join('')}</div>
     ${adv ? `<div class="row"><input type="text" id="outfit-name" placeholder="a name for this look"><button data-act="keep">Keep as new</button></div>
     ${outfit && !kept ? `<button data-act="update">Update “${esc(outfit)}” to this look</button>` : ''}
     <div class="muted">An outfit keeps every slot as shown, bare ones too.</div>` : '<div class="muted">Outfits dress adventurers.</div>'}

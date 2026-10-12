@@ -177,6 +177,27 @@
     }
   },
   "outfits": {
+    "bartender": {
+      "body": "Barbarian",
+      "paint": "Barbarian",
+      "skin": "#bd8259",
+      "hair": "#4a3021",
+      "wear": "#2b2d42",
+      "build": {
+        "width": 1.04,
+        "height": 1
+      },
+      "slots": {
+        "Head": "Barbarian_Head",
+        "Helm": null,
+        "Hat": "hat_cap",
+        "Face": null,
+        "Cape": null,
+        "Gear": "Mug",
+        "Prop": null,
+        "Outfit": null
+      }
+    },
     "dj": {
       "body": "Mage",
       "paint": "Rogue",
@@ -258,7 +279,7 @@
     },
     "outfits": {
       "share": 0,
-      "except": ["dj"]
+      "except": ["bartender", "dj"]
     },
     "bodies": ["Knight", "Mage", "Rogue", "Barbarian"],
     "repaint": 0.3,

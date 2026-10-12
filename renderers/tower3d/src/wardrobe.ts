@@ -228,9 +228,20 @@ export function fitFrom(w: Wardrobe, c: Catalogue, part: string, worn: readonly 
 
 export const fitOf = (w: Wardrobe, c: Catalogue, part: string, worn: readonly string[]) => fitFrom(w, c, part, worn).fit
 
-/** The wardrobe's problems against the catalogue, each at its path: names it holds that no part has, and fits it cannot apply. */
+/** The outfits Tower 3D dresses by name, the roof's bartender and DJ: locked in the dresser, and kept out of the mix. */
+export const STAFF = ['bartender', 'dj'] as const
+export type Staff = (typeof STAFF)[number]
+
+/**
+ * The wardrobe's problems against the catalogue, each at its path: an outfit Tower 3D dresses by name missing or in the
+ * mix, names it holds that no part has, and fits it cannot apply.
+ */
 export function problems(w: Wardrobe, c: Catalogue): string[] {
   const out: string[] = []
+  for (const n of STAFF) {
+    if (!(n in w.outfits)) out.push(`outfits/${n}: Tower 3D dresses the ${n} by name`)
+    else if (!w.mix.outfits.except?.includes(n)) out.push(`mix/outfits/except: the ${n} is worn only by name`)
+  }
   const known = (name: string, at: string) => name in c.parts || out.push(`${at}: no part ${name}`)
   for (const [part, fits] of Object.entries(w.fits)) {
     if (!known(part, `fits/${part}`)) continue

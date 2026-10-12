@@ -11,7 +11,7 @@ import { instance, type Models } from './models.ts'
 import { pose, type Cast, type ClipKey, type Layer } from './rig.ts'
 import { tintOf } from './palette.ts'
 import { block, glows, sprite, toon } from './toon.ts'
-import { lookNamed, lookOf } from './wardrobe.ts'
+import { lookNamed, lookOf, type Staff } from './wardrobe.ts'
 
 /**
  * The roof party: a puff on the decks, a bar and string lights, built with the roof (`buildParty`); a dance floor per
@@ -55,10 +55,10 @@ export function buildParty(p: Plan, models: Models, pickables: THREE.Object3D[])
   bar.root.position.set(spots.bar.x, 0, spots.bar.z)
   const barStrip = bar.material<THREE.MeshBasicMaterial>('strip_glow_own')!
   barStrip.color.set('#ff4fa3')
-  const bartender = avatar(models, lookNamed('bartender', WARDROBE, models.catalogue), WARDROBE)
+  const bartender = avatar(models, lookNamed('bartender' satisfies Staff, WARDROBE, models.catalogue), WARDROBE)
   bartender.root.position.set(spots.bar.x, 0, spots.bar.z - 0.6)
   bartender.body.position.y = 0.5
-  const dj = avatar(models, lookNamed('dj', WARDROBE, models.catalogue), WARDROBE)
+  const dj = avatar(models, lookNamed('dj' satisfies Staff, WARDROBE, models.catalogue), WARDROBE)
   dj.root.position.set(spots.dj.x, 0.55, spots.dj.z - 0.5)
   dj.bulb.color.set('#ffd9a0')
   const sign = sprite('ROOFTOP BAR', 0.35, { color: '#0b1020', bg: '#ff4fa3', px: 48 })
