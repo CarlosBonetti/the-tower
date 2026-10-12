@@ -10,6 +10,14 @@
       "evidence": true,
       "shape": "subroutine",
       "fields": {}
+    },
+    {
+      "id": "doc",
+      "label": "Docs",
+      "parents": ["project"],
+      "evidence": true,
+      "shape": "box",
+      "fields": {}
     }
   ]
 }
