@@ -12,6 +12,23 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.27.0
+
+More KayKit characters on the floor, the Clanker among them, and Tower 3D drawing again. No host restart, no config
+change, the renderer API is unchanged. Rebuild Tower 3D (`npm run tower3d`) and reload it.
+
+- Fixed: since v1.26.0 Tower 3D drew nothing. A dresser save had deleted the roof's bartender, whom Tower 3D dresses
+  by name. He is back, and the outfits worn by name are locked: the dresser won't rename or delete them, and a
+  wardrobe without them is refused on save and named on load.
+- New characters (CC0): the four KayKit Skeletons, the Helpers and the Combat Mech, and the Clanker, the first worker
+  on KayKit's big skeleton (Rig_Large). He sits, types, waves and dances on the same clips as everyone, retargeted to
+  his frame. Their parts mix within a skeleton (a skeleton in a knight's helmet), each character keeps a head of its
+  kind, and the Clanker and the mech come in two colourways. The dresser starts from any of them.
+- `mix.bodies` is a weight per character: adventurers 6 each, the Clanker 2, the others 1, so about a quarter of the
+  workers who aren't bots become a new character. This re-dresses that quarter of the floor once.
+- `mix.named` gives an outfit to every worker whose callsign has a name. CLANKER is a new callsign, and every
+  CLANKER is the Clanker. Adding the name renames about 1 in 181 sessions, past ones included.
+
 ## v1.26.0
 
 Tower 3D's looks are data, and a character creator dresses them by hand. No host restart, no config change, the
