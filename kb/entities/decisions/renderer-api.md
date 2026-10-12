@@ -2,7 +2,7 @@
 {
   "type": "decision",
   "name": "The tower's routes are the renderer API",
-  "summary": "Every renderer drives the system through the tower server's HTTP routes, version 23: framed shelf pages reach them over a postMessage tunnel, pages at the tower's origin call them directly, and streams share one multiplexed connection.",
+  "summary": "Every renderer drives the system through the tower server's HTTP routes, versioned major.minor by API_VERSION: framed shelf pages reach them over a postMessage tunnel, pages at the tower's origin call them directly, and streams share one multiplexed connection.",
   "in": "tower",
   "status": "accepted",
   "date": "2026-10-03",
