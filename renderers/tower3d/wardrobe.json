@@ -285,7 +285,15 @@
       "Knight": 6,
       "Mage": 6,
       "Rogue": 6,
-      "Barbarian": 6
+      "Barbarian": 6,
+      "Skeleton_Minion": 1,
+      "Skeleton_Warrior": 1,
+      "Skeleton_Rogue": 1,
+      "Skeleton_Mage": 1,
+      "Helper_A": 1,
+      "Helper_B": 1,
+      "CombatMech": 1,
+      "Clanker": 2
     },
     "repaint": 0.3,
     "skins": ["#f6cfb0", "#efbf98", "#d9a077", "#bd8259", "#9a6340", "#734628", "#4f2f1c"],
