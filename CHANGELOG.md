@@ -12,6 +12,18 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.28.4
+
+Typing in a session no longer stutters every 5 s. No host restart, no config change, the renderer API is unchanged.
+Restart the tower (`tower down tower && tower up tower`).
+
+- The board's git reads, every project dir every 5 s while a renderer is open, run on a thread of their own. Each
+  git process they start held the tower's event loop about 3 ms on macOS, and a read starts hundreds: every
+  keystroke and screen the tower relays waited behind them, up to half a second.
+- A read asks git only what can change: each worktree's status and reflog, and each base's commit once per repo.
+  Answers about commits are remembered, the 1024 asked for most recently. About half the git processes per read.
+- At most 8 git processes run at once, across every verb and read.
+
 ## v1.28.3
 
 Changes lists a repo's files in path order again when a worker adds a file. No host restart, no config change, the
