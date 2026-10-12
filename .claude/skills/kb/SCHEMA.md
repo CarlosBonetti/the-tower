@@ -22,7 +22,6 @@ Run from the project root (`<skill-dir>` is this skill's folder):
 node <skill-dir>/tool/kb.mjs tree [id]   print the entity tree (id, type, name, summary)
 node <skill-dir>/tool/kb.mjs verify      report repo freshness, errors and warnings
 node <skill-dir>/tool/kb.mjs verify --since <rev>   the same, with only the suspects commits in <rev>..HEAD caused
-node <skill-dir>/tool/kb.mjs verify --symbols   the same, with a suspect at path#symbol refs kept only for commits that changed one of those symbols' lines
 node <skill-dir>/tool/kb.mjs render      build kb/dist/<project-id>.html (refuses on errors)
 ```
 
@@ -216,7 +215,11 @@ missing files or anchors, bad `kb-list` or `kb-lineage` queries.
 **Warnings**:
 - *suspect*: a ref's file changed on the described branch after the entity's `reviewed` date.
   Re-read the change, fix the claims if needed, then set `reviewed` to today. A commit that also
-  changed the entity's own file counts as reviewed with it (the repo holding `kb/` only).
+  changed the entity's own file counts as reviewed with it (the repo holding `kb/` only). Suspects are
+  ranked, never dropped: first those whose commits changed what the entity reads (the lines of an
+  anchored symbol, or a file read whole), then those whose file changed only outside its anchors. A
+  change beside an anchor (a helper it calls, a new function next to it) can still make a claim false, so
+  both lists are read. A ref read at line ranges alone (`#L3-L13`) counts only the commits inside them.
 - *unanchored*: an evidence type with no refs.
 - *container in no flow*: a container that no flow involves, directly, through an ancestor or through
   a descendant. Either a flow is missing or the container is not a part worth mapping.

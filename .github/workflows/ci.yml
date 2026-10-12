@@ -31,4 +31,4 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           git fetch origin "${{ github.base_ref }}"
-          node .claude/skills/kb/tool/kb.mjs verify --symbols --since "origin/${{ github.base_ref }}" | grep ': suspect: ' | while IFS= read -r line; do echo "::warning title=kb suspect::${line#"${line%%[![:space:]]*}"}"; done || true
+          node .claude/skills/kb/tool/kb.mjs verify --since "origin/${{ github.base_ref }}" | grep ': suspect: ' | while IFS= read -r line; do echo "::warning title=kb suspect::${line#"${line%%[![:space:]]*}"}"; done || true

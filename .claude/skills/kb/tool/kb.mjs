@@ -3,21 +3,20 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadKb } from "./model.mjs";
 import { execFileSync } from "node:child_process";
-import { collectEvidence, suspectsInSymbols, suspectsSince } from "./evidence.mjs";
+import { collectEvidence, rankSuspects, suspectsSince } from "./evidence.mjs";
 import { buildPayload, renderHtml } from "./render.mjs";
 
 const ROOT = path.resolve("kb");
 const USAGE = `usage: node <skill-dir>/tool/kb.mjs <command>   (run from the project root, next to kb/)
 
   tree [id]   print the entity tree, from the project or from <id>
-  verify      report repo freshness, errors and warnings (exit 1 on errors)
+  verify      report repo freshness, errors and warnings (exit 1 on errors); suspects whose commits changed
+              the lines an entity reads (its anchors, or a file read whole) are listed first, the ones
+              changed only elsewhere in the file after them; a ref read at line ranges alone counts only
+              the commits inside them
   verify --since <rev>
               the same, with only the suspects caused by commits in <rev>..HEAD of the repo holding kb/
               (a branch's own: verify --since origin/main)
-  verify --symbols
-              the same, with a suspect read at symbols (path#name) kept only for the commits that changed
-              the lines of one of them; read at a whole file, or at the first or last lines of one, it is
-              kept as is. Combines with --since.
   render      build kb/dist/<project-id>.html (refuses on errors)
 
 The repo holding kb/ is read at HEAD, which must contain its origin/<branch>; every other repo at its
@@ -26,7 +25,14 @@ origin/<branch>. Nothing is fetched: run git fetch for fresh results.`;
 function report(diagnostics) {
   const errors = diagnostics.filter((d) => d.level === "error");
   const warnings = diagnostics.filter((d) => d.level === "warn");
-  for (const [label, list] of [["ERRORS", errors], ["WARNINGS", warnings]]) {
+  const elsewhere = (d) => d.suspect?.scope === "elsewhere";
+  const sections = [
+    ["ERRORS", errors],
+    ["SUSPECTS, what they read changed", warnings.filter((d) => d.suspect && !elsewhere(d))],
+    ["SUSPECTS, their files changed elsewhere (a helper or a neighbour can still make a claim false)", warnings.filter(elsewhere)],
+    ["WARNINGS", warnings.filter((d) => !d.suspect)],
+  ];
+  for (const [label, list] of sections) {
     if (!list.length) continue;
     console.log(`\n${label} (${list.length})`);
     for (const d of [...list].sort((a, b) => a.where.localeCompare(b.where))) console.log(`  ${d.where}: ${d.msg}`);
@@ -83,7 +89,6 @@ if (cmd === "tree") {
   const evidence = collectEvidence(kb);
   freshness(evidence.repos);
   let diagnostics = [...kb.diagnostics, ...evidence.diagnostics];
-  if (flags.includes("--symbols")) diagnostics = suspectsInSymbols(diagnostics, evidence.repos);
   if (flags.includes("--since")) {
     const since = flags[flags.indexOf("--since") + 1];
     if (!since || since.startsWith("--")) { console.error("usage: verify --since <rev>"); process.exit(1); }
@@ -91,6 +96,7 @@ if (cmd === "tree") {
     console.log(`\nsuspects caused by ${hashes.length} commit(s) in ${since}..HEAD`);
     diagnostics = suspectsSince(diagnostics, hashes);
   }
+  diagnostics = rankSuspects(diagnostics, evidence.repos);
   process.exit(report(diagnostics) ? 1 : 0);
 } else if (cmd === "render") {
   const evidence = collectEvidence(kb);

@@ -204,12 +204,18 @@ function resolveRef(ref, repo) {
 }
 
 // A suspect warning keeps its ref, the anchors the entity reads it at (null for the whole file) and its commits,
-// so a report can narrow it to some of them (suspectsSince, suspectsInSymbols).
-export function suspectWarning(where, { reviewed, ref, anchors, commits }) {
+// so a report can narrow it to some of them (suspectsSince) and rank it (rankSuspects). `scope` says what the commits
+// changed: `file` a ref read whole, or one whose lines can't be told; `symbol` the lines of the anchors in `changed`;
+// `elsewhere` only lines outside every anchor. Unranked, it is `file`.
+export function suspectWarning(where, { reviewed, ref, anchors, commits, scope = "file", changed = [], note = "" }) {
   const list = commits.slice(0, 5).map((c) => `      ${c.hash} ${c.date} ${c.subject}`).join("\n");
   const more = commits.length > 5 ? `\n      … ${commits.length - 5} more` : "";
-  const msg = `suspect: ${ref} changed after reviewed ${reviewed} (${commits.length} commit${commits.length > 1 ? "s" : ""})\n${list}${more}`;
-  return { level: "warn", where, msg, suspect: { reviewed, ref, anchors, commits } };
+  const named = (as) => as.map((a) => `#${a}`).join(", ");
+  const what = scope === "symbol" ? `${ref} (${named(changed)}) changed`
+    : scope === "elsewhere" ? `${ref} changed outside ${anchors.length > 4 ? `its ${anchors.length} anchors` : named(anchors)}`
+    : `${ref} changed`;
+  const msg = `suspect: ${what} after reviewed ${reviewed} (${commits.length} commit${commits.length > 1 ? "s" : ""})${note}\n${list}${more}`;
+  return { level: "warn", where, msg, suspect: { reviewed, ref, anchors, commits, scope, changed, note } };
 }
 
 // The diagnostics with each suspect narrowed to the commits in `hashes` (full hashes), and dropped when none is:
@@ -227,26 +233,39 @@ export function suspectsSince(diagnostics, hashes) {
 // A region on the file's first line can't be either, and is judged by the whole file.
 const reading = (r) => (r.from > 1 ? { from: r.from - 1, to: Math.min(r.to + 1, r.last), atEnd: r.to === r.last } : null);
 
-// The diagnostics with each suspect narrowed to the commits that changed the lines of a symbol it is anchored at
-// (git log -L follows them back through shifts), and dropped when none did. A suspect read at a whole file, or at
-// an anchor whose region can't be told, keeps every commit.
-export function suspectsInSymbols(diagnostics, repos) {
+// Whether a commit changed the lines an anchor reads (git log -L follows them back through shifts), or null when its
+// region can't be told. One git log -L per region: given several, git can abort on an assertion in line-log.c.
+function changesAnchor(repo, file, anchor, reviewed) {
+  const region = symbolRegion(repo.lines(file), anchor, file);
+  const read = region && reading(region);
+  if (!read) return null;
+  const touched = repo.commitsInRange(file, read, reviewed);
+  return (hash) => touched.some((h) => h.startsWith(hash)) || (read.atEnd && repo.deletesAtEnd(file, hash));
+}
+
+// The diagnostics with each suspect ranked by what its commits changed, so the ones that changed what an entity reads
+// come first. Nothing is dropped: a change beside an anchor (a helper it calls, a new function next to it) can still
+// make the entity's claims false. Only a ref read at line ranges alone keeps just the commits inside them: the
+// author named those lines.
+export function rankSuspects(diagnostics, repos) {
   return diagnostics.flatMap((d) => {
     if (!d.suspect || d.suspect.anchors.includes(null)) return [d];
-    const ref = parseRef(d.suspect.ref);
-    const repo = repos.get(ref.alias);
-    const ranges = d.suspect.anchors.map((a) => symbolRegion(repo.lines(ref.path), a, ref.path)).map((r) => r && reading(r));
-    if (ranges.includes(null)) return [d];
-    let commits;
+    const { alias, path: file } = parseRef(d.suspect.ref);
+    const repo = repos.get(alias);
+    let reads;
     try {
-      // One git log -L per range: given several, git can abort on an assertion in line-log.c.
-      const touched = [...new Set(ranges.flatMap((r) => repo.commitsInRange(ref.path, r, d.suspect.reviewed)))];
-      const atEnd = ranges.some((r) => r.atEnd);
-      commits = d.suspect.commits.filter((c) => touched.some((h) => h.startsWith(c.hash)) || (atEnd && repo.deletesAtEnd(ref.path, c.hash)));
+      reads = d.suspect.anchors.map((anchor) => ({ anchor, changes: changesAnchor(repo, file, anchor, d.suspect.reviewed) }));
     } catch (err) {
-      return [{ ...d, msg: `${d.msg}\n      (judged by the whole file: git failed: ${String(err.stderr || err.message).trim().split("\n")[0]})` }];
+      const note = `\n      (judged by the whole file: git failed: ${String(err.stderr || err.message).trim().split("\n")[0]})`;
+      return [suspectWarning(d.where, { ...d.suspect, note })];
     }
-    return commits.length ? [suspectWarning(d.where, { ...d.suspect, commits })] : [];
+    if (reads.some((r) => !r.changes)) return [d];
+    const changedBy = (c) => reads.filter((r) => r.changes(c.hash)).map((r) => r.anchor);
+    const linesOnly = d.suspect.anchors.every((a) => LINES_RE.test(a));
+    const commits = linesOnly ? d.suspect.commits.filter((c) => changedBy(c).length) : d.suspect.commits;
+    if (!commits.length) return [];
+    const changed = d.suspect.anchors.filter((a) => commits.some((c) => changedBy(c).includes(a)));
+    return [suspectWarning(d.where, { ...d.suspect, commits, scope: changed.length ? "symbol" : "elsewhere", changed })];
   });
 }
 

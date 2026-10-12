@@ -17,9 +17,14 @@ date on an unread change is worse than a stale entity, because it hides the stal
    exists, the claim is false: rewrite or remove it, and tell the human.
 3. **Suspect entities.** Verify lists the commits after `reviewed` for each ref. One commit usually
    makes several entities suspect, so work commit by commit:
-   `git -C <checkout> show <hash> -- <path>`. Then re-read the entity and decide:
+   `git -C <checkout> show <hash> -- <path>`. Then re-read the entity, summary included, and decide:
    - claims still true: set `reviewed` to today, change nothing else
    - claims changed: fix prose, links and refs, then set `reviewed` to today
+
+   Verify lists first the suspects whose commits changed what the entity reads (an anchored symbol's lines, or a
+   file read whole), then those whose file changed only elsewhere. Read both: a change outside the anchors is often a
+   helper the anchored code calls or a new function beside it. When one makes a claim false, fix the claim and add a
+   ref to that code, so the next change to it lands in the first list.
    - a decision's premise changed: draft a new decision with `supersedes` and ask the human before writing it
 4. **Targeted updates.** When the human reports a change, find the affected entities even if they are
    not suspect (`grep -rli <term> kb/entities`), and update them the same way.
