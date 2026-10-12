@@ -11,7 +11,7 @@ import { instance, type Models } from './models.ts'
 import { pose, type Cast, type ClipKey, type Layer, type Rig } from './rig.ts'
 import { tintOf } from './palette.ts'
 import { block, glows, sprite, toon } from './toon.ts'
-import { lookNamed, lookOf, type Staff } from './wardrobe.ts'
+import { lookNamed, lookOfWorker, type Staff } from './wardrobe.ts'
 
 /**
  * The roof party: a puff on the decks, a bar and string lights, built with the roof (`buildParty`); a dance floor per
@@ -160,7 +160,7 @@ export function mug() {
 }
 
 export function makeGuest(card: Card, models: Models): Guest {
-  const w = avatar(models, lookOf(card.id, WARDROBE, models.catalogue), WARDROBE)
+  const w = avatar(models, lookOfWorker(card.id, card.callsign, WARDROBE, models.catalogue), WARDROBE)
   w.bulb.color.copy(PARTY_COLORS[card.id.length % PARTY_COLORS.length])
   const group = new THREE.Group()
   group.add(w.root)

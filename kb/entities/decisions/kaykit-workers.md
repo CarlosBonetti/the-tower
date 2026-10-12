@@ -34,6 +34,7 @@
     "hub/renderers/tower3d/src/rig.ts#RIG_SCALES",
     "hub/renderers/tower3d/src/wardrobe.ts#rigOfLook",
     "hub/renderers/tower3d/src/wardrobe.ts#STAFF",
+    "hub/renderers/tower3d/src/wardrobe.ts#lookOfWorker",
     "hub/renderers/tower3d/src/contract.ts#ADVENTURER_PARTS",
     "hub/renderers/tower3d/models/bot.py",
     "hub/renderers/tower3d/src/desk.ts#poseDesk",
@@ -115,7 +116,9 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   into it: a bot one time in five; else maybe an outfit, the rest from the mix. The roof's bartender and DJ are outfits
   kept out of the share, dressed by name ([`STAFF`](ref:hub/renderers/tower3d/src/wardrobe.ts#STAFF)): `problems`
   reports either missing or in the mix, so the dresser locks them and Tower 3D's load names the fix (a dresser save
-  that deleted the bartender once left Tower 3D drawing nothing). The mix's `bodies` are the characters it dresses from, each with a weight
+  that deleted the bartender once left Tower 3D drawing nothing). `mix.named` gives an outfit to the workers whose
+  callsign has a name, whatever their id rolls ([`lookOfWorker`](ref:hub/renderers/tower3d/src/wardrobe.ts#lookOfWorker)):
+  every CLANKER is the Clanker. The mix's `bodies` are the characters it dresses from, each with a weight
   ([`weighted`](ref:hub/renderers/tower3d/src/hashed.ts#weighted): rendezvous scored `weight / -ln(roll)`, so a body
   wins about its weight's share, and at equal weights it picks what plain rendezvous picks): a pack's parts join the
   slots' pools only while their character is one of them, so a new character changes no worker until it is added. A

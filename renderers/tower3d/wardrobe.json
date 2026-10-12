@@ -198,6 +198,9 @@
         "Outfit": null
       }
     },
+    "clanker": {
+      "body": "Clanker"
+    },
     "dj": {
       "body": "Mage",
       "paint": "Rogue",
@@ -277,9 +280,12 @@
         }
       }
     },
+    "named": {
+      "CLANKER": "clanker"
+    },
     "outfits": {
       "share": 0,
-      "except": ["bartender", "dj"]
+      "except": ["bartender", "dj", "clanker"]
     },
     "bodies": {
       "Knight": 6,

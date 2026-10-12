@@ -18,6 +18,11 @@ test('the wardrobe keeps every outfit Tower 3D dresses by name, out of the mix',
   }
 })
 
+test('every outfit the mix gives a callsign\'s name is in the wardrobe', () => {
+  const w = parseWardrobe(JSON.parse(readFileSync(FILE, 'utf8')), 'wardrobe.json')
+  for (const [name, outfit] of Object.entries(w.mix.named)) assert.ok(outfit in w.outfits, `${name}: no outfit ${outfit}`)
+})
+
 test('a fit takes its * under the overrides of what it is worn with, by slot precedence, field by field', () => {
   const part = (name: string, slot: CataloguePart['slot']): CataloguePart => ({ name, slot, from: 'parts', attach: { skinned: true } })
   const c = { parts: Object.fromEntries([part('Knight_Head', 'Head'), part('Outfit_Vest', 'Outfit'), part('Knight_Cape', 'Cape')].map((p) => [p.name, p])) } as unknown as Catalogue

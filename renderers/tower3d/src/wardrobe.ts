@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ATLAS_NAMES, BONES, CHARACTERS, SLOTS, bodyOf, type Atlas, type Bone, type Character, type RigKind, type Slot } from './contract.ts'
+import { nameIn } from '../../../src/shared/callsign.ts'
 import { rendezvous, roll, weighted } from './hashed.ts'
 
 /**
@@ -46,6 +47,7 @@ const slotRules = z.partialRecord(z.enum(SLOTS), Rule)
 
 export const Mix = z.object({
   bot: z.object({ share: z.number().min(0).max(1), slots: slotRules }),
+  named: z.record(z.string(), z.string()).describe('the outfit a worker wears whose callsign has this name (CLANKER for CLANKER-07), whatever its session id rolls'),
   outfits: z.object({ share: z.number().min(0).max(1), except: z.array(z.string()).optional().describe('outfits only worn by name') }),
   bodies: z
     .partialRecord(character, z.number().positive())
@@ -223,6 +225,12 @@ export function lookOf(id: string, w: Wardrobe, c: Catalogue): Look {
   return dressed(id, name === undefined ? {} : w.outfits[name], name, w, c)
 }
 
+/** A worker's look: the outfit the mix's `named` gives its callsign's name, what that leaves open hashed from its id; else `lookOf`. */
+export function lookOfWorker(id: string, callsign: string, w: Wardrobe, c: Catalogue): Look {
+  const outfit = w.mix.named[nameIn(callsign)]
+  return outfit === undefined ? lookOf(id, w, c) : dressed(id, w.outfits[outfit], outfit, w, c)
+}
+
 /** A named outfit's look: what it leaves open hashed from its name. */
 export const lookNamed = (name: string, w: Wardrobe, c: Catalogue): Look => dressed(name, w.outfits[name], name, w, c)
 
@@ -285,6 +293,7 @@ export function problems(w: Wardrobe, c: Catalogue): string[] {
     }
   }
   for (const n of w.mix.outfits.except ?? []) if (!(n in w.outfits)) out.push(`mix/outfits/except: no outfit ${n}`)
+  for (const [name, n] of Object.entries(w.mix.named)) if (!(n in w.outfits)) out.push(`mix/named/${name}: no outfit ${n}`)
   for (const [where, rules] of [['mix/bot/slots', w.mix.bot.slots], ['mix/slots', w.mix.slots]] as const) {
     for (const [slot, rule] of Object.entries(rules)) {
       for (const field of ['pool', 'except', 'unless'] as const) for (const p of rule[field] ?? []) known(p, `${where}/${slot}/${field}`)

@@ -9,7 +9,7 @@ import type { Card } from './api.ts'
 import { SOUNDS, type Sound } from './cards.ts'
 import { instance, type Models } from './models.ts'
 import { pose, type Pose } from './rig.ts'
-import { lookOf } from './wardrobe.ts'
+import { lookOfWorker } from './wardrobe.ts'
 
 /**
  * Life in the building: three cats roaming its floors, workers walking in from the elevator and out to it, and the
@@ -76,8 +76,8 @@ export function walkIn(a: Arrival, dt: number) {
 export type Leaver = { group: THREE.Group; models: Models; avatar: Avatar; level: number; path: THREE.Vector3[]; t: number }
 
 /** A leaver from the desk at `desk` on `level`, starting where its worker stands (both world space). */
-export function leaver(p: Plan, id: string, level: number, desk: THREE.Vector3, from: THREE.Vector3, models: Models): Leaver {
-  const w = avatar(models, lookOf(id, WARDROBE, models.catalogue), WARDROBE)
+export function leaver(p: Plan, id: string, callsign: string, level: number, desk: THREE.Vector3, from: THREE.Vector3, models: Models): Leaver {
+  const w = avatar(models, lookOfWorker(id, callsign, WARDROBE, models.catalogue), WARDROBE)
   w.bulb.color.set('#3a4458')
   const group = new THREE.Group()
   group.add(w.root)

@@ -9,7 +9,7 @@ import { avatar, seatedAt, type Avatar, type Look } from './avatar.ts'
 import { WARDROBE } from './closet.ts'
 import { CHAIR } from './chair.ts'
 import { instance, type Models } from './models.ts'
-import { lookOf } from './wardrobe.ts'
+import { lookOf, lookOfWorker } from './wardrobe.ts'
 import { pose, type Pose } from './rig.ts'
 import { posterOf, shownKey, type Shown } from './showing.ts'
 import { block, dispose, glowing, glows, mesh, sprite, toon } from './toon.ts'
@@ -222,7 +222,7 @@ const PAPERS = { x: -0.58, z: -0.42, sheet: { width: 0.26, depth: 0.18, thick: 0
 
 /** The worker in its chair at a desk's seat, its subagents, speech and the papers it hasn't read, around `furniture`. */
 function seated(card: Card, models: Models, marks: Marks, furniture: Pick<Desk, 'group' | 'swivel' | 'strip' | 'screen' | 'side' | 'binder'>): Desk {
-  const look = lookOf(card.id, WARDROBE, models.catalogue)
+  const look = lookOfWorker(card.id, card.callsign, WARDROBE, models.catalogue)
   const w = avatar(models, look, WARDROBE)
   w.root.position.copy(SEAT)
   if (w.gear) w.gear.visible = false

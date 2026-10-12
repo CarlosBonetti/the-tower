@@ -23,7 +23,7 @@ export const CALLSIGNS = [
   "MUSASHI", "LANCELOT", "AMUNDSEN", "FARADAY", "SPUTNIK", "THOTH", "RATATOSK",
   "WAYLAND", "MIMIR", "EITRI", "FREYJA", "VOSTOK", "AHAB", "FIGARO", "HUGO",
   "LOOKOUT", "COURIER", "CHIRON", "LINNAEUS", "CASSINI", "GAUSS", "SOCRATES",
-  "AURELIUS", "CABRAL", "BEAGLE",
+  "AURELIUS", "CABRAL", "BEAGLE", "CLANKER",
 ]
 
 /** A callsign's name, its number left out. */
