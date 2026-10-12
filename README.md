@@ -2,7 +2,7 @@
 
 A local-first surface for managing many Claude Code sessions. Each session runs the full Claude Code TUI in a
 real PTY (its fullscreen renderer, whatever your own `tui` setting, so the mouse wheel scrolls Claude's transcript), owned by a detached host that appends everything about it to a log. Everything a view shows is
-derived from those logs, so renderers are swappable: today the tower page, Tower 3D and the `tower` command.
+derived from those logs, so renderers are swappable: today the tower page, Tower 3D, The Week and the `tower` command.
 
 A personal experiment, in daily use. Local only: no accounts, no external services. macOS (it reads `ps -E`,
 `lsof` and launchd re-parenting).
@@ -11,8 +11,9 @@ No guarantee it keeps working: it drives Claude Code's TUI, hooks and mods, and 
 break it. The point of the project is its primitives and disposable renderers, for you to shape to your liking. It
 doesn't try to solve everyone's problems or to design specific workflows.
 
-Two views of the same data ship with it: the tower page and Tower 3D, a first-person office where every worker
-has a desk. Both read the same board and drive the same API, and so can a renderer of your own.
+Three views of the same data ship with it: the tower page, Tower 3D, a first-person office where every worker has
+a desk, and The Week (`/r/week/`), the budget week read as a yearbook. They read the same board and the same API, and
+so can a renderer of your own.
 
 ![The tower page: floors of workers on the left, a worker's terminal on the right](docs/tower-page.png)
 ![Tower 3D: a worker's desk on its floor, the worker waiting on you](docs/tower3d.png)
@@ -112,7 +113,7 @@ its key.
 
 ```sh
 npm run typecheck
-npm test        # replays recorded session logs (test/fixtures) through the bridge
+npm test        # replays recorded session logs (test/fixtures) through the bridge, checks Tower 3D's models
 ```
 
 - `AGENTS.md`: architecture, data and code rules.
@@ -121,5 +122,5 @@ npm test        # replays recorded session logs (test/fixtures) through the brid
 
 ## License
 
-MIT (`LICENSE`). Tower 3D's models are from Kay Lousberg's KayKit Bits (CC0); the fonts and libraries it ships
+MIT (`LICENSE`). Tower 3D's models and characters are from Kay Lousberg's KayKit packs (CC0); the fonts and libraries it ships
 with keep their own licenses: `THIRD_PARTY.md`.
