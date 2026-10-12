@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
-import { ADVENTURER_PARTS, ATLASES, BONES, CLIPS, CONTRACT, MODEL_NAMES, missing, slotOf } from '../renderers/tower3d/src/contract.ts'
+import { ADVENTURER_PARTS, ATLASES, ATLAS_NAMES, BONES, CLIPS, CONTRACT, KAYKIT, MODEL_NAMES, bodyOf, missing, slotOf, textureOf, type RigKind } from '../renderers/tower3d/src/contract.ts'
 
 const TOWER3D = path.join(import.meta.dirname, '..', 'renderers', 'tower3d')
 const ASSETS = path.join(TOWER3D, 'assets')
@@ -43,6 +43,24 @@ test('adventurers.glb holds every part a look may show, on every bone poses move
 
 test('rig_medium.glb holds every clip poses play, on every bone', () => {
   const held = namesIn(path.join(CHARACTERS, 'rig_medium.glb'))
+  assert.deepEqual(CLIPS.filter((c) => !held.animations.includes(c)), [])
+  assert.deepEqual(missing({ nodes: [...BONES], materials: [] }, held), [])
+})
+
+for (const rig of ['medium', 'large'] satisfies RigKind[]) {
+  test(`${rig}.glb holds every part of the KayKit characters on Rig_${rig}, one skin, in their atlases and colourways`, () => {
+    const characters = (Object.keys(KAYKIT) as (keyof typeof KAYKIT)[]).filter((c) => KAYKIT[c].rig === rig)
+    const held = namesIn(path.join(CHARACTERS, `${rig}.glb`))
+    const parts = characters.flatMap((c) => [...bodyOf(c).parts, ...KAYKIT[c].head, ...Object.values(KAYKIT[c].slots as Record<string, readonly string[]>).flat()])
+    assert.deepEqual(missing({ nodes: [...parts, ...BONES], materials: [] }, held), [])
+    const atlases = ATLAS_NAMES.filter((a) => characters.some((c) => bodyOf(c).paints.includes(a))).map(textureOf)
+    assert.deepEqual(atlases.filter((m) => !held.materials.includes(m)), [])
+    assert.equal(gltfOf(path.join(CHARACTERS, `${rig}.glb`)).skins!.length, 1)
+  })
+}
+
+test('rig_large.glb holds every clip poses play, on every bone', () => {
+  const held = namesIn(path.join(CHARACTERS, 'rig_large.glb'))
   assert.deepEqual(CLIPS.filter((c) => !held.animations.includes(c)), [])
   assert.deepEqual(missing({ nodes: [...BONES], materials: [] }, held), [])
 })

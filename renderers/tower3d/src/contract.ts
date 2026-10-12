@@ -38,6 +38,61 @@ export const GEAR = ['Mug', '1H_Wand', 'Spellbook', '1H_Sword', '1H_Axe', 'Knife
 
 export const ADVENTURER_PARTS = [...ADVENTURERS.flatMap((a) => BODY_PARTS.map((p) => `${a}_${p}`)), ...HEADS, ...HELMS, ...CAPES, ...GEAR]
 
+/** The skeletons characters stand on: KayKit's Rig_Medium, and Rig_Large, the big ones' (the same bones, longer). */
+export const RIGS = ['medium', 'large'] as const
+export type RigKind = (typeof RIGS)[number]
+
+/**
+ * The atlases parts are painted in, each its material `<name in lowercase>_texture`. A colourway (`COLOURWAYS`) repaints
+ * every part made in the atlas it is a colourway of.
+ */
+export const ATLAS_NAMES = [...ADVENTURERS, 'Skeleton', 'Helpers', 'CombatMech', 'CombatMech_Alt', 'Clanker', 'Clanker_Alt'] as const
+export type Atlas = (typeof ATLAS_NAMES)[number]
+export const COLOURWAYS: Partial<Record<Atlas, Atlas>> = { CombatMech_Alt: 'CombatMech', Clanker_Alt: 'Clanker' }
+export const textureOf = (atlas: Atlas) => `${atlas.toLowerCase()}_texture`
+
+/**
+ * KayKit characters beyond the Adventurers, packed from their packs' own files (scripts/tower3d-characters.ts): their
+ * skinned body parts, their head and what is drawn with it (a skull's jaw and glowing eyes), and their other parts by
+ * slot. Rig_Medium's parts mix with every Rig_Medium body, Rig_Large's with Rig_Large's.
+ */
+export const KAYKIT = {
+  Skeleton_Minion: { pack: 'skeletons', rig: 'medium', atlas: 'Skeleton', head: ['Skeleton_Minion_Head', 'Skeleton_Minion_Jaw', 'Skeleton_Minion_Eyes'], slots: { Cape: ['Skeleton_Minion_Cloak'] } },
+  Skeleton_Warrior: { pack: 'skeletons', rig: 'medium', atlas: 'Skeleton', head: ['Skeleton_Warrior_Head', 'Skeleton_Warrior_Jaw', 'Skeleton_Warrior_Eyes'], slots: { Helm: ['Skeleton_Warrior_Helmet'], Cape: ['Skeleton_Warrior_Cloak'] } },
+  Skeleton_Rogue: { pack: 'skeletons', rig: 'medium', atlas: 'Skeleton', head: ['Skeleton_Rogue_Head', 'Skeleton_Rogue_Jaw', 'Skeleton_Rogue_Eyes'], slots: { Helm: ['Skeleton_Rogue_Hood'], Cape: ['Skeleton_Rogue_Cape'] } },
+  Skeleton_Mage: { pack: 'skeletons', rig: 'medium', atlas: 'Skeleton', head: ['Skeleton_Mage_Skull', 'Skeleton_Mage_Jaw', 'Skeleton_Mage_Eyes'], slots: { Helm: ['Skeleton_Mage_Hat'] } },
+  Helper_A: { pack: 'series5', rig: 'medium', atlas: 'Helpers', head: ['Helper_A_Head'], slots: { Hat: ['Helper_A_Hat'] } },
+  Helper_B: { pack: 'series5', rig: 'medium', atlas: 'Helpers', head: ['Helper_B_Head'], slots: { Hat: ['Helper_B_Hat'] } },
+  CombatMech: { pack: 'series5', rig: 'medium', atlas: 'CombatMech', body: ['ShoulderLeft', 'ShoulderRight', 'WingLeft', 'WingRight'], head: ['CombatMech_Head'], slots: {} },
+  Clanker: { pack: 'series5', rig: 'large', atlas: 'Clanker', body: ['ExhaustLeft', 'ExhaustRight'], head: ['Clanker_Head', 'Clanker_Head_Glow'], slots: {} },
+} as const satisfies Record<string, { pack: string; rig: RigKind; atlas: Atlas; body?: readonly string[]; head: readonly string[]; slots: Partial<Record<Slot, readonly string[]>> }>
+
+export const CHARACTERS = [...ADVENTURERS, ...(Object.keys(KAYKIT) as (keyof typeof KAYKIT)[])] as const
+export type Character = (typeof CHARACTERS)[number]
+
+/** What a character's body is: its rig, its skinned body parts, its own head, and the atlases its body may be painted in. */
+export type Body = { rig: RigKind; atlas: Atlas; parts: string[]; head: string; paints: Atlas[] }
+
+const isAdventurer = (c: Character): c is Adventurer => (ADVENTURERS as readonly string[]).includes(c)
+
+export function bodyOf(c: Character): Body {
+  if (isAdventurer(c)) return { rig: 'medium', atlas: c, parts: BODY_PARTS.map((p) => `${c}_${p}`), head: `${c}_Head`, paints: [...ADVENTURERS] }
+  const k: { rig: RigKind; atlas: Atlas; body?: readonly string[]; head: readonly string[] } = KAYKIT[c]
+  return {
+    rig: k.rig,
+    atlas: k.atlas,
+    parts: [...BODY_PARTS, ...(k.body ?? [])].map((p) => `${c}_${p}`),
+    head: k.head[0],
+    paints: [k.atlas, ...ATLAS_NAMES.filter((a) => COLOURWAYS[a] === k.atlas)],
+  }
+}
+
+/** Meshes drawn with a part wherever it is worn: a skull's jaw and eyes, a head's glowing parts. */
+export const DRAWN_WITH: Record<string, readonly string[]> = Object.fromEntries(Object.values(KAYKIT).map((k) => [k.head[0], k.head.slice(1)]))
+
+/** Every mesh the characters beyond the Adventurers are packed with: their bodies, heads and slot parts. */
+export const KAYKIT_PARTS = (Object.keys(KAYKIT) as (keyof typeof KAYKIT)[]).flatMap((c) => [...bodyOf(c).parts, ...KAYKIT[c].head, ...Object.values(KAYKIT[c].slots as Partial<Record<Slot, readonly string[]>>).flat()])
+
 /**
  * What a look fills, part by part. A part made in parts/parts.blend is named after its slot (`Face_RoundGlasses`), and
  * joins the pack's parts of that slot: a whole head; on the head bone, a helm covering it, a hat on top of it or a face
@@ -47,8 +102,10 @@ export const ADVENTURER_PARTS = [...ADVENTURERS.flatMap((a) => BODY_PARTS.map((p
 export const SLOTS = ['Head', 'Helm', 'Hat', 'Face', 'Cape', 'Gear', 'Prop', 'Outfit'] as const
 export type Slot = (typeof SLOTS)[number]
 export const slotOf = (part: string) => SLOTS.find((s) => part.startsWith(`${s}_`))
-/** The pack's parts in each slot. */
-export const PACK_SLOTS: Record<Slot, readonly string[]> = { Head: HEADS, Helm: HELMS, Hat: [], Face: [], Cape: CAPES, Gear: GEAR, Prop: [], Outfit: [] }
+const kaykitIn = (slot: Slot) => Object.values(KAYKIT).flatMap((k) => [...((k.slots as Partial<Record<Slot, readonly string[]>>)[slot] ?? []), ...(slot === 'Head' ? [k.head[0]] : [])])
+const ADVENTURER_SLOTS: Partial<Record<Slot, readonly string[]>> = { Head: HEADS, Helm: HELMS, Cape: CAPES, Gear: GEAR }
+/** The packs' parts in each slot. */
+export const PACK_SLOTS = Object.fromEntries(SLOTS.map((s) => [s, [...(ADVENTURER_SLOTS[s] ?? []), ...kaykitIn(s)]])) as Record<Slot, string[]>
 /** The materials parts are painted with: an adventurer's atlas each, by name. */
 export const ATLASES = ADVENTURERS.map((a) => `${a.toLowerCase()}_texture`)
 

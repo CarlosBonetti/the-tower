@@ -68,6 +68,12 @@ export function writer(json: Json) {
       json.images.push({ name: img.name, mimeType: img.mimeType, bufferView: view(bytesOf(src, img.bufferView)) })
       return json.images.length - 1
     },
+    /** An image held as its file's bytes. */
+    png(name: string, bytes: Buffer) {
+      json.images ??= []
+      json.images.push({ name, mimeType: 'image/png', bufferView: view(bytes) })
+      return json.images.length - 1
+    },
     bin() {
       json.buffers[0].byteLength = length
       return Buffer.concat(chunks)
