@@ -3,8 +3,10 @@
  * to it, every probe's stream folded, the items of every collection, the host's live set, the terms daemon's shells,
  * what sessions left running on the machine, and what git says about the tower's worktrees in every project dir.
  */
+import { once } from 'node:events'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, watch } from 'node:fs'
 import path from 'node:path'
+import { Worker } from 'node:worker_threads'
 import { factsAfter, type Session } from './bridge/facts.ts'
 import { foldLog } from './checkpoints.ts'
 import { probeFacts, readingsOf, type ProbeFacts, type StreamFile } from './bridge/probes.ts'
@@ -19,7 +21,6 @@ import { parseThread, REVIEWS, type ReviewThread } from './shared/reviews.ts'
 import type { Shell } from './shared/terms.ts'
 import type { LogFile } from './bridge/retention.ts'
 import { factEvents, isArchived, logFilesIn, logIdOf, tailLog } from './tail.ts'
-import { readRepo } from './worktrees.ts'
 import { logged, loggedRead, watchedOrExit } from './logged.ts'
 
 const LIVE_POLL_MS = 1000
@@ -308,6 +309,27 @@ export const watchSystem = async (paths: SystemPaths, notify: () => void): Promi
   }))
 
   /**
+   * Git is read on a thread of its own (`repo-reader.ts`): starting a process holds its thread's event loop about 3 ms
+   * on macOS, and one read of every project dir starts hundreds, which on this thread held back every keystroke and
+   * screen the tower relays. A reader that fails is started again on the next read.
+   */
+  let reader: Worker | undefined
+  const readRepos = async (dirs: string[]): Promise<PromiseSettledResult<RepoRead>[]> => {
+    if (!reader) {
+      reader = new Worker(new URL('./repo-reader.ts', import.meta.url))
+      reader.unref()
+    }
+    const reply = once(reader, 'message')
+    reader.postMessage(dirs)
+    try {
+      return (await reply)[0]
+    } catch (err) {
+      reader = undefined
+      throw err
+    }
+  }
+
+  /**
    * A dir git fails to read keeps its last read, and the failure goes to the tower's log. A config the tower can't
    * read keeps every last read: the board says what to fix.
    */
@@ -321,7 +343,7 @@ export const watchSystem = async (paths: SystemPaths, notify: () => void): Promi
     }
     const dirs = [...new Set(Object.values(config.projects).flatMap(projectDirs))]
     const next = new Map<string, RepoRead>()
-    for (const [i, read] of (await Promise.allSettled(dirs.map(readRepo))).entries()) {
+    for (const [i, read] of (await readRepos(dirs)).entries()) {
       if (read.status === 'fulfilled') next.set(dirs[i], read.value)
       else {
         console.error(`git in ${dirs[i]}:`, read.reason)
