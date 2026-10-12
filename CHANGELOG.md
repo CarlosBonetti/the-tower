@@ -12,6 +12,15 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.28.3
+
+Changes lists a repo's files in path order again when a worker adds a file. No host restart, no config change, the
+renderer API is unchanged. Restart the tower (`tower down tower && tower up tower`). Thanks to Carlos Bonetti (#7).
+
+- A repo's files are sorted by the path in each file's header (the new path for a rename), untracked files among the
+  rest, in every scope: all, uncommitted and one commit. Before, every untracked file came after all tracked ones,
+  and staging a file moved it.
+
 ## v1.28.2
 
 The knowledge base's verify ranks what may be stale instead of hiding part of it. Nothing that runs changes: no host
