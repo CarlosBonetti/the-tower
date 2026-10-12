@@ -17,6 +17,11 @@ const PINNED = ['-c', 'status.showUntrackedFiles=normal', '-c', 'log.showSignatu
 const GIT_TIMEOUT_MS = 60_000
 /** How long a call writing or deleting a whole worktree runs before it is stopped: every file, ignored ones and hooks (LFS, husky) included. */
 const TREE_TIMEOUT_MS = 10 * 60_000
+/**
+ * How many git processes run at once. Starting a process holds the event loop about 3 ms on macOS, and one read of the
+ * board's repos starts about 85: started together, they hold back every keystroke and screen the tower relays.
+ */
+const GIT_CONCURRENCY = 8
 
 export type Run = { stdout: string; stderr: string; code: number }
 
@@ -27,7 +32,7 @@ export class GitTimeout extends Error {}
  * Git in a process group of its own, so a timeout stops the hooks and the fsmonitor it started with it: SIGTERM, which
  * git answers by removing its lock files.
  */
-const exec = (dir: string, args: string[], timeout: number, env: NodeJS.ProcessEnv): Promise<Run> =>
+const spawnGit = (dir: string, args: string[], timeout: number, env: NodeJS.ProcessEnv): Promise<Run> =>
   new Promise((resolve, reject) => {
     const child = spawn('git', ['-C', dir, '--no-optional-locks', ...PINNED, ...args], {
       detached: true,
@@ -56,6 +61,28 @@ const exec = (dir: string, args: string[], timeout: number, env: NodeJS.ProcessE
       resolve({ stdout, stderr, code })
     })
   })
+
+/** At most `n` tasks run at once; the rest start in the order they came, each as a running one settles and hands it its place. */
+const limited = (n: number) => {
+  let running = 0
+  const waiting: (() => void)[] = []
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (running === n) await new Promise<void>((start) => waiting.push(start))
+    else running++
+    try {
+      return await task()
+    } finally {
+      const next = waiting.shift()
+      if (next) next()
+      else running--
+    }
+  }
+}
+
+const inTurn = limited(GIT_CONCURRENCY)
+
+/** A call's timeout counts from its start, not from when it was queued. */
+const exec = (dir: string, args: string[], timeout: number, env: NodeJS.ProcessEnv): Promise<Run> => inTurn(() => spawnGit(dir, args, timeout, env))
 
 /** Git, its exit code returned for the caller to read; a timeout throws `GitTimeout`. */
 export const run = (dir: string, args: string[], timeout = GIT_TIMEOUT_MS): Promise<Run> => exec(dir, args, timeout, {})

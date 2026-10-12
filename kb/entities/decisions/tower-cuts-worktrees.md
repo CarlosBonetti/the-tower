@@ -7,7 +7,7 @@
   "status": "accepted",
   "date": "2026-10-05",
   "supersedes": "worktrees-are-claudes",
-  "reviewed": "2026-10-11",
+  "reviewed": "2026-10-12",
   "refs": ["hub/src/worktrees.ts#cut", "hub/src/git.ts#PINNED", "hub/src/git.ts#exec", "hub/src/worktrees.ts#deleteAt", "hub/src/worktrees.ts#writingConfig", "hub/src/worktrees.ts#fetchOrigin", "hub/src/worktrees.ts#fork", "hub/src/worktrees.ts#snapshot", "hub/src/worktrees.ts#readRepo", "hub/src/worktrees.ts#absorbed", "hub/src/worktrees.ts#tidy", "hub/src/bridge/worktrees.ts#floorWorktrees", "hub/src/bridge/board.ts#occupantsOf", "hub/src/shared/model.ts#sessionDirs", "hub/src/shared/launch.ts#worktreeBrief", "hub/src/shared/launch.ts#linkArgs", "hub/src/worktrees.ts#linkedSources", "hub/src/tower/server.ts#spawnCut", "hub/src/packages.ts#packageDir", "hub/src/shared/cards.ts#spawnFormHtml", "hub/src/shared/cards.ts#defaultWhere"]
 }
 ---
@@ -38,7 +38,10 @@ leftovers, a reviewer in the same dir. The spec and lab evidence are in the main
   a timeout ([`exec`](ref:hub/src/git.ts#exec): 60 s; 10 min for a call writing or deleting a whole worktree, `worktree add` and
   `remove`; 10 s for a fetch) with its process group,
   the hooks and fsmonitor it started included, and fails naming the command: a hook that hung once held the config
-  writers' chain, and with it every cut and branch delete on every floor, until the tower restarted.
+  writers' chain, and with it every cut and branch delete on every floor, until the tower restarted. At most 8 git
+  calls run at once, the rest queued, their timeouts counted from their start: starting a process holds the event loop
+  about 3 ms on macOS, and one read of the board's repos starts hundreds, which started together held back every
+  keystroke the tower relays for up to 0.6 s.
 - **Absorbed** is content, not ancestry: `git merge-tree --write-tree <base> <br>` equals the base's tree. It is
   true after a merge, rebase or squash, with no GitHub. The base is the one recorded at the cut, or origin's
   default once origin deleted it ([`againstOf`](ref:hub/src/worktrees.ts#againstOf)): an integration branch's work
