@@ -12,6 +12,15 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.28.5
+
+Name tags on the roof clear every guest's head. No host restart, no config change, the renderer API is unchanged.
+Rebuild Tower 3D (`npm run tower3d`) and reload it.
+
+- A party guest's callsign floats just over its head and what it wears there. It sat at one height for everyone,
+  fit for the adventurers: on a Clanker or a mech it landed in the chest, and under a top hat, an antenna or a
+  wizard's hat it hid behind the hat.
+
 ## v1.28.4
 
 Typing in a session no longer stutters every 5 s. No host restart, no config change, the renderer API is unchanged.
