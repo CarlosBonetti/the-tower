@@ -19,10 +19,10 @@ import { ATLAS_NAMES, CLIPS, RIGS, textureOf, type Atlas, type Bone, type ClipNa
  */
 
 /**
- * Rig units to meters, by skeleton: Rig_Medium's rest pose stands 2.2 tall, a worker 1.5 m; Rig_Large's characters
- * stand a head taller than a worker.
+ * Rig units to meters, by skeleton: Rig_Medium's rest pose stands 2.2 tall, a worker 1.5 m; Rig_Large's 3.8, the
+ * Clanker 1.8 m, a head over a worker.
  */
-export const RIG_SCALES: Record<RigKind, number> = { medium: 0.68, large: 0.3 }
+export const RIG_SCALES: Record<RigKind, number> = { medium: 0.68, large: 0.48 }
 
 /**
  * Clips derived at load: `Type`, both forearms on the keyboard tapping, seated; and any clip cut to the arms (`:arms`)
