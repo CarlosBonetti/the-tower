@@ -12,6 +12,17 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
+## v1.28.2
+
+The knowledge base's verify ranks what may be stale instead of hiding part of it. Nothing that runs changes: no host
+restart, no config change, the renderer API is unchanged, and nothing needs a restart or a rebuild.
+
+- `kb.mjs verify` keeps every suspect. First come those whose commits changed what an entity reads: an anchored
+  symbol's lines, named in the line, or a file read whole. After them come those changed only elsewhere in the file.
+  A ref read at line ranges alone counts only the commits inside them.
+- `--symbols` is gone. Replayed over the 302 commits since v1.0.0, it hid 20 real changes, 8 of them claims that
+  had become false, while dropping 41% of suspects. A pull request's kb warnings on CI now list them all.
+
 ## v1.28.1
 
 The docs and the knowledge base agree with the code again. Nothing that runs changes: no host restart, no config
