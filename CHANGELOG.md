@@ -12,7 +12,21 @@ the entries it passes. A change is flagged when it asks something of you:
 
 Commit messages hold the detail.
 
-## v1.28.0
+## v1.28.1
+
+The docs and the knowledge base agree with the code again. Nothing that runs changes: no host restart, no config
+change, the renderer API is unchanged, and nothing needs a restart or a rebuild.
+
+- The README says three renderers ship (the tower page, Tower 3D and The Week). `THIRD_PARTY.md` lists the KayKit
+  character packs Tower 3D has vendored since v1.25.0, all CC0.
+- `docs/config.md`: `tower config check` exits 1 only on a problem the tower can't take; only `reviews` means
+  something to the tower itself. `docs/extending.md`: `whyNot` also answers `carry-on` and `let-go`, and
+  `/changes/<id>` takes `scope=all`, the default.
+- The kb has a `doc` type: the README, `THIRD_PARTY.md` and `docs/config.md`, `extending.md` and `usage.md` are
+  entities that ref the code they restate, so `kb.mjs verify` flags them when it changes. The project and
+  web-tower entities name The Week; `renderer-api` no longer states a version number; `releases` reads the
+  changelog at its format rules, so `verify --symbols` stops flagging it on every release.
+
 
 The Clanker family. No host restart, no config change, the renderer API is unchanged. Rebuild Tower 3D
 (`npm run tower3d`) and reload it.
