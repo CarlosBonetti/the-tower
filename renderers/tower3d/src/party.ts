@@ -8,7 +8,7 @@ import { walkPose, type GuestPlace } from './life.ts'
 import { DANCE_TILE, STRING_ROWS, partySpots, type DanceFloor, type Plan } from './layout.ts'
 import { BPM } from './music.ts'
 import { instance, type Models } from './models.ts'
-import { pose, type Cast, type ClipKey, type Layer } from './rig.ts'
+import { pose, type Cast, type ClipKey, type Layer, type Rig } from './rig.ts'
 import { tintOf } from './palette.ts'
 import { block, glows, sprite, toon } from './toon.ts'
 import { lookNamed, lookOf, type Staff } from './wardrobe.ts'
@@ -123,13 +123,13 @@ export function poseStaff(party: Party, beat: number, t: number) {
   const { dj, bartender, models } = party
   dj.body.position.y = Math.pow(1 - (beat % 1), 3) * 0.05
   dj.body.rotation.y = Math.sin(beat * Math.PI * 0.25) * 0.2
-  pose(models.cast, dj.rig, { layers: [{ clip: 'Idle_A:rest', at: beat }, onBeat(models.cast, Math.floor(beat / 8) % 2 ? 'Cheering:arms' : 'Working_A:arms', beat)] }, t)
+  pose(models.cast, dj.rig, { layers: [{ clip: 'Idle_A:rest', at: beat }, onBeat(models.cast, dj.rig, Math.floor(beat / 8) % 2 ? 'Cheering:arms' : 'Working_A:arms', beat)] }, t)
   pose(models.cast, bartender.rig, { layers: [{ clip: 'Idle_B', at: beat / (BPM / 60) }] }, t)
 }
 
 /** A clip played in time with the music: a whole number of beats to a loop, as near its own pace as that allows. */
-function onBeat(cast: Cast, clip: ClipKey, beat: number): Layer {
-  const length = cast.clips.get(clip)!.duration
+function onBeat(cast: Cast, rig: Rig, clip: ClipKey, beat: number): Layer {
+  const length = cast.skeletons[rig.kind].clips.get(clip)!.duration
   const beats = Math.max(1, Math.round((length * BPM) / 60))
   return { clip, at: ((beat % beats) / beats) * length }
 }
@@ -199,7 +199,7 @@ function dance(g: Guest, at: number, t: number) {
   body.position.set(0, Math.abs(Math.sin(beat * Math.PI)) * 0.06, 0)
   body.rotation.set(0, Math.sin(beat * Math.PI * 0.25) * 0.5, 0)
   const move = MOVES[(Math.floor(beat / 8) + Math.floor(g.phase * MOVES.length)) % MOVES.length]
-  const layers = move.endsWith(':arms') ? [{ clip: 'Jump_Idle:rest', at: beat } as const, onBeat(g.models.cast, move, beat)] : [onBeat(g.models.cast, move, beat)]
+  const layers = move.endsWith(':arms') ? [{ clip: 'Jump_Idle:rest', at: beat } as const, onBeat(g.models.cast, rig, move, beat)] : [onBeat(g.models.cast, rig, move, beat)]
   pose(g.models.cast, rig, { layers }, t)
 }
 

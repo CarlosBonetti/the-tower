@@ -1,12 +1,12 @@
 ---
 {
   "type": "decision",
-  "name": "Workers as KayKit characters on one rig, posed by clips on the sim clock",
-  "summary": "Tower 3D's workers are KayKit Adventurers (CC0) dressed from hashed parts, heads, helms, capes, gear, atlases and skin and hair colours, or the bot, whose rigid parts are skinned to the same Rig_Medium bones. One shared set of KayKit clips (plus a typing clip derived at load) poses every worker through a mixer of its own, set from sim time each frame, so stepped frames repeat. The bean and the puff retired. New parts are modelled by hand in a Blender kit (parts/parts.blend) and join a look's slots by their names, with no code.",
+  "name": "Workers as KayKit characters on KayKit's rigs, posed by clips on the sim clock",
+  "summary": "Tower 3D's workers are KayKit characters (CC0): the Adventurers, the Skeletons, the Series 5's Helpers, Combat Mech and Clanker, dressed from hashed parts, heads, helms, capes, gear, atlases and skin and hair colours, or the bot, whose rigid parts are skinned to Rig_Medium's bones. Rig_Medium's characters mix parts; the Clanker stands on Rig_Large, whose clips the packer retargets from Rig_Medium's. One set of KayKit clips per skeleton (plus a typing clip derived at load) poses every worker through a mixer of its own, set from sim time each frame, so stepped frames repeat. The bean and the puff retired. New parts are modelled by hand in a Blender kit (parts/parts.blend) and join a look's slots by their names, with no code.",
   "in": "web-tower",
   "status": "accepted",
   "date": "2026-10-11",
-  "reviewed": "2026-10-11",
+  "reviewed": "2026-10-12",
   "refs": [
     "hub/scripts/tower3d-characters.ts",
     "hub/renderers/tower3d/kaykit/Characters/README.md",
@@ -28,6 +28,12 @@
     "hub/renderers/tower3d/src/avatar.ts#seatedAt",
     "hub/renderers/tower3d/src/rig.ts#seatOf",
     "hub/renderers/tower3d/src/contract.ts#CLIPS",
+    "hub/renderers/tower3d/src/contract.ts#KAYKIT",
+    "hub/renderers/tower3d/src/contract.ts#bodyOf",
+    "hub/renderers/tower3d/src/contract.ts#COLOURWAYS",
+    "hub/renderers/tower3d/src/rig.ts#RIG_SCALES",
+    "hub/renderers/tower3d/src/wardrobe.ts#rigOfLook",
+    "hub/renderers/tower3d/src/wardrobe.ts#STAFF",
     "hub/renderers/tower3d/src/contract.ts#ADVENTURER_PARTS",
     "hub/renderers/tower3d/models/bot.py",
     "hub/renderers/tower3d/src/desk.ts#poseDesk",
@@ -61,8 +67,30 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
 - Assets. [`tower3d-characters.ts`](ref:hub/scripts/tower3d-characters.ts) packs the packs' own files into
   `renderers/tower3d/kaykit/Characters`: `adventurers.glb` (1.1 MB), every part the contract names from the five
   Adventurers files on one skeleton with their four atlases and no clips; `rig_medium.glb` (0.45 MB), the contract's
-  [`CLIPS`](ref:hub/renderers/tower3d/src/contract.ts#CLIPS) on Rig_Medium's bones. It checks that every adventurer
-  is skinned to the same joints in the same bind pose before moving a part onto the first one's skeleton.
+  [`CLIPS`](ref:hub/renderers/tower3d/src/contract.ts#CLIPS) on Rig_Medium's bones; `medium.glb` (2.4 MB), the
+  Skeletons' and the Series 5's Rig_Medium characters skinned to adventurers.glb's joints by name; `large.glb` (1.5 MB),
+  the Clanker on his own Rig_Large skeleton; `rig_large.glb` (0.45 MB), Rig_Medium's clips on it. It checks that every
+  character of a rig is skinned to the same joints, by name, in the same bind pose before moving a part onto the rig's
+  one skeleton, splits a glowing primitive off as `<part>_Glow`, and packs only the parts the contract names, never a
+  whole pack, each pack's licence beside them.
+- Characters ([`KAYKIT`](ref:hub/renderers/tower3d/src/contract.ts#KAYKIT), [`bodyOf`](ref:hub/renderers/tower3d/src/contract.ts#bodyOf)).
+  Every KayKit character is built alike: Body, ArmLeft, ArmRight, LegLeft, LegRight skinned, a head, and extras. The
+  contract names each character beyond the Adventurers: its rig, its atlas, its head and what is drawn with it (a
+  skull's jaw and glowing eyes, the Clanker's glowing eyes), extras that belong to its body (the mech's shoulders and
+  wings, the Clanker's exhausts) and those that join a slot (helmets, hoods and the mage's hat as `Helm`, cloaks and
+  capes as `Cape`, the helpers' hats as `Hat`). Rig_Medium's parts mix on every Rig_Medium body (a skull on a knight);
+  parts made on Rig_Large only on Rig_Large's; the pieces of `models/wear.py` hang at an anchor and fit on any. A
+  body's paints are its atlas's colourways ([`COLOURWAYS`](ref:hub/renderers/tower3d/src/contract.ts#COLOURWAYS): the
+  Clanker's and the mech's `_Alt` textures repaint every part made in their atlas) or, for an adventurer, the four
+  adventurers' atlases, the body alone as before. Only the adventurers' atlases share the swatch layout the skin and
+  hair tint reads; the others draw as made.
+- Two skeletons. The Clanker is on KayKit's Rig_Large: the same 23 bones, built longer (hips 2.6 times as high, upper
+  arms 4 times as long), rest orientations within 3.2° of Rig_Medium's. KayKit's own Rig_Large clips are combat and
+  locomotion only, so the packer retargets ours: each bone's rotations as they are, every translation moved from
+  Rig_Medium's rest to the large rest by the ratio of the hips' heights. A rig carries its kind; `pose`, `seatedAt`
+  and `seatOf` read that skeleton's clips and seated measurement, so no caller changed. Rig units to meters by skeleton
+  ([`RIG_SCALES`](ref:hub/renderers/tower3d/src/rig.ts#RIG_SCALES)): the Clanker stands a head over a worker, his
+  status light and held things scaled to keep their size in meters.
 - One rig. [`loadCast`](ref:hub/renderers/tower3d/src/rig.ts#loadCast) parses both, derives `Type` (both forearms on
   the keyboard tapping, aimed from the seated clip's first frame) and cuts every clip to its arms (`:arms`) or the
   rest (`:rest`), so an upper-body clip plays over a seated or idle one. A worker is a copy of the bones and a mixer;
@@ -84,7 +112,11 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   head keeps hats and helms off). Bodies and colours are chosen by rendezvous like parts, so adding a colour recolours
   only the workers it wins. [`lookOf`](ref:hub/renderers/tower3d/src/wardrobe.ts#lookOf) hashes a session id
   into it: a bot one time in five; else maybe an outfit, the rest from the mix. The roof's bartender and DJ are outfits
-  kept out of the share, dressed by name. One function, `avatar(models, look, wardrobe)`, dresses every look, and keeps
+  kept out of the share, dressed by name ([`STAFF`](ref:hub/renderers/tower3d/src/wardrobe.ts#STAFF)): `problems`
+  reports either missing or in the mix, so the dresser locks them and Tower 3D's load names the fix (a dresser save
+  that deleted the bartender once left Tower 3D drawing nothing). The mix's `bodies` are the characters it dresses from: a pack's parts join the slots' pools only
+  while their character is one of them, so a new character changes no worker until it is added. One function,
+  `avatar(models, look, wardrobe)`, dresses every look, and keeps
   each rigid part it hangs by name with its made placement (`worn`), so the dresser re-fits a part live. Saved through
   [`formatWardrobe`](ref:hub/renderers/tower3d/src/wardrobe.ts#formatWardrobe) (keys in a fixed order), the file diffs
   by what changed. The skin and hair colours are multiplied by a shader into the atlas's first two swatches.
@@ -137,6 +169,12 @@ keep theirs, whatever the order of the GLB's names. Bots wear only the hats and 
 **Alternatives considered.**
 - *Kenney Mini Characters*: lighter, but a seven-bone rig with no elbows or knees.
 - *Quaternius' animation library*: a different skeleton; its dance and talk loops are a later, retargeted slice.
+  Quaternius' characters were set aside too: realistic proportions and flat materials beside KayKit's office.
+- *The new characters as species beside the bot*: they share the adventurers' build, and as characters their parts
+  mix (a skull on a knight, a helper's hat on a skeleton) through the same slots, with no species code.
+- *Buying KayKit's Rig_Large clips*: the full animation pack holds none of the office poses (sitting, typing, waving)
+  on Rig_Large; retargeted, Rig_Medium's read right on the Clanker.
+- *Retargeting at load*: the packer does it once, and the runtime keeps one path, a skeleton and its clips.
 - *Keeping the bot code-posed beside skinned adventurers*: two pose systems in every place a worker is drawn.
 - *Typing as a per-frame code layer* (the prototype): world-space aims every frame per worker; a derived clip costs
   nothing per frame.
@@ -176,3 +214,7 @@ changed. `npm test` checks both GLBs hold the contract's parts, bones and clips,
 after a slot, painted in an atlas and hung on the clips' bones or the pack's skin. The repo grew by 1.1 MB (1.5 MB of
 characters in, the bean and the puff out), and the kit by 1.2 MB (`parts.blend` 1 MB, `parts.glb` 0.13 MB with the
 examples).
+
+The Skeletons, Helpers, Combat Mech and Clanker (2026-10-12) grew the repo and Tower 3D's bundle by 4.4 MB of
+characters (most of it geometry: the Clanker alone is 17k triangles, three times a worker; his atlas is 0.5 MB) and
+changed no frame of the fixture boards (`tool:frames`: identical on all eight) until they join the mix.

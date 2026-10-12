@@ -105,7 +105,7 @@ export type Desk = {
 /** A subagent: a small one of its worker's kind, a look of its own, wearing nothing. */
 function mini(models: Models, parent: Look, id: string) {
   const own = lookOf(id, WARDROBE, models.catalogue)
-  const look: Look = parent.species === 'bot' ? { ...parent, hue: own.species === 'bot' ? own.hue : parent.hue } : own.species === 'adventurer' ? own : parent
+  const look: Look = parent.species === 'bot' ? { ...parent, hue: own.species === 'bot' ? own.hue : parent.hue } : own.species === 'character' ? own : parent
   const bare = look.parts.filter((p) => models.catalogue.parts[p].from !== 'wear' && models.catalogue.parts[p].slot !== 'Gear')
   const a = avatar(models, { ...look, parts: bare }, WARDROBE)
   a.root.scale.setScalar(0.28)

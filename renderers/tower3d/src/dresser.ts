@@ -1,14 +1,14 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { ADVENTURERS, SLOTS, type Slot } from './contract.ts'
+import { CHARACTERS, SLOTS, bodyOf, type Slot } from './contract.ts'
 import { avatar, fitted, place, seatedAt, type Avatar } from './avatar.ts'
 import { CHAIR } from './chair.ts'
 import { WARDROBE } from './closet.ts'
 import { instance, loadModels, type Models } from './models.ts'
 import { pose, type ClipKey, type Pose } from './rig.ts'
 import { block, dispose, toon } from './toon.ts'
-import { fitFrom, fitOf, formatWardrobe, lookNamed, lookOf, parseWardrobe, problems, STAFF, wornBy, type Catalogue, type Fit, type Look, type Outfit, type Placement, type Vec3, type Wardrobe } from './wardrobe.ts'
+import { fitFrom, fitOf, fitsRig, formatWardrobe, lookNamed, lookOf, parseWardrobe, problems, rigOfLook, STAFF, wornBy, type Catalogue, type Fit, type Look, type Outfit, type Placement, type Vec3, type Wardrobe } from './wardrobe.ts'
 
 /**
  * The dresser (dresser.html): a worker on a stand, dressed by the wardrobe as Tower 3D dresses it. Start from a body
@@ -54,7 +54,7 @@ function poseAt(name: PoseName, t: number): Pose {
 
 const VIEWS = { front: [0, 0, 1], side: [1, 0, 0], face: [0, 0, 1], 'three-quarter': [0.75, 0.25, 1] } as const
 type View = keyof typeof VIEWS
-const BASES = [...ADVENTURERS, 'bot'] as const
+const BASES = [...CHARACTERS, 'bot'] as const
 type Base = (typeof BASES)[number]
 
 const canvas = document.getElementById('scene') as HTMLCanvasElement
@@ -110,9 +110,11 @@ const withPart = (l: Look, slot: Slot, part: string | undefined): Look => {
   const parts = part === undefined ? rest : [...rest, part]
   return { ...l, parts: SLOTS.flatMap((s) => parts.filter((p) => cat.parts[p].slot === s)) }
 }
+/** A slot's parts a look can wear: those made on its skeleton, and the pieces hung at an anchor. */
+const partsFor = (l: Look, slot: Slot) => cat.slots[slot].filter((p) => fitsRig(cat, p, rigOfLook(l)))
 /** The slots a species fills: a bot wears only the pieces of models/wear.py, on its own anchors. */
 const slotsOf = (l: Look): readonly Slot[] => (l.species === 'bot' ? SLOTS.filter((s) => s === 'Hat' || s === 'Face') : SLOTS)
-const headOf = (l: Look) => (l.species === 'adventurer' ? partIn(l, 'Head') : undefined)
+const headOf = (l: Look) => (l.species === 'character' ? partIn(l, 'Head') : undefined)
 /** The key an edit of a piece's fit is saved under: the head worn, or `bot`. */
 const keyOf = (l: Look) => headOf(l) ?? 'bot'
 
@@ -128,12 +130,13 @@ function based(base: Base): Look {
   const wear = look?.wear ?? mix.wears[0]
   const build = { width: 1, height: 1 }
   if (base === 'bot') return { species: 'bot', hue: look?.species === 'bot' ? look.hue : randomHue(), parts: [], wear, build }
-  const was = look?.species === 'adventurer' ? look : undefined
-  return { species: 'adventurer', body: base, paint: base, parts: [`${base}_Head`], skin: was?.skin ?? mix.skins[1], hair: was?.hair ?? mix.hairs[1], wear, build }
+  const was = look?.species === 'character' ? look : undefined
+  const body = bodyOf(base)
+  return { species: 'character', body: base, paint: body.atlas, parts: [body.head], skin: was?.skin ?? mix.skins[1], hair: was?.hair ?? mix.hairs[1], wear, build }
 }
 
 /** An outfit that dresses exactly this look: every slot set, a part or bare. */
-function outfitOf(l: Extract<Look, { species: 'adventurer' }>): Outfit {
+function outfitOf(l: Extract<Look, { species: 'character' }>): Outfit {
   return { body: l.body, paint: l.paint, skin: l.skin, hair: l.hair, wear: l.wear, build: l.build, slots: Object.fromEntries(SLOTS.map((s) => [s, partIn(l, s) ?? null])) }
 }
 
@@ -177,7 +180,7 @@ function restage() {
   for (const f of figures) dispose(f.group, (map) => map.userData.shared)
   stand.clear()
   floor.clear()
-  const heads: (string | undefined)[] = lineUp && look.species === 'adventurer' ? cat.slots.Head : [undefined]
+  const heads: (string | undefined)[] = lineUp && look.species === 'character' ? partsFor(look, 'Head') : [undefined]
   figures = heads.map((head) => figure(head === undefined ? look : withPart(look, 'Head', head), head))
   figures.forEach((f, i) => {
     f.group.position.x = (i - (heads.length - 1) / 2) * SPACING
@@ -253,7 +256,7 @@ function select(part: string | undefined) {
 
 /** Makes `head` the one the look wears, and so the one fitted. */
 function setHead(head: string) {
-  if (look.species !== 'adventurer') throw new Error('a bot has no head to fit on')
+  if (look.species !== 'character') throw new Error('a bot has no head to fit on')
   if (!cat.slots.Head.includes(head)) throw new Error(`no head "${head}": ${cat.slots.Head.join(', ')}`)
   look = withPart(look, 'Head', head)
   redress()
@@ -275,7 +278,7 @@ const STATE_WORDS = { own: '✓ fitted', default: 'default', made: 'as made' }
 
 /** A tag at the feet of each worker of the line-up: its head, and how the selected piece is fitted on it. */
 function drawTags() {
-  tags.innerHTML = lineUp && look.species === 'adventurer'
+  tags.innerHTML = lineUp && look.species === 'character'
     ? figures.map((f) => {
         const s = selected ? fitState(selected, f.head!) : undefined
         return `<div class="tag ${f === active() ? 'active' : ''} ${s === 'own' ? 'fitted' : ''}" data-head="${f.head}">${f.head!.replace(/_Head/, '').replace(/_/g, ' ')}${s ? `<small>${STATE_WORDS[s]}</small>` : ''}</div>`
@@ -328,7 +331,7 @@ function asDefault(part: string) {
 }
 
 function keepOutfit(name: string) {
-  if (look.species !== 'adventurer') throw new Error('an outfit dresses an adventurer: a bot is dressed by the mix alone')
+  if (look.species !== 'character') throw new Error('an outfit dresses a character: a bot is dressed by the mix alone')
   if (!name) throw new Error('an outfit needs a name')
   wardrobe = { ...wardrobe, outfits: { ...wardrobe.outfits, [name]: outfitOf(look) } }
   outfit = name
@@ -468,7 +471,7 @@ const swatches = (field: string, xs: readonly string[], on: string) =>
 
 function renderLook() {
   const { mix } = wardrobe
-  const adv = look.species === 'adventurer' ? look : undefined
+  const adv = look.species === 'character' ? look : undefined
   const base = adv ? adv.body : 'bot'
   const names = Object.keys(wardrobe.outfits).sort()
   const kept = outfit !== undefined && adv && same(outfitOf(adv), wardrobe.outfits[outfit])
@@ -478,8 +481,8 @@ function renderLook() {
     <div class="bodies">${BASES.map((b) => `<button data-base="${b}" class="${b === base ? 'on' : ''}">${b}</button>`).join('')}</div>
     <button class="big" data-act="random">${DIE} Randomize the whole look</button>
     <h3>Parts</h3>
-    ${slotsOf(look).map((s) => `<label class="row"><span>${s}</span><select data-slot="${s}">${options(cat.slots[s], partIn(look, s), s === 'Head' ? undefined : '— bare —')}</select>${die(`data-roll-slot="${s}"`)}</label>`).join('')}
-    ${adv ? `<label class="row"><span>Paint</span><select data-paint>${options(ADVENTURERS, adv.paint)}</select></label>` : ''}
+    ${slotsOf(look).map((s) => `<label class="row"><span>${s}</span><select data-slot="${s}">${options(partsFor(look, s), partIn(look, s), s === 'Head' ? undefined : '— bare —')}</select>${die(`data-roll-slot="${s}"`)}</label>`).join('')}
+    ${adv ? `<label class="row"><span>Paint</span><select data-paint>${options(bodyOf(adv.body).paints, adv.paint)}</select></label>` : ''}
     <h3>Colours</h3>
     ${adv ? swatches('skin', mix.skins, adv.skin) + swatches('hair', mix.hairs, adv.hair) : `<label class="row"><span>Hue</span><span class="swatches"><i class="on" style="background:${look.species === 'bot' ? look.hue : ''}"></i></span>${die('data-roll-colour="hue"')}</label>`}
     ${swatches('wear', mix.wears, look.wear)}
@@ -490,7 +493,7 @@ function renderLook() {
         : `<div class="row"><button class="name ${n === outfit ? 'on' : ''}" data-outfit="${esc(n)}" title="${mix.outfits.except?.includes(n) ? 'worn only by name' : 'in the mix'}">${esc(n)}</button>${locked(n) ? '<span class="muted" title="Tower 3D dresses it by name">locked</span>' : `<button data-rename="${esc(n)}" title="rename">✎</button><button data-unkeep="${esc(n)}" title="delete">✕</button>`}</div>`).join('')}</div>
     ${adv ? `<div class="row"><input type="text" id="outfit-name" placeholder="a name for this look"><button data-act="keep">Keep as new</button></div>
     ${outfit && !kept ? `<button data-act="update">Update “${esc(outfit)}” to this look</button>` : ''}
-    <div class="muted">An outfit keeps every slot as shown, bare ones too.</div>` : '<div class="muted">Outfits dress adventurers.</div>'}
+    <div class="muted">An outfit keeps every slot as shown, bare ones too.</div>` : '<div class="muted">Outfits dress characters.</div>'}
     <details><summary>Advanced</summary>
       <div class="row"><input type="text" id="who" placeholder="a session id or CALLSIGN"><button data-act="who">Load worker</button></div>
       ${(['width', 'height'] as const).map((d) => `<label class="row"><span>${d[0].toUpperCase()}${d.slice(1)}</span><input type="range" min="0.85" max="1.15" step="0.01" data-build="${d}" value="${look.build[d]}"><code>${look.build[d].toFixed(2)}</code></label>`).join('')}
@@ -521,7 +524,7 @@ function renderFit() {
       <div class="group">${(['translate', 'rotate', 'scale'] as const).map((m) => `<button data-mode="${m}" class="${gizmo.mode === m ? 'on' : ''}">${m} <kbd>${m[0].toUpperCase()}</kbd></button>`).join('')}</div>
       <label class="row"><span>Size</span><input type="range" min="0.3" max="2" step="0.01" data-size value="${scale3[0]}"><code>${scale3[0].toFixed(2)}</code></label>
       <div class="axes">${axes('at', now.at, 0.005)}${axes('turn', now.turn, 1)}${axes('scale', scale3, 0.01)}</div>
-      <div class="group">${state === 'own' ? `<button data-act="reset">Reset ${esc(where)}</button>` : ''}${look.species === 'adventurer' ? `<button data-act="default">Set as default for every head</button>` : ''}</div>
+      <div class="group">${state === 'own' ? `<button data-act="reset">Reset ${esc(where)}</button>` : ''}${look.species === 'character' ? `<button data-act="default">Set as default for every head</button>` : ''}</div>
       <div class="keys"><kbd>Esc</kbd> deselect · <kbd>F</kbd> frame the piece</div>
       <details><summary>Where each value comes from</summary>
         <div class="from">${(['at', 'turn', 'scale'] as const).map((field) => `${field} ← ${esc(keyWords(resolved.from[field] ?? 'made'))}`).join(' · ')}</div>
@@ -579,7 +582,7 @@ document.body.addEventListener('click', (e) => {
   const d = el.dataset
   if (d.base) setLook({ body: d.base as Base })
   if (d.outfit) setLook({ outfit: d.outfit })
-  if (d.rollSlot) change(withPart(look, d.rollSlot as Slot, anyOf(cat.slots[d.rollSlot as Slot], partIn(look, d.rollSlot as Slot))))
+  if (d.rollSlot) change(withPart(look, d.rollSlot as Slot, anyOf(partsFor(look, d.rollSlot as Slot), partIn(look, d.rollSlot as Slot))))
   if (d.rollColour) rollColour(d.rollColour)
   if (d.swatch) change(coloured(d.swatch, d.value!))
   if (d.pose) setPose(d.pose as PoseName)
@@ -714,7 +717,7 @@ function lookFrom(spec: LookSpec): Look {
 
 function setLook(spec: LookSpec) {
   look = lookFrom(spec)
-  outfit = look.species === 'adventurer' ? look.outfit : undefined
+  outfit = look.species === 'character' ? look.outfit : undefined
   redress()
   frame()
   return state()
@@ -782,7 +785,7 @@ const ready = Promise.all([
   if (server) wardrobe = disk = parseWardrobe(file, 'renderers/tower3d/wardrobe.json')
   const q = new URLSearchParams(location.search)
   look = lookFrom(q.get('outfit') ? { outfit: q.get('outfit')! } : q.get('id') ? { id: q.get('id')! } : { body: 'Knight' })
-  outfit = look.species === 'adventurer' ? look.outfit : undefined
+  outfit = look.species === 'character' ? look.outfit : undefined
   if (q.get('pose')) shown = q.get('pose') as PoseName
   if (q.get('view')) view = q.get('view') as View
   redress()

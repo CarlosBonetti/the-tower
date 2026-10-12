@@ -6,7 +6,7 @@
   "in": "web-tower",
   "status": "accepted",
   "date": "2026-10-11",
-  "reviewed": "2026-10-11",
+  "reviewed": "2026-10-12",
   "refs": [
     "hub/renderers/tower3d/dresser.html",
     "hub/renderers/tower3d/src/dresser.ts",
@@ -47,8 +47,8 @@ to edit that data by eye, and the same surface for agents, so a fit is judged fr
   `Look`; every list (bodies, each slot's parts, palettes, outfits) is read from the catalogue and the wardrobe, so
   a part made in the Blender kit appears with no code.
 - Building a look follows the user's flow, not the document's: start from a body
-  ([`based`](ref:hub/renderers/tower3d/src/dresser.ts#based): Knight, Mage, Rogue, Barbarian or the bot, its own head
-  and nothing else) or randomize the whole look (`lookOf` on a fresh id), then pick or roll (a die) each slot's part
+  ([`based`](ref:hub/renderers/tower3d/src/dresser.ts#based): any KayKit character of the contract or the bot, its own
+  head and nothing else) or randomize the whole look (`lookOf` on a fresh id), then pick or roll (a die) each slot's part
   and each colour. Colours are only the swatches of the mix's palettes (`skins`, `hairs`, `wears`), the curated set
   the shared atlas is tinted with: offering a colour is adding it to a palette. Loading a worker by session id or
   callsign is an advanced field.
@@ -67,7 +67,8 @@ to edit that data by eye, and the same surface for agents, so a fit is judged fr
   comes from, folded away. The gizmo's placement is turned back into a fit by
   [`fitOfObject`](ref:hub/renderers/tower3d/src/dresser.ts#fitOfObject), the inverse of
   [`fitted`](ref:hub/renderers/tower3d/src/avatar.ts#fitted).
-- Outfits: a list to load, rename (in the mix's `except` too), delete, and keep the look as a new one or update the
+- Outfits: a list to load, rename (in the mix's `except` too), delete (the ones Tower 3D dresses by name, `STAFF`,
+  locked), and keep the look as a new one or update the
   one loaded: an outfit kept here sets every slot, bare ones too
   ([`outfitOf`](ref:hub/renderers/tower3d/src/dresser.ts#outfitOf)). The mix is edited as JSON, checked by the
   wardrobe's schema.

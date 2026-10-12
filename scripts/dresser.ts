@@ -13,7 +13,7 @@
  *   npm run tool:dresser -- shot <outfit|body|id|CALLSIGN> [--wear part,…] [--pose stand|sit|type|walk|wave|cheer|dance]
  *                                [--at <s>] [--view front|side|face|three-quarter] [--heads all] [--size 1200x900] [--out file.png]
  *                                                      a PNG of the look: an outfit of wardrobe.json, a body as it
- *                                                      starts (Knight, Mage, Rogue, Barbarian, bot), or a session id
+ *                                                      starts (a character of the contract, or bot), or a session id
  *                                                      hashed as Tower 3D hashes it (a callsign is read from
  *                                                      `tower agent`), wearing --wear's parts besides, posed at --at
  *                                                      seconds; --heads all lines it up on every head
@@ -29,6 +29,7 @@ import { parseArgs } from 'node:util'
 import { designCss, fonts } from '../src/shared/design.ts'
 import { fontFile } from '../src/packages.ts'
 import { formatWardrobe, parseWardrobe } from '../renderers/tower3d/src/wardrobe.ts'
+import { CHARACTERS } from '../renderers/tower3d/src/contract.ts'
 import { withPage } from './drive.ts'
 
 const REPO = path.resolve(import.meta.dirname, '..')
@@ -90,7 +91,7 @@ function sessionOf(who: string) {
   return id
 }
 
-const BODIES = ['Knight', 'Mage', 'Rogue', 'Barbarian', 'bot']
+const BODIES: string[] = [...CHARACTERS, 'bot']
 
 const size = (s: string) => {
   const [w, h] = s.split('x').map(Number)

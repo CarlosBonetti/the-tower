@@ -1,11 +1,11 @@
 import { z } from 'zod'
-import { ADVENTURERS, BODY_PARTS, BONES, SLOTS, type Adventurer, type Bone, type Slot } from './contract.ts'
+import { ATLAS_NAMES, BONES, CHARACTERS, SLOTS, bodyOf, type Atlas, type Bone, type Character, type RigKind, type Slot } from './contract.ts'
 import { rendezvous, roll } from './hashed.ts'
 
 /**
  * The wardrobe: how workers are dressed, as one document (renderers/tower3d/wardrobe.json) over the catalogue of parts.
  * `fits` move, turn and scale a worn part over where it was made to sit, by default and per part worn with it;
- * `outfits` are named looks; `mix` is how a worker's session id is dressed: a bot or an adventurer, maybe an outfit,
+ * `outfits` are named looks; `mix` is how a worker's session id is dressed: a bot or a character, maybe an outfit,
  * and for everything an outfit leaves open, a roll per slot and the part of the slot's pool it scores highest for
  * (`rendezvous`), so a part, outfit, body or colour added re-dresses only the wearers it wins. Imports no three: Node reads it, and
  * Tower 3D and the dresser call the same functions.
@@ -13,7 +13,8 @@ import { rendezvous, roll } from './hashed.ts'
 
 const vec3 = z.tuple([z.number(), z.number(), z.number()])
 const colour = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'a #rrggbb colour')
-const adventurer = z.enum(ADVENTURERS)
+const character = z.enum(CHARACTERS)
+const atlas = z.enum(ATLAS_NAMES)
 const build = z.object({ width: z.number(), height: z.number() })
 
 export const Fit = z.object({
@@ -32,8 +33,8 @@ export const Rule = z.object({
 })
 
 export const Outfit = z.object({
-  body: adventurer.optional(),
-  paint: adventurer.optional().describe('the atlas its body is painted in'),
+  body: character.optional(),
+  paint: atlas.optional().describe('the atlas its body is painted in: one of the body paints'),
   skin: colour.optional(),
   hair: colour.optional(),
   wear: colour.optional().describe('the colour of what it wears painted `wear_own`'),
@@ -46,8 +47,8 @@ const slotRules = z.partialRecord(z.enum(SLOTS), Rule)
 export const Mix = z.object({
   bot: z.object({ share: z.number().min(0).max(1), slots: slotRules }),
   outfits: z.object({ share: z.number().min(0).max(1), except: z.array(z.string()).optional().describe('outfits only worn by name') }),
-  bodies: z.array(adventurer).min(1),
-  repaint: z.number().min(0).max(1).describe('the chance a body is painted in another body atlas'),
+  bodies: z.array(character).min(1).describe('the characters the mix dresses from: their bodies, and the parts of their packs the slots draw'),
+  repaint: z.number().min(0).max(1).describe('the chance a body is painted in another of its paints'),
   skins: z.array(colour).min(1),
   hairs: z.array(colour).min(1),
   wears: z.array(colour).min(1),
@@ -79,9 +80,15 @@ export type Placement = { at: Vec3; quaternion: [number, number, number, number]
 export type CataloguePart = {
   name: string
   slot: Slot | 'Body'
-  from: 'adventurers' | 'parts' | 'wear'
-  /** Painted in an adventurer's atlas, or in its own materials (`wear_own` in the worker's wear colour). */
-  atlas?: Adventurer
+  from: 'adventurers' | 'kaykit' | 'parts' | 'wear'
+  /** The character whose pack it comes with: the mix draws it while that character is one of its bodies. */
+  character?: Character
+  /** The skeleton it is made on; a piece hung at an anchor fits on any. */
+  rig?: RigKind
+  /** Painted in an atlas, or in its own materials (`wear_own` in the worker's wear colour). */
+  atlas?: Atlas
+  /** Meshes drawn with it: a skull's jaw and glowing eyes. */
+  with?: readonly string[]
   attach: { skinned: true } | { bone: Bone; made: Placement } | { bone: 'head'; anchor: Anchor }
 }
 export type Anchor = 'hat' | 'face'
@@ -89,16 +96,22 @@ export type Catalogue = {
   parts: Record<string, CataloguePart>
   /** Each slot's parts, in the order the files hold them. */
   slots: Record<Slot, string[]>
-  /** Where each kind of wearer has its hat and face anchors, on the head bone. */
-  anchors: Record<Look['species'], Record<Anchor, Placement>>
+  /** Where the wearers on each skeleton, and the bot, have their hat and face anchors, on the head bone. */
+  anchors: Record<RigKind | 'bot', Record<Anchor, Placement>>
 }
 
-/** A look: what a worker wears. `parts` are the slot parts worn, in `SLOTS` order; an adventurer's body parts follow from `body` and `paint`. */
+/** A look: what a worker wears. `parts` are the slot parts worn, in `SLOTS` order; a character's body parts follow from `body` and `paint`. */
 export type Look =
-  | { species: 'adventurer'; outfit?: string; body: Adventurer; paint: Adventurer; parts: string[]; skin: string; hair: string; wear: string; build: Build }
+  | { species: 'character'; outfit?: string; body: Character; paint: Atlas; parts: string[]; skin: string; hair: string; wear: string; build: Build }
   | { species: 'bot'; hue: string; parts: string[]; wear: string; build: Build }
 
-export const bodyParts = (body: Adventurer) => BODY_PARTS.map((p) => `${body}_${p}`)
+export const bodyParts = (body: Character) => bodyOf(body).parts
+
+/** The skeleton a look stands on: its body's, the bot's Rig_Medium. */
+export const rigOfLook = (look: Look): RigKind => (look.species === 'bot' ? 'medium' : bodyOf(look.body).rig)
+
+/** Whether a part fits a body on `rig`: made on that skeleton, or hung at an anchor. */
+export const fitsRig = (c: Catalogue, part: string, rig: RigKind) => (c.parts[part].rig ?? rig) === rig
 
 /** A worker's own hue in degrees, hashed from its session id: who it is. */
 export const hueOf = (id: string) => {
@@ -120,11 +133,19 @@ const hex = (h: number, s: number, l: number) => {
 const seedOf = (slot: Slot, rule: Rule) => rule.seed ?? slot.toLowerCase()
 
 /**
- * The slot parts `id` wears by `rules`: each slot's roll (its group's, shared and stacked in `SLOTS` order) against its
- * chance, then its pool's part; then any slot whose `unless` names a part worn is left bare. `fixed` slots (an
- * outfit's) take its part or stay bare, untouched by the rules; `wearing` is worn besides (the body).
+ * The parts of a slot the mix may draw for a body on `rig`: its rule's pool, or every part of the slot made on that
+ * skeleton whose character, if any, is one of the mix's bodies.
  */
-function rolled(id: string, rules: Partial<Record<Slot, Rule>>, c: Catalogue, fixed: Partial<Record<Slot, string | null>>, wearing: string[]) {
+const poolOf = (c: Catalogue, slot: Slot, rule: Rule, rig: RigKind, bodies: readonly Character[]) =>
+  (rule.pool ?? c.slots[slot].filter((p) => c.parts[p].character === undefined || bodies.includes(c.parts[p].character!)))
+    .filter((p) => fitsRig(c, p, rig) && !rule.except?.includes(p))
+
+/**
+ * The slot parts `id` wears by `rules`: each slot's roll (its group's, shared and stacked in `SLOTS` order) against its
+ * chance, then its pool's part (`poolOf`); then any slot whose `unless` names a part worn is left bare. `fixed` slots
+ * (an outfit's) take its part or stay bare, untouched by the rules; `wearing` is worn besides (the body).
+ */
+function rolled(id: string, rules: Partial<Record<Slot, Rule>>, c: Catalogue, fixed: Partial<Record<Slot, string | null>>, wearing: string[], rig: RigKind, bodies: readonly Character[]) {
   const stacked = new Map<string, number>()
   const worn = new Map<Slot, string>()
   const hashed = new Set<Slot>()
@@ -138,7 +159,7 @@ function rolled(id: string, rules: Partial<Record<Slot, Rule>>, c: Catalogue, fi
     const seed = seedOf(slot, rule)
     const from = rule.group === undefined ? 0 : (stacked.get(rule.group) ?? 0)
     if (rule.group !== undefined) stacked.set(rule.group, from + rule.chance)
-    const pool = (rule.pool ?? c.slots[slot]).filter((p) => !rule.except?.includes(p))
+    const pool = poolOf(c, slot, rule, rig, bodies)
     if (!pool.length) continue
     const r = roll(id, rule.group ?? seed)
     if (r < from || r >= from + rule.chance) continue
@@ -157,11 +178,12 @@ function dressed(id: string, outfit: Outfit, name: string | undefined, w: Wardro
   const { mix } = w
   const r = (what: string) => roll(id, what)
   const body = outfit.body ?? rendezvous(id, 'body', mix.bodies)
-  const paint = outfit.paint ?? (r('repaint') < mix.repaint ? rendezvous(id, 'paint', mix.bodies) : body)
-  const slots = rolled(id, mix.slots, c, outfit.slots ?? {}, bodyParts(body))
-  if (!slots.has('Head') && !(outfit.slots && 'Head' in outfit.slots)) slots.set('Head', `${body}_Head`)
+  const own = bodyOf(body)
+  const paint = outfit.paint ?? (r('repaint') < mix.repaint ? rendezvous(id, 'paint', own.paints) : own.atlas)
+  const slots = rolled(id, mix.slots, c, outfit.slots ?? {}, own.parts, own.rig, mix.bodies)
+  if (!slots.has('Head') && !(outfit.slots && 'Head' in outfit.slots)) slots.set('Head', own.head)
   return {
-    species: 'adventurer',
+    species: 'character',
     ...(name !== undefined && { outfit: name }),
     body,
     paint,
@@ -175,13 +197,13 @@ function dressed(id: string, outfit: Outfit, name: string | undefined, w: Wardro
 
 /**
  * A worker's look, hashed from its session id: the same on every board and every reload. A bot by the mix's share,
- * wearing what its slots roll; else an adventurer, in an outfit by the outfits' share (the one of those not kept
+ * wearing what its slots roll; else a character, in an outfit by the outfits' share (the one of those not kept
  * `except` that scores highest for it), with everything the outfit leaves open hashed from the mix.
  */
 export function lookOf(id: string, w: Wardrobe, c: Catalogue): Look {
   const { mix } = w
   if (roll(id, 'species') < mix.bot.share) {
-    const parts = rolled(id, mix.bot.slots, c, {}, [])
+    const parts = rolled(id, mix.bot.slots, c, {}, [], 'medium', mix.bodies)
     return {
       species: 'bot',
       hue: hex(hueOf(id), 0.55, 0.62),
@@ -249,8 +271,11 @@ export function problems(w: Wardrobe, c: Catalogue): string[] {
     for (const key of Object.keys(fits)) if (key !== '*' && key !== 'bot') known(key, `fits/${part}/${key}`)
   }
   for (const [name, o] of Object.entries(w.outfits)) {
+    if (o.body && o.paint && !bodyOf(o.body).paints.includes(o.paint)) out.push(`outfits/${name}/paint: ${o.body} is not painted in ${o.paint}`)
     for (const [slot, part] of Object.entries(o.slots ?? {})) {
-      if (part && known(part, `outfits/${name}/slots/${slot}`) && c.parts[part].slot !== slot) out.push(`outfits/${name}/slots/${slot}: ${part} is a ${c.parts[part].slot} part`)
+      if (!part || !known(part, `outfits/${name}/slots/${slot}`)) continue
+      if (c.parts[part].slot !== slot) out.push(`outfits/${name}/slots/${slot}: ${part} is a ${c.parts[part].slot} part`)
+      else if (o.body && !fitsRig(c, part, bodyOf(o.body).rig)) out.push(`outfits/${name}/slots/${slot}: ${part} is made on another skeleton than ${o.body}`)
     }
   }
   for (const n of w.mix.outfits.except ?? []) if (!(n in w.outfits)) out.push(`mix/outfits/except: no outfit ${n}`)

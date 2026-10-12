@@ -3,19 +3,26 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import adventurersGlb from '../kaykit/Characters/adventurers.glb'
+import largeGlb from '../kaykit/Characters/large.glb'
+import mediumGlb from '../kaykit/Characters/medium.glb'
+import largeClipsGlb from '../kaykit/Characters/rig_large.glb'
 import clipsGlb from '../kaykit/Characters/rig_medium.glb'
 import partsGlb from '../parts/parts.glb'
-import { ADVENTURERS, CLIPS, type Adventurer, type Bone, type ClipName } from './contract.ts'
+import { ATLAS_NAMES, CLIPS, RIGS, textureOf, type Atlas, type Bone, type ClipName, type RigKind } from './contract.ts'
 
 /**
- * The skeleton every worker stands on (KayKit's Rig_Medium, kaykit/Characters), the parts the adventurers are dressed
- * from (the pack's, and those made in parts/parts.blend), and the clips that pose them, parsed once (`loadCast`). A worker is a copy of the bones (`rigOf`) with one
- * `AnimationMixer` over the shared clips; `pose` sets it from a list of layers, each a clip at a time, so a pose is a
- * function of the sim clock and nothing is kept between frames.
+ * The skeletons workers stand on (KayKit's Rig_Medium, and Rig_Large for the big ones, kaykit/Characters), the parts
+ * characters are dressed from (the packs', and those made in parts/parts.blend), and the clips that pose them, parsed
+ * once (`loadCast`). A worker is a copy of its skeleton's bones (`rigOf`) with one `AnimationMixer` over that skeleton's
+ * clips; `pose` sets it from a list of layers, each a clip at a time, so a pose is a function of the sim clock and
+ * nothing is kept between frames.
  */
 
-/** Rig units (the rest pose stands 2.2 tall) to meters: a worker stands 1.5 m. */
-export const RIG_SCALE = 0.68
+/**
+ * Rig units to meters, by skeleton: Rig_Medium's rest pose stands 2.2 tall, a worker 1.5 m; Rig_Large's characters
+ * stand a head taller than a worker.
+ */
+export const RIG_SCALES: Record<RigKind, number> = { medium: 0.68, large: 0.3 }
 
 /**
  * Clips derived at load: `Type`, both forearms on the keyboard tapping, seated; and any clip cut to the arms (`:arms`)
@@ -23,26 +30,30 @@ export const RIG_SCALE = 0.68
  */
 export type ClipKey = ClipName | 'Type' | `${ClipName | 'Type'}:${'arms' | 'rest'}`
 
-export type Cast = {
-  /** The bones, without parts: what every worker's rig is copied from. */
+/** One skeleton characters stand on, and the clips that pose it. */
+export type Skeleton = {
+  /** The bones, without parts: what every worker's rig on this skeleton is copied from. */
   bones: THREE.Object3D
-  /**
-   * Each part as its file holds it: skinned parts on the bones, rigid ones on the bone they hang on, and the atlas it is
-   * painted in.
-   */
-  parts: Map<string, { mesh: THREE.Mesh; bone?: string; atlas: Adventurer }>
-  /** Skinned parts merged into one geometry, by their names: what a worker draws in one call per atlas. */
-  merged: Map<string, THREE.BufferGeometry>
-  /** The bones skinned parts are bound to, in order, and their inverse binds: the pack's rest pose. */
+  /** The bones skinned parts are bound to, in order, and their inverse binds: the packs' rest pose. */
   joints: string[]
   inverses: THREE.Matrix4[]
-  atlases: Map<Adventurer, THREE.Texture>
   clips: Map<ClipKey, THREE.AnimationClip>
   /**
    * The rig seated (the sit clip's first frame), in rig units: where its hips are, and each joint's skinning matrix,
    * which carries a skinned part's rest vertex to where it sits (`seatOf`).
    */
   seated: { hips: THREE.Vector3; skin: THREE.Matrix4[] }
+}
+
+/** A part as its file holds it: skinned to its skeleton's bones, or rigid on the bone it hangs on; painted in an atlas or glowing. */
+export type CastPart = { mesh: THREE.Mesh; rig: RigKind; bone?: string; atlas?: Atlas; glow?: THREE.Color }
+
+export type Cast = {
+  skeletons: Record<RigKind, Skeleton>
+  parts: Map<string, CastPart>
+  /** Skinned parts merged into one geometry, by their names: what a worker draws in one call per atlas. */
+  merged: Map<string, THREE.BufferGeometry>
+  atlases: Map<Atlas, THREE.Texture>
 }
 
 const parse = (bytes: Uint8Array) =>
@@ -108,38 +119,60 @@ function atlasOf(material: THREE.MeshStandardMaterial) {
   return map
 }
 
-export async function loadCast(): Promise<Cast> {
-  const [adventurers, made, rig] = await Promise.all([parse(adventurersGlb), parse(partsGlb), parse(clipsGlb)])
-  const bones = adventurers.scene.getObjectByName('Rig')!
-  const parts: Cast['parts'] = new Map()
-  const collect = (from: THREE.Object3D) => {
-    from.updateMatrixWorld(true)
-    from.traverse((o) => {
-      if (!(o instanceof THREE.Mesh)) return
-      o.geometry.userData.shared = true
-      o.geometry.computeBoundingSphere()
-      const atlas = ADVENTURERS.find((a) => o.material.name === `${a.toLowerCase()}_texture`)!
-      parts.set(o.name, { mesh: o, bone: o instanceof THREE.SkinnedMesh ? undefined : o.parent!.name, atlas })
-    })
-  }
-  collect(bones)
-  const atlases = new Map(ADVENTURERS.map((a) => [a, atlasOf([...parts.values()].find((p) => p.atlas === a)!.mesh.material as THREE.MeshStandardMaterial)]))
-  collect(made.scene.getObjectByName('Rig')!)
-  for (const { mesh } of parts.values()) mesh.removeFromParent()
-  const { skeleton } = [...parts.values()].map((p) => p.mesh).find((m) => m instanceof THREE.SkinnedMesh) as THREE.SkinnedMesh
+const atlasNamed = (material: THREE.Material) => ATLAS_NAMES.find((a) => material.name === textureOf(a))
+
+/** A skeleton's bones, from the file whose skinned parts bind them, and its clips with those derived from them. */
+function skeletonOf(bones: THREE.Object3D, skin: THREE.Skeleton, animations: THREE.AnimationClip[]): Skeleton {
   const clips = new Map<ClipKey, THREE.AnimationClip>()
-  for (const name of CLIPS) clips.set(name, rig.animations.find((a) => a.name === name)!)
+  for (const name of CLIPS) clips.set(name, animations.find((a) => a.name === name)!)
   clips.set('Type', typing(bones, clips.get('Sit_Chair_Idle')!))
   for (const [name, clip] of [...clips]) for (const part of ['arms', 'rest'] as const) clips.set(`${name}:${part}` as ClipKey, cut(clip, part))
-  const joints = skeleton.bones.map((b) => b.name)
+  const joints = skin.bones.map((b) => b.name)
   const sitting = SkeletonUtils.clone(bones)
   new THREE.AnimationMixer(sitting).clipAction(clips.get('Sit_Chair_Idle')!).play().getMixer().update(0)
   sitting.updateMatrixWorld(true)
   const seated = {
     hips: sitting.getObjectByName('hips')!.getWorldPosition(new THREE.Vector3()),
-    skin: joints.map((n, i) => sitting.getObjectByName(n)!.matrixWorld.clone().multiply(skeleton.boneInverses[i])),
+    skin: joints.map((n, i) => sitting.getObjectByName(n)!.matrixWorld.clone().multiply(skin.boneInverses[i])),
   }
-  return { bones, parts, merged: new Map(), joints, inverses: skeleton.boneInverses, atlases, clips, seated }
+  return { bones, joints, inverses: skin.boneInverses, clips, seated }
+}
+
+export async function loadCast(): Promise<Cast> {
+  const [adventurers, made, medium, large, mediumClips, largeClips] = await Promise.all([adventurersGlb, partsGlb, mediumGlb, largeGlb, clipsGlb, largeClipsGlb].map(parse))
+  const parts: Cast['parts'] = new Map()
+  const atlases: Cast['atlases'] = new Map()
+  const collect = (from: THREE.Object3D, rig: RigKind) => {
+    from.updateMatrixWorld(true)
+    from.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return
+      o.geometry.userData.shared = true
+      o.geometry.computeBoundingSphere()
+      const material = o.material as THREE.MeshStandardMaterial
+      const atlas = atlasNamed(material)
+      if (atlas && !atlases.has(atlas)) atlases.set(atlas, atlasOf(material))
+      const glow = material.name.endsWith('_glow') ? material.emissive.clone() : undefined
+      parts.set(o.name, { mesh: o, rig, bone: o instanceof THREE.SkinnedMesh ? undefined : o.parent!.name, atlas, glow })
+    })
+  }
+  const rigs = { medium: adventurers.scene.getObjectByName('Rig')!, large: large.scene.getObjectByName('Rig')! }
+  collect(rigs.medium, 'medium')
+  collect(made.scene.getObjectByName('Rig')!, 'medium')
+  collect(medium.scene.getObjectByName('Rig')!, 'medium')
+  collect(rigs.large, 'large')
+  for (const file of [medium, large]) {
+    for (const m of (await file.parser.getDependencies('material')) as THREE.MeshStandardMaterial[]) {
+      const atlas = atlasNamed(m)
+      if (atlas && !atlases.has(atlas)) atlases.set(atlas, atlasOf(m))
+    }
+  }
+  for (const { mesh } of parts.values()) mesh.removeFromParent()
+  const skinOf = (rig: RigKind) => ([...parts.values()].find((p) => p.rig === rig && p.mesh instanceof THREE.SkinnedMesh)!.mesh as THREE.SkinnedMesh).skeleton
+  const skeletons = {
+    medium: skeletonOf(rigs.medium, skinOf('medium'), mediumClips.animations),
+    large: skeletonOf(rigs.large, skinOf('large'), largeClips.animations),
+  } satisfies Record<(typeof RIGS)[number], Skeleton>
+  return { skeletons, parts, merged: new Map(), atlases }
 }
 
 /** The joints a seated body bears on: its pelvis and thighs on the seat, its back against a back rest. */
@@ -154,7 +187,7 @@ const seats = new WeakMap<THREE.BufferGeometry, Sitting>()
  */
 export type Sitting = { under: number; back: number }
 
-export function seatOf(cast: Cast, geometry: THREE.BufferGeometry): Sitting {
+export function seatOf(skeleton: Skeleton, geometry: THREE.BufferGeometry): Sitting {
   if (!seats.has(geometry)) {
     const { position, skinIndex, skinWeight } = geometry.attributes
     const v = new THREE.Vector3()
@@ -164,12 +197,12 @@ export function seatOf(cast: Cast, geometry: THREE.BufferGeometry): Sitting {
     for (let i = 0; i < position.count; i++) {
       let most = 0
       for (let k = 1; k < 4; k++) if (skinWeight.getComponent(i, k) > skinWeight.getComponent(i, most)) most = k
-      const joint = cast.joints[skinIndex.getComponent(i, most)]
+      const joint = skeleton.joints[skinIndex.getComponent(i, most)]
       if (!ON_SEAT.has(joint) && !ON_BACK.has(joint)) continue
       at.set(0, 0, 0)
       for (let k = 0; k < 4; k++) {
         const w = skinWeight.getComponent(i, k)
-        if (w) at.addScaledVector(v.fromBufferAttribute(position, i).applyMatrix4(cast.seated.skin[skinIndex.getComponent(i, k)]), w)
+        if (w) at.addScaledVector(v.fromBufferAttribute(position, i).applyMatrix4(skeleton.seated.skin[skinIndex.getComponent(i, k)]), w)
       }
       if (ON_SEAT.has(joint)) under = Math.min(under, at.y)
       if (ON_BACK.has(joint)) back = Math.min(back, at.z)
@@ -179,8 +212,9 @@ export function seatOf(cast: Cast, geometry: THREE.BufferGeometry): Sitting {
   return seats.get(geometry)!
 }
 
-/** A worker's copy of the bones and the mixer that poses them. */
+/** A worker's copy of its skeleton's bones and the mixer that poses them. */
 export type Rig = {
+  kind: RigKind
   root: THREE.Object3D
   mixer: THREE.AnimationMixer
   bone: (name: Bone) => THREE.Object3D
@@ -193,12 +227,13 @@ export type Rig = {
   fade?: { from: Pose; at: number }
 }
 
-export function rigOf(cast: Cast): Rig {
-  const root = SkeletonUtils.clone(cast.bones)
+export function rigOf(cast: Cast, kind: RigKind): Rig {
+  const { bones: from, joints, inverses } = cast.skeletons[kind]
+  const root = SkeletonUtils.clone(from)
   const bones = new Map<string, THREE.Object3D>()
   root.traverse((o) => bones.set(o.name, o))
-  const skeleton = new THREE.Skeleton(cast.joints.map((n) => bones.get(n) as THREE.Bone), cast.inverses)
-  return { root, mixer: new THREE.AnimationMixer(root), bone: (name) => bones.get(name)!, skeleton, playing: new Map() }
+  const skeleton = new THREE.Skeleton(joints.map((n) => bones.get(n) as THREE.Bone), inverses)
+  return { kind, root, mixer: new THREE.AnimationMixer(root), bone: (name) => bones.get(name)!, skeleton, playing: new Map() }
 }
 
 /** Skinned parts of the pack dressed on a rig in one `material`, merged into one mesh on its bones. */
@@ -228,15 +263,15 @@ const skinnedModels = new WeakMap<THREE.Object3D, { geometry: THREE.BufferGeomet
  * A rigid model standing in the rig's rest pose, its parts under pivots named after the bones they ride, as skinned
  * meshes on those bones: one geometry per material, made once per model.
  */
-function skinnedFrom(cast: Cast, model: THREE.Object3D) {
+function skinnedFrom(joints: string[], model: THREE.Object3D) {
   if (!skinnedModels.has(model)) {
     model.updateMatrixWorld(true)
     const byMaterial = new Map<THREE.Material, THREE.BufferGeometry[]>()
     model.traverse((o) => {
       if (!(o instanceof THREE.Mesh)) return
       let pivot: THREE.Object3D | null = o
-      while (pivot && !cast.joints.includes(pivot.name)) pivot = pivot.parent
-      const joint = cast.joints.indexOf(pivot!.name)
+      while (pivot && !joints.includes(pivot.name)) pivot = pivot.parent
+      const joint = joints.indexOf(pivot!.name)
       const g = o.geometry.clone().applyMatrix4(o.matrixWorld)
       const n = g.attributes.position.count
       g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Uint16Array(n * 4).map((_, i) => (i % 4 ? 0 : joint)), 4))
@@ -255,7 +290,7 @@ function skinnedFrom(cast: Cast, model: THREE.Object3D) {
 
 /** A rigid model's parts skinned onto a rig's bones (`skinnedFrom`), each material as `material` gives it. */
 export function wearModel(cast: Cast, rig: Rig, model: THREE.Object3D, material: (m: THREE.Material) => THREE.Material) {
-  for (const part of skinnedFrom(cast, model)) skin(rig, part.geometry, material(part.material))
+  for (const part of skinnedFrom(cast.skeletons[rig.kind].joints, model)) skin(rig, part.geometry, material(part.material))
 }
 
 /** A rigid part of the pack hung on its bone of a rig, in `material`. */
@@ -306,7 +341,7 @@ export function pose(cast: Cast, rig: Rig, next: Pose, t: number) {
   for (const [clip, { at, weight }] of layers) {
     let action = rig.playing.get(clip)
     if (!action) {
-      action = rig.mixer.clipAction(cast.clips.get(clip)!).play()
+      action = rig.mixer.clipAction(cast.skeletons[rig.kind].clips.get(clip)!).play()
       rig.playing.set(clip, action)
     }
     action.time = ((at % action.getClip().duration) + action.getClip().duration) % action.getClip().duration
