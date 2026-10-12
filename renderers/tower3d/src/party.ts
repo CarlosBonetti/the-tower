@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { act } from './acts.ts'
 import { WORLD } from './cards.ts'
 import type { Card } from './api.ts'
-import { avatar, seatedAt, type Avatar } from './avatar.ts'
+import { avatar, seatedAt, topOf, type Avatar } from './avatar.ts'
 import { WARDROBE } from './closet.ts'
 import { walkPose, type GuestPlace } from './life.ts'
 import { DANCE_TILE, STRING_ROWS, partySpots, type DanceFloor, type Plan } from './layout.ts'
@@ -159,13 +159,17 @@ export function mug() {
   return group
 }
 
+const TAG_HEIGHT = 0.2
+/** Between the top of a guest, hat and all, and the bottom of its tag. */
+const TAG_GAP = 0.08
+
 export function makeGuest(card: Card, models: Models): Guest {
   const w = avatar(models, lookOfWorker(card.id, card.callsign, WARDROBE, models.catalogue), WARDROBE)
   w.bulb.color.copy(PARTY_COLORS[card.id.length % PARTY_COLORS.length])
   const group = new THREE.Group()
   group.add(w.root)
-  const tag = sprite(card.callsign, 0.2, { color: WORLD.panel, bg: WORLD.enamel, px: 40 })
-  tag.position.y = 1.7
+  const tag = sprite(card.callsign, TAG_HEIGHT, { color: WORLD.panel, bg: WORLD.enamel, px: 40 })
+  tag.position.y = topOf(w) + TAG_GAP + TAG_HEIGHT / 2
   group.add(tag)
   const beer = mug()
   w.hand.add(beer)

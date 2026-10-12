@@ -248,3 +248,18 @@ export function avatar(models: Models, look: Look, wardrobe: Wardrobe): Avatar {
   rig.bone('handslotr').add(hand)
   return { root, body, rig, hand, gear: dressed.gear, bulb: dressed.bulb, worn: dressed.worn, seat: sittingOf(models.cast, rig) }
 }
+
+/** The top of an avatar as it stands, its head or what it wears on it, its bulb aside: in its root's space. */
+export function topOf(a: Avatar) {
+  a.root.updateMatrixWorld(true)
+  const box = new THREE.Box3()
+  a.root.traverse((o) => {
+    if (!(o instanceof THREE.Mesh) || o.material === a.bulb) return
+    if (o instanceof THREE.SkinnedMesh) {
+      o.skeleton.update()
+      o.computeBoundingBox()
+      box.union(o.boundingBox!.clone().applyMatrix4(o.matrixWorld))
+    } else box.expandByObject(o)
+  })
+  return box.applyMatrix4(a.root.matrixWorld.clone().invert()).max.y
+}
