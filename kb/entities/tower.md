@@ -3,7 +3,7 @@
   "type": "project",
   "name": "tower",
   "summary": "A local-first surface for managing many Claude Code sessions, where sessions are data and the presentation is swappable.",
-  "reviewed": "2026-10-11",
+  "reviewed": "2026-10-12",
   "refs": ["hub/AGENTS.md", "hub/package.json", "hub/src/shared/model.ts"]
 }
 ---
@@ -25,7 +25,8 @@ capability is a primitive in the core, open to every renderer and every worker (
 - [[terms]]: a second detached process owning plain shells in project directories.
 - [[bridge]]: pure reductions over the logs and the live store a renderer subscribes to. This is the
   contract a new renderer plugs into.
-- [[web-tower]]: today's web renderer. [[cli]]: the `tower` command, a terminal renderer and control surface.
+- [[web-tower]]: the tower server and the web renderers it serves: the tower page, [[tower3d]] and The Week
+  ([[renderers-in-config]]). [[cli]]: the `tower` command, a terminal renderer and control surface.
 
 **Data.** [[system-root]] holds the only stored state: the config (intent), the session logs (facts) and the
 collections (files kept for later). Everything else is computed from them ([[logs-are-facts]]); what is kept to skip

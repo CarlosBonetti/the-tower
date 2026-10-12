@@ -11,7 +11,9 @@
 Built to learn from and throw away ([[renderer-is-disposable]]): the [[tower-server]] turns the
 [[live-system]] into a board and relays requests to the daemons. It holds no machinery. The skyline home
 (projects as buildings, sessions as lit windows) is the seed of a spatial renderer.
-Spatial renderers live in `renderers/` on the same API: [[tower3d]] is the first-person one.
+Spatial renderers live in `renderers/` on the same API: [[tower3d]] is the first-person one. The Week
+([`renderers/week/`](ref:hub/renderers/week/week.js)) is a plain page over the same API: the budget week as a
+yearbook, read from the board, `/stats` and each floor's archive ([[renderers-in-config]]).
 
 A worker's subagents hang under its sidebar line as satellites ([`satellitesOf`](ref:hub/src/shared/cards.ts#satellitesOf): those running, and those that ended a turn under 8 s ago, fading out; a fork marked with the branch glyph, a stopped one struck through), and its details list every run with its tokens and how it ended. A board push redraws the floors holding the selected row while any of it is in sight, so a move key's target stays in view.
 
