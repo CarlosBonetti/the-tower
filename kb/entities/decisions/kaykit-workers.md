@@ -192,7 +192,9 @@ keep theirs, whatever the order of the GLB's names. Bots wear only the hats and 
 - Seats are measured, not tuned. The seated clip puts the hips 0.4 rig units behind the rig's root, so a body is
   placed by what it sits on: [`seatOf`](ref:hub/renderers/tower3d/src/rig.ts#seatOf) skins each part's vertices
   into the clip's first frame and keeps the lowest point of what bears on the seat (hips and thighs) and the back of
-  what leans on a back rest (hips, spine, chest); [`seatedAt`](ref:hub/renderers/tower3d/src/avatar.ts#seatedAt)
+  what leans on a back rest (hips, spine, chest; on Rig_Large the hips and thighs, since its characters carry their
+  bulk on their backs: measured by the chest, the Clanker sat 0.5 m in front of the back rest, off the seat's front
+  edge, and by the pelvis his hunch rises over the back rest); [`seatedAt`](ref:hub/renderers/tower3d/src/avatar.ts#seatedAt)
   puts that underside on the seat's top and that back against the back rest's face, or the hips over a stool's
   middle. Every body, bot or outfit sits by its own mesh, measured at its rest proportions: a shape that lengthens
   the legs lets the feet dangle lower, unmeasured. The office chair's seat and back are a `swivel` pivot

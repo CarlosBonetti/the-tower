@@ -182,9 +182,13 @@ export async function loadCast(): Promise<Cast> {
   return { skeletons, parts, merged: new Map(), atlases, glows }
 }
 
-/** The joints a seated body bears on: its pelvis and thighs on the seat, its back against a back rest. */
+/**
+ * The joints a seated body bears on: its pelvis and thighs on the seat, and against a back rest its back, or on Rig_Large
+ * its pelvis, since its characters carry their bulk on their backs (the Clanker's hunch and exhausts) and lean on the
+ * back rest with that bulk over it.
+ */
 const ON_SEAT = new Set(['hips', 'upperlegl', 'upperlegr'])
-const ON_BACK = new Set(['hips', 'spine', 'chest'])
+const ON_BACK: Record<RigKind, Set<string>> = { medium: new Set(['hips', 'spine', 'chest']), large: ON_SEAT }
 
 const seats = new WeakMap<THREE.BufferGeometry, Sitting>()
 
@@ -194,8 +198,9 @@ const seats = new WeakMap<THREE.BufferGeometry, Sitting>()
  */
 export type Sitting = { under: number; back: number }
 
-export function seatOf(skeleton: Skeleton, geometry: THREE.BufferGeometry): Sitting {
+export function seatOf(kind: RigKind, skeleton: Skeleton, geometry: THREE.BufferGeometry): Sitting {
   if (!seats.has(geometry)) {
+    const onBack = ON_BACK[kind]
     const { position, skinIndex, skinWeight } = geometry.attributes
     const v = new THREE.Vector3()
     const at = new THREE.Vector3()
@@ -205,14 +210,14 @@ export function seatOf(skeleton: Skeleton, geometry: THREE.BufferGeometry): Sitt
       let most = 0
       for (let k = 1; k < 4; k++) if (skinWeight.getComponent(i, k) > skinWeight.getComponent(i, most)) most = k
       const joint = skeleton.joints[skinIndex.getComponent(i, most)]
-      if (!ON_SEAT.has(joint) && !ON_BACK.has(joint)) continue
+      if (!ON_SEAT.has(joint) && !onBack.has(joint)) continue
       at.set(0, 0, 0)
       for (let k = 0; k < 4; k++) {
         const w = skinWeight.getComponent(i, k)
         if (w) at.addScaledVector(v.fromBufferAttribute(position, i).applyMatrix4(skeleton.seated.skin[skinIndex.getComponent(i, k)]), w)
       }
       if (ON_SEAT.has(joint)) under = Math.min(under, at.y)
-      if (ON_BACK.has(joint)) back = Math.min(back, at.z)
+      if (onBack.has(joint)) back = Math.min(back, at.z)
     }
     seats.set(geometry, { under, back })
   }

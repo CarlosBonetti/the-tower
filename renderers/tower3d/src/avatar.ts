@@ -224,7 +224,7 @@ export function seatedAt(cast: Cast, a: Avatar, seat: Seat) {
 /** How the skinned parts on a rig sit together: the lowest underside and the furthest back. */
 function sittingOf(cast: Cast, rig: Rig): Sitting {
   const sits: Sitting[] = []
-  rig.root.traverse((o) => o instanceof THREE.SkinnedMesh && sits.push(seatOf(cast.skeletons[rig.kind], o.geometry)))
+  rig.root.traverse((o) => o instanceof THREE.SkinnedMesh && sits.push(seatOf(rig.kind, cast.skeletons[rig.kind], o.geometry)))
   return { under: Math.min(...sits.map((s) => s.under)), back: Math.min(...sits.map((s) => s.back)) }
 }
 
