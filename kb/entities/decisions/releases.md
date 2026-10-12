@@ -7,7 +7,7 @@
   "status": "accepted",
   "date": "2026-10-08",
   "reviewed": "2026-10-12",
-  "refs": ["hub/src/update.ts#update", "hub/src/update.ts#releasesBetween", "hub/src/update.ts#entriesFor", "hub/src/update.ts#hostSources", "hub/src/cli.ts", "hub/CHANGELOG.md", "hub/.github/workflows/release.yml", "hub/src/machine.ts#REPO"]
+  "refs": ["hub/src/update.ts#update", "hub/src/update.ts#releasesBetween", "hub/src/update.ts#entriesFor", "hub/src/update.ts#hostSources", "hub/src/cli.ts", "hub/CHANGELOG.md#L3-L13", "hub/.github/workflows/release.yml", "hub/src/machine.ts#REPO"]
 }
 ---
 **Problem.** The only way to a newer tower was `git pull`, and nothing said whether the pull changed the host, whose
