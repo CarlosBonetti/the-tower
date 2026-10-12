@@ -9,6 +9,7 @@
  * its base or carried there, and a branch is rolled back only when it was cut in the same request. A branch is deleted
  * only while it is still at the commit the read judged; one that moved is kept and named in the verb's `kept`.
  */
+import { createHash } from 'node:crypto'
 import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -97,26 +98,35 @@ const missingFrom = async (dir: string, rev: string, base: string) => Number(awa
 /** Whether `rev` is in `base`: `absorbed` exactly, or `carried` there as copies, some edited. */
 type Landing = Pick<Exposure, 'absorbed' | 'carried'>
 
-/** Landings by `dir`, `rev`'s commit and `base`'s commit: a pair of commits always gives the same answer. */
-const landings = new Map<string, Landing>()
-/** Landings kept before they are all forgotten: every new commit on a base makes new pairs. */
-const LANDINGS = 1024
+/** Answers kept by each memory: every new commit, and every fetch, makes new keys. */
+const REMEMBERED = 1024
 
 /**
- * `rev`'s changes are already in `base`: absorbed when merging it would change nothing, or each of its commits landed
- * there as an equal patch; else carried when each landed as an equal patch or a copy (`copiesOf`). No base is neither.
+ * Answers kept by the commits and refs they were asked about, which always give the same answer. Past `REMEMBERED`,
+ * the one asked for longest ago is forgotten: a `Map` iterates in the order its keys were set, and an answer asked for
+ * again is set again.
  */
-const landing = async (dir: string, rev: string, base: string | undefined): Promise<Landing> => {
-  const baseTree = base && (await resolve(dir, `${base}^{tree}`))
-  if (!baseTree) return { absorbed: false }
-  const key = `${dir}\0${(await git(dir, ['rev-parse', `${rev}^{commit}`, `${base}^{commit}`])).trim()}`
-  const known = landings.get(key)
-  if (known) return known
-  const answer = await landingNow(dir, rev, base, baseTree)
-  if (landings.size >= LANDINGS) landings.clear()
-  landings.set(key, answer)
-  return answer
+const remembered = <T>() => {
+  const known = new Map<string, T>()
+  const keep = (key: string, value: T) => {
+    known.delete(key)
+    known.set(key, value)
+    if (known.size > REMEMBERED) known.delete(known.keys().next().value!)
+    return value
+  }
+  return async (key: string, answer: () => Promise<T>): Promise<T> => keep(key, known.has(key) ? known.get(key)! : await answer())
 }
+
+/** Landings by `dir`, `rev`'s commit and its base's commit. */
+const landings = remembered<Landing>()
+
+/**
+ * Commit `rev`'s changes are already in commit `base`: absorbed when merging it would change nothing, or each of its
+ * commits landed there as an equal patch; else carried when each landed as an equal patch or a copy (`copiesOf`). No
+ * base is neither.
+ */
+const landing = async (dir: string, rev: string, base: string | undefined): Promise<Landing> =>
+  base ? landings(`${dir}\0${rev}\0${base}`, async () => landingNow(dir, rev, base, (await resolve(dir, `${base}^{tree}`))!)) : { absorbed: false }
 
 const landingNow = async (dir: string, rev: string, base: string, baseTree: string): Promise<Landing> => {
   if (await mergesToNothing(dir, rev, base, baseTree)) return { absorbed: true }
@@ -130,41 +140,62 @@ const landingNow = async (dir: string, rev: string, base: string, baseTree: stri
  * The base a branch's absorbed check runs against: its recorded base while it exists, else origin's default, where an
  * integration branch's work has usually gone once origin deleted it.
  */
-export const againstOf = async (dir: string, base: string | undefined, originHead: string | undefined) =>
-  base && (await resolve(dir, `${base}^{commit}`)) ? base : originHead
+export const againstOf = async (dir: string, base: string | undefined, originHead: string | undefined) => againstIn(await commitsOf(dir, [base]), base, originHead)
 
-/** Commits of `rev` on no remote and in none of `known`, a few of them named. */
-const unpushedOf = async (dir: string, rev: string, known: string[]) => {
-  const count = Number(await git(dir, ['rev-list', '--count', rev, '--not', '--remotes', ...known]))
-  const named = count ? lines(await git(dir, ['log', `-n${RISK_LINES}`, '--format=%h %s', rev, '--not', '--remotes', ...known])) : []
-  return { count, named }
-}
+const againstIn = (commits: Map<string, string | undefined>, base: string | undefined, originHead: string | undefined) => (base && commits.get(base) ? base : originHead)
+
+/** Each rev's commit, `undefined` for one that names none, asked once however many branches name it. */
+const commitsOf = async (dir: string, revs: (string | undefined)[]): Promise<Map<string, string | undefined>> =>
+  new Map(await Promise.all([...new Set(revs.filter((r) => r !== undefined))].map(async (rev) => [rev, await resolve(dir, `${rev}^{commit}`)] as const)))
 
 /**
- * Whether `rev` holds work found nowhere else. A fork's snapshot is its source's work, so only commits made on top of it
- * count, and a fork with none is absorbed: removing it loses nothing.
+ * What one read of a repo asks git once: origin's default, the commit of every base its branches name, and its
+ * remote refs (`<commit> <ref>` lines), on which every answer about unpushed commits depends.
  */
-const exposureOf = async (dir: string, rev: string, { fork }: TowerRecord, against: string | undefined) => {
-  const unpushed = await unpushedOf(dir, rev, fork ? [fork] : [])
-  return { unpushed, ...(fork !== undefined && unpushed.count === 0 ? { absorbed: true } : await landing(dir, rev, against)) }
-}
+type Round = { dir: string; originHead: string | undefined; commits: Map<string, string | undefined>; remotes: string }
+
+type Unpushed = { count: number; named: string[] }
+
+/** Unpushed commits by `dir`, the commit, the commits known beside the remotes, and the remote refs. */
+const unpushedAnswers = remembered<Unpushed>()
+
+/** Commits of commit `rev` on no remote and in none of the commits `known`, a few of them named. */
+const unpushedOf = ({ dir, remotes }: Round, rev: string, known: string[]): Promise<Unpushed> =>
+  unpushedAnswers(`${dir}\0${rev}\0${known.join(' ')}\0${createHash('sha1').update(remotes).digest('hex')}`, async () => {
+    const count = Number(await git(dir, ['rev-list', '--count', rev, '--not', '--remotes', ...known]))
+    const named = count ? lines(await git(dir, ['log', `-n${RISK_LINES}`, '--format=%h %s', rev, '--not', '--remotes', ...known])) : []
+    return { count, named }
+  })
 
 /**
- * Commits `branch` gained since it was created, counted from its reflog's first entry; `undefined` once the reflog no
- * longer holds that creation.
+ * Whether commit `rev` holds work found nowhere else. A fork's snapshot is its source's work, so only commits made on
+ * top of it count, and a fork with none is absorbed: removing it loses nothing.
  */
-const ownCommits = async (dir: string, branch: string): Promise<number | undefined> => {
+const exposureOf = async (round: Round, rev: string, { fork }: TowerRecord, against: string | undefined) => {
+  const unpushed = await unpushedOf(round, rev, fork ? [fork] : [])
+  return { unpushed, ...(fork !== undefined && unpushed.count === 0 ? { absorbed: true } : await landing(round.dir, rev, against && round.commits.get(against))) }
+}
+
+/** Commits between two commits, by `dir` and the pair. */
+const ownCounts = remembered<number>()
+
+/**
+ * Commits `branch`, at commit `head`, gained since it was created, counted from its reflog's first entry; `undefined`
+ * once the reflog no longer holds that creation.
+ */
+const ownCommits = async (dir: string, branch: string, head: string): Promise<number | undefined> => {
   const created = lines(await git(dir, ['reflog', 'show', '--format=%H %gs', `refs/heads/${branch}`])).at(-1)
   if (!created?.includes(' branch: Created from ')) return undefined
-  return Number(await git(dir, ['rev-list', '--count', `${created.split(' ')[0]}..refs/heads/${branch}`]))
+  const from = created.split(' ')[0]
+  return ownCounts(`${dir}\0${from}\0${head}`, async () => Number(await git(dir, ['rev-list', '--count', `${from}..${head}`])))
 }
 
-const treeRead = async (dir: string, name: string, entry: ReturnType<typeof parseWorktreeList>[number], records: Map<string, TowerRecord>, originHead: string | undefined): Promise<TreeRead> => {
+const treeRead = async (round: Round, name: string, entry: ReturnType<typeof parseWorktreeList>[number], records: Map<string, TowerRecord>): Promise<TreeRead> => {
   const record = (entry.branch && records.get(entry.branch)) || {}
-  const against = await againstOf(dir, record.base, originHead)
+  const against = againstIn(round.commits, record.base, round.originHead)
   const present = !entry.prunable
   const status = present ? lines(await git(entry.path, ['status', '--porcelain'])) : []
-  const exposure = entry.head ? await exposureOf(dir, entry.head, record, against) : { unpushed: { count: 0, named: [] as string[] }, absorbed: false }
+  const exposure = entry.head ? await exposureOf(round, entry.head, record, against) : { unpushed: { count: 0, named: [] as string[] }, absorbed: false }
   return {
     name,
     path: entry.path,
@@ -178,16 +209,16 @@ const treeRead = async (dir: string, name: string, entry: ReturnType<typeof pars
     against,
     absorbed: exposure.absorbed,
     ...(exposure.carried && { carried: exposure.carried }),
-    own: entry.branch ? await ownCommits(dir, entry.branch) : undefined,
+    own: entry.branch && entry.head ? await ownCommits(round.dir, entry.branch, entry.head) : undefined,
     risk: [...status.slice(0, RISK_LINES), ...exposure.unpushed.named],
   }
 }
 
-const branchRead = async (dir: string, branch: string, record: TowerRecord & { base: string }, originHead: string | undefined): Promise<BranchRead> => {
-  const against = await againstOf(dir, record.base, originHead)
-  const head = (await git(dir, ['rev-parse', `refs/heads/${branch}`])).trim()
-  const { unpushed, absorbed, carried } = await exposureOf(dir, head, record, against)
-  return { branch, head, base: record.base, tree: record.name, against, unpushed: unpushed.count, absorbed, ...(carried && { carried }), own: await ownCommits(dir, branch), risk: unpushed.named }
+const branchRead = async (round: Round, branch: string, record: TowerRecord & { base: string }): Promise<BranchRead> => {
+  const against = againstIn(round.commits, record.base, round.originHead)
+  const head = (await git(round.dir, ['rev-parse', `refs/heads/${branch}`])).trim()
+  const { unpushed, absorbed, carried } = await exposureOf(round, head, record, against)
+  return { branch, head, base: record.base, tree: record.name, against, unpushed: unpushed.count, absorbed, ...(carried && { carried }), own: await ownCommits(round.dir, branch, head), risk: unpushed.named }
 }
 
 /** The branch checked out in `dir`'s upstream, `origin/<x>`; `undefined` on a detached HEAD or a branch tracking nothing. */
@@ -218,9 +249,12 @@ const mainRead = async (dir: string): Promise<MainRead> => {
 /** Origin's default branch as `origin/<x>`, as of the last fetch; `undefined` when origin/HEAD isn't set. */
 export const originHeadOf = async (dir: string) => (await run(dir, ['symbolic-ref', '-q', '--short', 'refs/remotes/origin/HEAD'])).stdout.trim() || undefined
 
-/** Origin's branches as `origin/<x>`, its default first. */
-const originBases = async (dir: string, head: string | undefined): Promise<string[]> => {
-  const branches = lines(await git(dir, ['for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin'])).filter((b) => b !== 'origin/HEAD' && b !== 'origin')
+/** Origin's branches as `origin/<x>`, its default first, from the remote refs' `<commit> <ref>` lines. */
+const originBases = (remotes: string, head: string | undefined): string[] => {
+  const branches = lines(remotes)
+    .map((l) => l.slice(l.indexOf(' ') + 1))
+    .filter((ref) => ref.startsWith('refs/remotes/origin/') && ref !== 'refs/remotes/origin/HEAD')
+    .map((ref) => ref.slice('refs/remotes/'.length))
   return head ? [head, ...branches.filter((b) => b !== head)] : branches
 }
 
@@ -248,17 +282,21 @@ export const readRepo = async (dir: string): Promise<RepoRead> => {
     return name === undefined ? [] : [{ name, entry: e }]
   })
   const originHead = await originHeadOf(dir)
-  const [main, trees, kept, originBranches] = await Promise.all([
+  const [commits, remotes] = await Promise.all([
+    commitsOf(dir, [originHead, ...[...records.values()].map((r) => r.base)]),
+    git(dir, ['for-each-ref', '--format=%(objectname) %(refname)', 'refs/remotes']),
+  ])
+  const round: Round = { dir, originHead, commits, remotes }
+  const [main, trees, kept] = await Promise.all([
     mainRead(dir),
-    Promise.all(towerEntries.map(({ name, entry }) => treeRead(dir, name, entry, records, originHead))),
+    Promise.all(towerEntries.map(({ name, entry }) => treeRead(round, name, entry, records))),
     Promise.all(
       [...records]
         .filter((r): r is [string, TowerRecord & { base: string }] => r[1].base !== undefined && heads.has(r[0]) && !checkedOut.has(r[0]))
-        .map(([branch, record]) => branchRead(dir, branch, record, originHead)),
+        .map(([branch, record]) => branchRead(round, branch, record)),
     ),
-    originBases(dir, originHead),
   ])
-  return { dir, git: true, bases: originBranches, main, trees, kept }
+  return { dir, git: true, bases: originBases(remotes, originHead), main, trees, kept }
 }
 
 export const readRepos = (dirs: string[]): Promise<RepoRead[]> => Promise.all(dirs.map(readRepo))

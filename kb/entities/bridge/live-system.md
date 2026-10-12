@@ -4,7 +4,7 @@
   "name": "Live system",
   "summary": "watchSystem: every session log folded and tailed, every probe's stream folded, every collection's items, the host's live set, the terms daemon's shells, leftover processes and the peer names of running Claudes, with an onChange for renderers.",
   "in": "bridge",
-  "reviewed": "2026-10-11",
+  "reviewed": "2026-10-12",
   "refs": ["hub/src/system.ts#watchSystem", "hub/src/collections.ts#scanCollections", "hub/src/tail.ts#tailLog", "hub/src/tail.ts#factEvents", "hub/src/checkpoints.ts#foldLog", "hub/src/machine.ts#hostLive", "hub/src/machine.ts#scanProcesses", "hub/src/machine.ts#resourcesIn", "hub/src/machine.ts#peersIn", "hub/src/system.ts#serially", "hub/src/bridge/probes.ts#probeFacts", "hub/src/worktrees.ts#readRepo", "hub/src/logged.ts"],
   "links": [
     { "to": "system-root", "verb": "reads", "carries": "every sessions/*.jsonl, read to its last full line from its checkpoint on, then tailed while the session runs; collections/ rescanned on any change" },
@@ -50,7 +50,8 @@ The machine (`running()`, `peers()` and `repos()`) is read only while someone ob
 polls running until its release, and the first observer after none reads it at once and waits for the read, so
 whoever observes sees it current. Every board client of the tower observes while it holds the board, and a reap
 observes for the length of the request; with no renderer open, the tower runs no `ps`, `lsof` or git at all (a
-read is about 100 git processes over 7 dirs). `live()` and `shells()` are `undefined` while the host or
+read is about 100 git processes over 7 dirs, started on a thread of its own so their spawns never hold the
+tower's event loop: [`readRepos`](ref:hub/src/system.ts#readRepos)). `live()` and `shells()` are `undefined` while the host or
 the terms daemon is down, which renderers show as such.
 
 `repos()` is every project dir's git, by dir, read every 5 s while observed and after a worktree verb

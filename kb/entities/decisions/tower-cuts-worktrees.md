@@ -41,7 +41,12 @@ leftovers, a reviewer in the same dir. The spec and lab evidence are in the main
   writers' chain, and with it every cut and branch delete on every floor, until the tower restarted. At most 8 git
   calls run at once, the rest queued, their timeouts counted from their start: starting a process holds the event loop
   about 3 ms on macOS, and one read of the board's repos starts hundreds, which started together held back every
-  keystroke the tower relays for up to 0.6 s.
+  keystroke the tower relays for up to 0.6 s. The board's reads run on a thread of their own
+  ([`readRepos`](ref:hub/src/system.ts#readRepos), [`repo-reader.ts`](ref:hub/src/repo-reader.ts)), and ask git only
+  what can change once per read: each worktree's status and reflog, and per repo its lists and each named base's
+  commit once ([`Round`](ref:hub/src/worktrees.ts#Round)); answers about commits (landings, unpushed commits against
+  the remote refs as read, commits since creation) are kept by what they were asked about
+  ([`remembered`](ref:hub/src/worktrees.ts#remembered)).
 - **Absorbed** is content, not ancestry: `git merge-tree --write-tree <base> <br>` equals the base's tree. It is
   true after a merge, rebase or squash, with no GitHub. The base is the one recorded at the cut, or origin's
   default once origin deleted it ([`againstOf`](ref:hub/src/worktrees.ts#againstOf)): an integration branch's work
@@ -51,7 +56,7 @@ leftovers, a reviewer in the same dir. The spec and lab evidence are in the main
   equal `git patch-id` in the base. A merge commit has no patch-id and keeps the branch at risk, and so does a copy
   landed with conflicts resolved (a different patch-id): it is [[carried]] when every such commit has a copy made alike,
   else removed by hand or discarded ([[discard]]). The answer is cached per pair of
-  commits (at most 1024, then forgotten), since git is read every 5 s. No fuzzy matching (similar subjects, most hunks): a wrong absorbed deletes
+  commits (the 1024 asked for most recently), since git is read every 5 s. No fuzzy matching (similar subjects, most hunks): a wrong absorbed deletes
   work. [[carried]] matches by what git keeps of a commit's making (author, author date, subject), never by
   similar content, and is never deleted in bulk.
 - **The cut** ([`cut`](ref:hub/src/worktrees.ts#cut), offered through `spawn {cut}`,
