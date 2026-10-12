@@ -47,6 +47,7 @@
     "hub/renderers/tower3d/parts/export.py",
     "hub/scripts/tower3d-parts.ts",
     "hub/renderers/tower3d/src/hashed.ts#rendezvous",
+    "hub/renderers/tower3d/src/hashed.ts#weighted",
     "hub/test/rendezvous.test.ts"
   ],
   "links": [
@@ -114,8 +115,13 @@ the KayKit Adventurers as the base and liked the fantasy bits showing up at rand
   into it: a bot one time in five; else maybe an outfit, the rest from the mix. The roof's bartender and DJ are outfits
   kept out of the share, dressed by name ([`STAFF`](ref:hub/renderers/tower3d/src/wardrobe.ts#STAFF)): `problems`
   reports either missing or in the mix, so the dresser locks them and Tower 3D's load names the fix (a dresser save
-  that deleted the bartender once left Tower 3D drawing nothing). The mix's `bodies` are the characters it dresses from: a pack's parts join the slots' pools only
-  while their character is one of them, so a new character changes no worker until it is added. One function,
+  that deleted the bartender once left Tower 3D drawing nothing). The mix's `bodies` are the characters it dresses from, each with a weight
+  ([`weighted`](ref:hub/renderers/tower3d/src/hashed.ts#weighted): rendezvous scored `weight / -ln(roll)`, so a body
+  wins about its weight's share, and at equal weights it picks what plain rendezvous picks): a pack's parts join the
+  slots' pools only while their character is one of them, so a new character changes no worker until it is added. A
+  head the mix rolls is painted in one of the body's paints: adventurers swap the adventurers' heads, the skeletons
+  their skulls, the helpers theirs, and the mech and the Clanker keep their own; the dresser still mixes anything by
+  hand. One function,
   `avatar(models, look, wardrobe)`, dresses every look, and keeps
   each rigid part it hangs by name with its made placement (`worn`), so the dresser re-fits a part live. Saved through
   [`formatWardrobe`](ref:hub/renderers/tower3d/src/wardrobe.ts#formatWardrobe) (keys in a fixed order), the file diffs
@@ -202,6 +208,10 @@ keep theirs, whatever the order of the GLB's names. Bots wear only the hats and 
   pieces sank or floated per head, and it assumed a 0.36 head where the pieces fit a 0.56 one, so on KayKit heads
   everything worn was drawn nearly twice its size.
 - *Picking by index into the pool* (the first cut): every part added re-dressed most of a slot's wearers.
+- *Every new character at the adventurers' weight*: seven of the busy board's twelve desks turned to new characters,
+  drowning the adventurers; weights keep them a share RegiByte tunes.
+- *Heads mixed across characters on the floor*: a skeleton's body under a human head and a knight's helmet read as a
+  glitch more than a look; mixing across characters stays a choice made by hand in the dresser.
 - *Blender's export as the runtime's file*: its skin orders joints its own way; normalizing keeps one skeleton and
   lets skinned made parts merge with the pack's into one mesh.
 

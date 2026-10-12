@@ -281,7 +281,12 @@
       "share": 0,
       "except": ["bartender", "dj"]
     },
-    "bodies": ["Knight", "Mage", "Rogue", "Barbarian"],
+    "bodies": {
+      "Knight": 6,
+      "Mage": 6,
+      "Rogue": 6,
+      "Barbarian": 6
+    },
     "repaint": 0.3,
     "skins": ["#f6cfb0", "#efbf98", "#d9a077", "#bd8259", "#9a6340", "#734628", "#4f2f1c"],
     "hairs": ["#2b2522", "#4a3021", "#7a4b2a", "#c99a55", "#e2c784", "#a8452a", "#b9b4ae", "#f2efe9", "#4f7cff", "#e05fa8", "#3fb489"],

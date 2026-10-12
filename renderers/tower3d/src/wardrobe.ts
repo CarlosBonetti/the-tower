@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { ATLAS_NAMES, BONES, CHARACTERS, SLOTS, bodyOf, type Atlas, type Bone, type Character, type RigKind, type Slot } from './contract.ts'
-import { rendezvous, roll } from './hashed.ts'
+import { rendezvous, roll, weighted } from './hashed.ts'
 
 /**
  * The wardrobe: how workers are dressed, as one document (renderers/tower3d/wardrobe.json) over the catalogue of parts.
@@ -47,7 +47,10 @@ const slotRules = z.partialRecord(z.enum(SLOTS), Rule)
 export const Mix = z.object({
   bot: z.object({ share: z.number().min(0).max(1), slots: slotRules }),
   outfits: z.object({ share: z.number().min(0).max(1), except: z.array(z.string()).optional().describe('outfits only worn by name') }),
-  bodies: z.array(character).min(1).describe('the characters the mix dresses from: their bodies, and the parts of their packs the slots draw'),
+  bodies: z
+    .partialRecord(character, z.number().positive())
+    .refine((b) => Object.keys(b).length > 0, 'at least one body')
+    .describe('the characters the mix dresses from, each with its weight: their bodies, and the parts of their packs the slots draw'),
   repaint: z.number().min(0).max(1).describe('the chance a body is painted in another of its paints'),
   skins: z.array(colour).min(1),
   hairs: z.array(colour).min(1),
@@ -132,20 +135,23 @@ const hex = (h: number, s: number, l: number) => {
 
 const seedOf = (slot: Slot, rule: Rule) => rule.seed ?? slot.toLowerCase()
 
+/** What a body may wear from the mix: parts made on its skeleton, and heads painted in one of its paints. */
+type Wearer = { rig: RigKind; paints: readonly Atlas[] }
+
 /**
- * The parts of a slot the mix may draw for a body on `rig`: its rule's pool, or every part of the slot made on that
- * skeleton whose character, if any, is one of the mix's bodies.
+ * The parts of a slot the mix may draw for `wearer`: its rule's pool, or every part of the slot whose character, if
+ * any, is one of the mix's bodies; of those, what the wearer may wear (`Wearer`).
  */
-const poolOf = (c: Catalogue, slot: Slot, rule: Rule, rig: RigKind, bodies: readonly Character[]) =>
+const poolOf = (c: Catalogue, slot: Slot, rule: Rule, wearer: Wearer, bodies: readonly string[]) =>
   (rule.pool ?? c.slots[slot].filter((p) => c.parts[p].character === undefined || bodies.includes(c.parts[p].character!)))
-    .filter((p) => fitsRig(c, p, rig) && !rule.except?.includes(p))
+    .filter((p) => fitsRig(c, p, wearer.rig) && (slot !== 'Head' || wearer.paints.includes(c.parts[p].atlas!)) && !rule.except?.includes(p))
 
 /**
  * The slot parts `id` wears by `rules`: each slot's roll (its group's, shared and stacked in `SLOTS` order) against its
  * chance, then its pool's part (`poolOf`); then any slot whose `unless` names a part worn is left bare. `fixed` slots
  * (an outfit's) take its part or stay bare, untouched by the rules; `wearing` is worn besides (the body).
  */
-function rolled(id: string, rules: Partial<Record<Slot, Rule>>, c: Catalogue, fixed: Partial<Record<Slot, string | null>>, wearing: string[], rig: RigKind, bodies: readonly Character[]) {
+function rolled(id: string, rules: Partial<Record<Slot, Rule>>, c: Catalogue, fixed: Partial<Record<Slot, string | null>>, wearing: string[], wearer: Wearer, bodies: readonly string[]) {
   const stacked = new Map<string, number>()
   const worn = new Map<Slot, string>()
   const hashed = new Set<Slot>()
@@ -159,7 +165,7 @@ function rolled(id: string, rules: Partial<Record<Slot, Rule>>, c: Catalogue, fi
     const seed = seedOf(slot, rule)
     const from = rule.group === undefined ? 0 : (stacked.get(rule.group) ?? 0)
     if (rule.group !== undefined) stacked.set(rule.group, from + rule.chance)
-    const pool = poolOf(c, slot, rule, rig, bodies)
+    const pool = poolOf(c, slot, rule, wearer, bodies)
     if (!pool.length) continue
     const r = roll(id, rule.group ?? seed)
     if (r < from || r >= from + rule.chance) continue
@@ -177,10 +183,10 @@ const within = ([lo, hi]: [number, number], r: number) => lo + r * (hi - lo)
 function dressed(id: string, outfit: Outfit, name: string | undefined, w: Wardrobe, c: Catalogue): Look {
   const { mix } = w
   const r = (what: string) => roll(id, what)
-  const body = outfit.body ?? rendezvous(id, 'body', mix.bodies)
+  const body = outfit.body ?? weighted(id, 'body', mix.bodies as Record<Character, number>)
   const own = bodyOf(body)
   const paint = outfit.paint ?? (r('repaint') < mix.repaint ? rendezvous(id, 'paint', own.paints) : own.atlas)
-  const slots = rolled(id, mix.slots, c, outfit.slots ?? {}, own.parts, own.rig, mix.bodies)
+  const slots = rolled(id, mix.slots, c, outfit.slots ?? {}, own.parts, own, Object.keys(mix.bodies))
   if (!slots.has('Head') && !(outfit.slots && 'Head' in outfit.slots)) slots.set('Head', own.head)
   return {
     species: 'character',
@@ -203,7 +209,7 @@ function dressed(id: string, outfit: Outfit, name: string | undefined, w: Wardro
 export function lookOf(id: string, w: Wardrobe, c: Catalogue): Look {
   const { mix } = w
   if (roll(id, 'species') < mix.bot.share) {
-    const parts = rolled(id, mix.bot.slots, c, {}, [], 'medium', mix.bodies)
+    const parts = rolled(id, mix.bot.slots, c, {}, [], { rig: 'medium', paints: [] }, Object.keys(mix.bodies))
     return {
       species: 'bot',
       hue: hex(hueOf(id), 0.55, 0.62),

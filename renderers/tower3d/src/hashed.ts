@@ -26,3 +26,18 @@ export const rendezvous = <T extends string>(id: string, what: string, pool: rea
   }
   return best
 }
+
+/**
+ * `rendezvous` with a weight per candidate: each scores `weight / -ln(roll)`, so one wins about its weight's share of
+ * the ids, and adding, removing or reweighting one moves only the ids it gains or loses. At equal weights it picks what
+ * `rendezvous` picks.
+ */
+export const weighted = <T extends string>(id: string, what: string, weights: Readonly<Record<T, number>>) => {
+  let best = Object.keys(weights)[0] as T
+  let top = -1
+  for (const p of Object.keys(weights) as T[]) {
+    const score = weights[p] / -Math.log(roll(id, `${what}=${p}`))
+    if (score > top) [best, top] = [p, score]
+  }
+  return best
+}
