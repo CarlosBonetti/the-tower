@@ -39,8 +39,14 @@ export const fenceLang = (info: string | undefined): string => {
   return GRAMMARS[name] ? name : (FENCES[name] ?? '')
 }
 
+/**
+ * Grammars by the names highlight.js gives them, which is how one grammar embeds another: JSX is `xml` inside
+ * `typescript`, a `<script>` is `javascript` inside `xml`. Unregistered, an embedded block reads as plain text.
+ */
+const EMBEDDED: Record<string, LanguageFn> = { xml, javascript, typescript, css }
+
 const highlighter = hljs.newInstance()
-for (const [name, grammar] of Object.entries(GRAMMARS)) highlighter.registerLanguage(name, grammar)
+for (const [name, grammar] of Object.entries({ ...GRAMMARS, ...EMBEDDED })) highlighter.registerLanguage(name, grammar)
 
 const TAG = /<span class="[^"]*">|<\/span>|\n/g
 
