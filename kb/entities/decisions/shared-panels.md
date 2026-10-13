@@ -110,7 +110,10 @@ panels are the same view in both renderers. Only where they sit, their state and
 *Syntax* (2026-10-07). Code in Changes and quotes in Reviews are highlighted with highlight.js, an npm dependency
 bundled into `/panels.js` and into Tower 3D's bundle like everything else the panels import
 ([`highlightLines`](ref:hub/src/shared/highlight.ts#highlightLines)): core plus the grammars of the fence
-languages `langOf` names, picked by extension, plain escaped text for any other. It highlights a run of lines in
+languages `langOf` names, picked by extension, plain escaped text for any other. Those embedded in another (`xml`
+for JSX in a `.tsx` and for markup in markdown, `javascript` and `css` inside html) are registered under highlight.js's
+own names too, which is how a grammar asks for another: unregistered, an embedded block reads as plain text. JSX's
+`{…}` stays plain, and a `>` inside one ends its tag, as far as the `xml` grammar goes. It highlights a run of lines in
 one pass and cuts the html at its newlines, closing and reopening the spans a line break falls inside.
 [`rowCode`](ref:hub/src/shared/panels.ts#rowCode) highlights each hunk as two texts, its old side and its new, so
 a removed line reads in the code it was removed from, and keeps the result by file and diff hash (the last 500), so
