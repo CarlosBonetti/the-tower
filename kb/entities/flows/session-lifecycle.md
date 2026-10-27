@@ -31,6 +31,8 @@ sequenceDiagram
   H->>C: pty.spawn(argv + --plugin-dir (tower-mod, with the hooks) + args (--settings: the other session dirs, the fullscreen TUI))
   H->>R: sessions/<id>.jsonl header {runtime: claude}, then the spawn's tower.* facts as h events (tower.x.<cap>.<field>, tower.exempt, tower.reports-to)
   H-->>T: spawned <id>
+  R-->>L: the new log, tracked
+  T-->>P: spawned <id>, once L tracks it
   loop while it runs
     C->>H: PTY output
     H->>R: o event
