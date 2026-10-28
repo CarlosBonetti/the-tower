@@ -34,8 +34,9 @@ const painted = new WeakMap<HTMLElement, { html: string; root: Element | null }>
 /**
  * Puts `html` in `el` when it differs from what `el` shows, then sets each text box to the renderer's text for it:
  * the box that had focus keeps it, and its caret, and a control that had focus keeps it (`keepingFocus`). A redraw that
- * changes nothing leaves every box as it is. An element that scrolls on its own (`data-keep-scroll="<name>"`, the Changes'
- * file tree) keeps where it was scrolled to.
+ * changes nothing leaves every box as it is. `el` keeps where it was scrolled to (WebKit drops it when the html swapped
+ * flips a rule `el` matches through `:has`, as the Changes' file tree flips its size containment), and so does an element
+ * that scrolls on its own (`data-keep-scroll="<name>"`, the Changes' file tree).
  */
 export function drawPanel(el: HTMLElement, html: string, texts: Partial<Record<TextBox, string>>) {
   const had = document.activeElement
@@ -45,7 +46,9 @@ export function drawPanel(el: HTMLElement, html: string, texts: Partial<Record<T
     const was = painted.get(el)
     if (was?.html !== html || was.root !== el.firstElementChild) {
       const scrolled = [...el.querySelectorAll<HTMLElement>('[data-keep-scroll]')].map((s) => [s.dataset.keepScroll!, s.scrollTop] as const)
+      const kept = el.scrollTop
       el.innerHTML = html
+      el.scrollTop = kept
       for (const [name, top] of scrolled) {
         const again = el.querySelector<HTMLElement>(`[data-keep-scroll="${CSS.escape(name)}"]`)
         if (again) again.scrollTop = top
