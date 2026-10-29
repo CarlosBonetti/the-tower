@@ -6,6 +6,9 @@ import type { Manifest } from './extensions.ts'
  * `landing` says, for an extension, which renderers' regions draw each of its commands and contributions.
  */
 
+/** A region's id: a subject kind and a place, `card.head`, `item.*.row`, `reviews.thread.head`. */
+export const REGION_ID = /^[a-z][a-z0-9-]*(\.([a-z][a-z0-9-]*|\*))*\.[a-z][a-z0-9-]*$/
+
 /** What a region draws: actions split into those calling a verb and those running a client command, and the other contributions. */
 export const HOLDS = ['verbs', 'commands', 'badges', 'lines', 'marks', 'tidy', 'asks', 'views'] as const
 export type Hold = (typeof HOLDS)[number]
@@ -25,7 +28,11 @@ export type KitMember = (typeof KIT_MEMBERS)[number]
  */
 export type Region = { id: string; subject: string; holds: Hold[]; scale?: Scale; arity?: 'one' | 'tabs'; description?: string }
 
-/** A renderer's default arrangement of the views in its regions, by region id: served, and not yet read. */
+/**
+ * An arrangement of the views in a renderer's regions, by region id: `order` the views first, in this order; `hidden`
+ * those not offered there; `open` the tab a tabs region opens on; `options` each view's own settings there. A
+ * renderer's own (its `renderer.json`), the config's and the viewer's are laid one over the other by `layoutOf`.
+ */
 export type Layout = Record<
   string,
   { order?: string[]; hidden?: string[]; open?: { view: string; subject?: string }; options?: Record<string, Record<string, unknown>> }
@@ -37,8 +44,11 @@ export type Declared = { regions: Region[]; kit: KitMember[]; keeps: string[]; l
 /** Where the `tower` command draws contributions, served in `/schema` as `cli.regions`. */
 export const CLI_REGIONS: Region[] = [{ id: 'card.whoami', subject: 'card', holds: ['lines'], description: 'under the worker in `tower whoami`' }]
 
-/** Something that draws contributions, by name: a renderer, or the `tower` command. `regions` is absent when it declares none, `why` saying why when it is known. */
-export type Drawer = { name: string; regions?: Region[]; why?: string }
+/**
+ * Something that draws contributions, by name: a renderer, or the `tower` command. `regions` is absent when it declares
+ * none, `why` saying why when it is known; `kit`, what it lends the views it hosts.
+ */
+export type Drawer = { name: string; regions?: Region[]; why?: string; kit?: readonly KitMember[] }
 
 /**
  * One of an extension's commands or contributions and where it lands: `what` names it, `hold` is what a region must
@@ -74,14 +84,27 @@ const landed = (drawers: Drawer[], what: string, hold: Hold, on: string[]): Land
   })),
 })
 
+/** Where a view lands: in each region holding views of a kind it is on, at a scale it draws, of a drawer lending all it needs. */
+const viewLanded = (drawers: Drawer[], what: string, view: { on: string[]; scales: Scale[]; needs?: KitMember[] }): Landing => ({
+  what,
+  hold: 'views',
+  on: view.on,
+  at: drawers.map((d) => {
+    const lacks = (view.needs ?? []).filter((m) => !d.kit?.includes(m))
+    const regions = d.regions?.filter((r) => draws(r, 'views', view.on) && (!r.scale || view.scales.includes(r.scale)))
+    return { drawer: d.name, regions: regions && (lacks.length ? [] : regions.map((r) => r.id)), ...(!d.regions && d.why && { why: d.why }), ...(d.regions && lacks.length && regions?.length && { why: `lends no ${lacks.join(', ')}` }) }
+  }),
+})
+
 /**
- * Where each of an extension's commands and fold contributions lands, per drawer: a command in regions holding
+ * Where each of an extension's commands, views and fold contributions lands, per drawer: a command in regions holding
  * commands on its `on`; a fold's actions in those holding verbs, and commands too when it declares any; its badges,
  * lines and tidy in those holding them on its kind; its asks wherever asks are held. Slots go to the slot loop, which
  * no region draws.
  */
-export const landing = (drawers: Drawer[], extension: Pick<Manifest, 'folds' | 'commands'> & { cap: string }): Landing[] => [
+export const landing = (drawers: Drawer[], extension: Pick<Manifest, 'folds' | 'commands' | 'views'> & { cap: string }): Landing[] => [
   ...Object.entries(extension.commands ?? {}).map(([name, c]) => landed(drawers, `${extension.cap}/${name}`, 'commands', c.on ?? [])),
+  ...Object.entries(extension.views ?? {}).map(([name, v]) => viewLanded(drawers, `${extension.cap}/${name}`, v)),
   ...Object.entries(extension.folds ?? {}).flatMap(([kind, fold]) =>
     (fold.adds ?? []).flatMap((add): Landing[] => {
       const what = `${extension.cap} ${add}`
@@ -101,7 +124,7 @@ export const landingLine = (l: Landing): string => {
         ? `${drawer} its palette`
         : regions.length
           ? `${drawer} ${regions.join(', ')}`
-          : `${drawer}: no region holds ${l.hold}`,
+          : `${drawer}: ${why ?? `no region holds ${l.hold}`}`,
   )
   return `${l.what} ${l.on.length ? `on ${l.on.join(', ')}` : 'on no subject, run from a palette'} (${l.hold}): ${at.join('; ')}`
 }

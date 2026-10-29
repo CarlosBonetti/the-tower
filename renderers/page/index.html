@@ -327,8 +327,8 @@ dialog.confirm .actions { flex: none; }
 .main.on-reviews .reviews { display: block; }
 .screen { position: relative; flex: 1; min-height: 0; overflow: hidden; padding: var(--sp-l); background: var(--enamel); border-radius: var(--radius); }
 .screen .term { width: 100%; height: 100%; }
-.screen .xterm-viewport { overflow-y: hidden !important; }
-.screen .xterm-scrollable-element > .scrollbar { display: none; }
+.claude-term .xterm-viewport { overflow-y: hidden !important; }
+.claude-term .xterm-scrollable-element > .scrollbar { display: none; }
 .main.home .bar, .main.home .screen { display: none; }
 .main:not(.home) .sky { display: none; }
 
@@ -355,6 +355,9 @@ dialog.confirm .actions { flex: none; }
 .shelf-files button.sel { color: var(--ink); font-weight: 700; box-shadow: inset 3px 0 0 var(--p, var(--ink)); background: var(--panel); }
 .draft-view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-m); }
 .item-view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-m); }
+.view-host, .view-root { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.main:not(.viewing) .view-host, .main.viewing .bar, .main.viewing .screen { display: none; }
+.view-failed { margin: auto; padding: var(--sp-m); color: var(--broken-text); font-size: var(--fs-s); }
 .main:not(.kept) .item-view, .main.kept .bar, .main.kept .screen { display: none; }
 .item-image { flex: 1; min-width: 0; display: grid; place-items: center; overflow: auto; padding: var(--sp-xl); }
 .item-image img { max-width: 100%; max-height: 100%; }
@@ -489,7 +492,7 @@ body.lost :is(#host, #tally, #limits-bar, #floors, #rail, #main, #sky, #tabs) { 
   <div id="bar-details" popover></div>
   <div id="bar-left" popover></div>
   <div class="ask" id="ask"></div>
-  <div class="screen" id="screen"><div class="term" id="c-screen" role="tabpanel" aria-label="Terminal"></div><span id="c-mode"></span>
+  <div class="screen" id="screen"><div class="term claude-term" id="c-screen" role="tabpanel" aria-label="Terminal"></div><span id="c-mode"></span>
     <div class="brief" id="brief" role="tabpanel" aria-label="Brief"></div>
     <div class="shown" id="shown" role="tabpanel" aria-label="Shown"></div>
     <div class="changes" id="changes" role="tabpanel" aria-label="Changes"></div>
@@ -501,6 +504,7 @@ body.lost :is(#host, #tally, #limits-bar, #floors, #rail, #main, #sky, #tabs) { 
   <div class="draft-view" id="draft-view"><div class="shelf-head" id="draft-head"></div><div class="draft-note" id="draft-note"></div>
     <textarea id="draft-text" spellcheck="false" placeholder="a prompt for later: the first line names it"></textarea></div>
   <div class="item-view" id="item-view"><div class="shelf-head" id="item-head"></div><div class="shelf-body" id="item-body"></div></div>
+  <div class="view-host" id="view-host" data-region="board.main"></div>
   <div class="sky" id="sky"></div>
   <div class="dock">
     <div class="grip" id="grip" role="separator" aria-orientation="horizontal" aria-controls="shell-pane" aria-label="shells height" aria-valuemin="120" tabindex="0" data-tip="drag, or ↑ and ↓, to resize the shells"></div>

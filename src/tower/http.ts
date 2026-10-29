@@ -7,7 +7,7 @@
  *   GET  /x/<cap>/<file>   a file of the client folder of the extension providing <cap> (the bundled one's while none runs),
  *                          its commands' modules, a `.ts` served bundled as `.js`, with CORS as a renderer's
  *   GET  /renderers     {default, renderers}: every renderer, with its root, entry, settings, whether it is built, and what its
- *                       renderer.json declares: regions, kit, keeps and layout (src/renderers.ts)
+ *                       renderer.json declares: regions, kit, keeps and layout, and the config's layout for it, configLayout (src/renderers.ts)
  *   GET  /board         SSE: {v, board}, the API's version and the board, again whenever the board changes, or {v, error: {code, message}}
  *                       while the tower can't build it (`config` until the config is fixed)
  *   GET  /schema        every verb's input and reply and every hook's payload and answer, the core's and each running extension's,
@@ -50,6 +50,7 @@
  *   GET  /policies.js   what renderers say and decide about policies: rules and slots in words, standing (src/shared/policies.ts)
  *   GET  /termkeys.js   the editing keys every browser terminal sends (src/shared/termkeys.ts)
  *   GET  /keymap.js     every keyboard command, its chords and the ? sheet (src/shared/keymap.ts)
+ *   GET  /views.js      views, the layout, locations and display: what a renderer hosting views reads (src/shared/views.ts)
  *   GET  /capabilities.js   what the tower lets a user do, and the tips renderers show of it and of the patterns (src/shared/capabilities.ts)
  *   GET  /palette.js        the command palette's entries and their ranking for what the viewer typed (src/shared/palette.ts)
  *   GET  /verb-words.js     each verb the board offers in words: label, hint, whether it asks first, its API verb (src/shared/verb-words.ts)

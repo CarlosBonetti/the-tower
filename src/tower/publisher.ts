@@ -10,6 +10,8 @@ import { foldBoard, SLOW_MS } from '../bridge/folds.ts'
 import { projectLegacy } from '../bridge/legacy.ts'
 import { API_VERSION } from '../shared/api.ts'
 import type { BoardMsg } from '../shared/shelf-page.ts'
+import type { Config } from '../shared/model.ts'
+import { renderersOf } from '../renderers.ts'
 import { frozen } from '../bridge/frozen.ts'
 import { errorOf } from './answers.ts'
 import type { ExtensionsResource } from './extensions.ts'
@@ -43,8 +45,17 @@ export const publisher = defineResource({
 
     const currentBoard = (): string => built().text
 
-    const viewOf = (): SystemView => ({
-      config: readConfig(),
+    /** The chords the renderers keep, read again only when the config's renderers change: their files are the checkout's and the config's roots'. */
+    let kept: { renderers: string; keeps: string[] } | undefined
+    const keepsOf = (config: Config): string[] => {
+      const renderers = JSON.stringify(config.renderers ?? {})
+      if (kept?.renderers !== renderers) kept = { renderers, keeps: renderersOf(config).flatMap((r) => r.keeps ?? []) }
+      return kept.keeps
+    }
+
+    const viewOf = (): SystemView => viewAt(readConfig())
+    const viewAt = (config: Config): SystemView => ({
+      config,
       sessions: system.sessions(),
       host: system.live(),
       processes: system.running(),
@@ -58,6 +69,7 @@ export const publisher = defineResource({
       extensions: extensions.registry().extensions,
       stores: extensions.registry().stores,
       paths,
+      keeps: keepsOf(config),
       now: Date.now(),
     })
 
