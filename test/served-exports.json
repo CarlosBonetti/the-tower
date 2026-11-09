@@ -1436,7 +1436,7 @@
           "stability": "provisional"
         },
         "passageSubject": {
-          "since": "1.170"
+          "since": "1.171"
         },
         "projectOfKey": {
           "since": "1.151",
@@ -1554,7 +1554,7 @@
           "since": "1.151"
         },
         "Passage": {
-          "since": "1.170"
+          "since": "1.171"
         },
         "RateLimit": {
           "since": "1.151"

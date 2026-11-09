@@ -13,7 +13,7 @@ import type { Restored } from './launch.ts'
  * a read, a stream. The major moves, and the minor returns to 0, when a change breaks a renderer: a rename, a removal, a
  * changed meaning; CHANGELOG.md says why.
  */
-export const API_VERSION = '1.170'
+export const API_VERSION = '1.171'
 
 const id = z.string().min(1)
 
@@ -55,6 +55,12 @@ const discardRecorded = z.object({
   item: z.object({ collection: z.string(), id: z.string() }).optional().describe('The collection item the record is in, as it stands after the answer. @since 1.94'),
 })
 const launch = {
+  runtime: z
+    .enum(RUNTIMES)
+    .optional()
+    .describe(
+      "The agent the worker runs, fixed for its life and its resumes; Claude when left out. `opencode` takes `model` as opencode's `provider/model` (`openai/gpt-6-sol`), and refuses `effort`, `command` and `callsign`. @since 1.171",
+    ),
   model: z.string().optional(),
   effort: z.string().optional(),
   prompt: z.string().optional(),

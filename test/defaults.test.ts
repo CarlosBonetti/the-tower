@@ -15,9 +15,9 @@ function launchedAs(name: string, flags: string[], steppedAt: number): Session {
 }
 
 test('launchOf: reads what the composer placed after the config\'s argv, never the config\'s own flags', () => {
-  assert.deepEqual(launchOf(['claude', '--model', 'opus', '--name', 'A-1', '--effort', 'low', '--', 'go']), { name: 'A-1', resume: undefined, model: undefined, effort: 'low', prompt: 'go' })
-  assert.deepEqual(launchOf(['claude', '--name', 'A-1', '--model', 'sonnet', '--effort', 'max']), { name: 'A-1', resume: undefined, model: 'sonnet', effort: 'max', prompt: undefined })
-  assert.deepEqual(launchOf(['claude', '--name', 'A-1', '--resume', 'c1', '--', 'go']), { name: 'A-1', resume: 'c1', model: undefined, effort: undefined, prompt: 'go' })
+  assert.deepEqual(launchOf({ argv: ['claude', '--model', 'opus', '--name', 'A-1', '--effort', 'low', '--', 'go'] }), { name: 'A-1', resume: undefined, model: undefined, effort: 'low', prompt: 'go' })
+  assert.deepEqual(launchOf({ argv: ['claude', '--name', 'A-1', '--model', 'sonnet', '--effort', 'max'] }), { name: 'A-1', resume: undefined, model: 'sonnet', effort: 'max', prompt: undefined })
+  assert.deepEqual(launchOf({ argv: ['claude', '--name', 'A-1', '--resume', 'c1', '--', 'go'] }), { name: 'A-1', resume: 'c1', model: undefined, effort: undefined, prompt: 'go' })
 })
 
 test('claudeDefaults: the latest step of the spawns that asked for neither tells both, a `/model` pick included', () => {

@@ -3,6 +3,8 @@ import type { LogEvent, SessionLog } from '../shared/model.ts'
 /**
  * One of Claude's conversations held by a session. A session starts in one and moves to another on `/clear`
  * (or an in-session `/resume`); the id is the `session_id` of Claude's classic hooks, which mod events don't carry.
+ * An opencode session's are opencode's sessions, saved as they start (`opencode.session.created`); a prompt to one
+ * that never started here is to one saved before, which the session resumed (`--session`).
  */
 export type Conversation = {
   id: string
@@ -40,6 +42,12 @@ export const conversationsAfter = (conversations: Conversation[], [t, code, data
     }
     case 'turn.complete':
       return data.agentId === undefined && data.answer ? withLatest(conversations, { answer: String(data.answer) }) : conversations
+    case 'opencode.session.created':
+      return withLatest(enter(conversations, String(data.sessionID), t, false), { saved: true })
+    case 'opencode.chat.message': {
+      const id = String(data.sessionID)
+      return withLatest(enter(conversations, id, t, !conversations.some((c) => c.id === id)), { prompt: String(data.text) })
+    }
     default:
       return conversations
   }

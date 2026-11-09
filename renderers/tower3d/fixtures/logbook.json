@@ -118,6 +118,7 @@
               {
                 "id": "20261004-090000-logs",
                 "callsign": "HOPPER-80",
+                "runtime": "claude",
                 "project": "logs",
                 "cwd": "/work/logs",
                 "checkout": "main",
@@ -218,6 +219,7 @@
               {
                 "id": "20261004-090007-logs",
                 "callsign": "SHACKLETON-77",
+                "runtime": "claude",
                 "project": "logs",
                 "cwd": "/work/logs",
                 "checkout": "main",
@@ -342,6 +344,7 @@
               {
                 "id": "20261004-090014-logs",
                 "callsign": "RANGER-90",
+                "runtime": "claude",
                 "project": "logs",
                 "cwd": "/work/logs",
                 "checkout": "main",
@@ -490,6 +493,7 @@
               {
                 "id": "20261004-090021-logs",
                 "callsign": "FREYR-92",
+                "runtime": "claude",
                 "project": "logs",
                 "cwd": "/work/logs",
                 "checkout": "main",
@@ -784,6 +788,7 @@
         {
           "id": "20261004-090028-logs",
           "callsign": "THOTH-32",
+          "runtime": "claude",
           "project": "logs",
           "cwd": "/work/logs",
           "checkout": "main",
@@ -884,6 +889,7 @@
         {
           "id": "20261004-090035-logs",
           "callsign": "SMITH-62",
+          "runtime": "claude",
           "project": "logs",
           "cwd": "/work/logs",
           "checkout": "main",
@@ -988,6 +994,7 @@
         {
           "id": "20261004-090042-logs",
           "callsign": "MIKE-30",
+          "runtime": "claude",
           "project": "logs",
           "cwd": "/work/logs",
           "checkout": "main",
@@ -1096,6 +1103,7 @@
         {
           "id": "20261004-090049-logs",
           "callsign": "DARWIN-44",
+          "runtime": "claude",
           "project": "logs",
           "cwd": "/work/logs",
           "checkout": "main",
@@ -1208,6 +1216,7 @@
         {
           "id": "20261004-090056-logs",
           "callsign": "BABBAGE-43",
+          "runtime": "claude",
           "project": "logs",
           "cwd": "/work/logs",
           "checkout": "main",
@@ -1308,6 +1317,7 @@
         {
           "id": "20261004-090063-logs",
           "callsign": "DARWIN-03",
+          "runtime": "claude",
           "project": "logs",
           "cwd": "/work/logs",
           "checkout": "main",
@@ -1412,6 +1422,7 @@
         {
           "id": "20261004-090070-logs",
           "callsign": "ICARUS-96",
+          "runtime": "claude",
           "project": "logs",
           "cwd": "/work/logs",
           "checkout": "main",
@@ -1520,6 +1531,7 @@
         {
           "id": "20261004-090077-logs",
           "callsign": "WALT-96",
+          "runtime": "claude",
           "project": "logs",
           "cwd": "/work/logs",
           "checkout": "main",

@@ -146,6 +146,7 @@
               {
                 "id": "20261004-090000-labx",
                 "callsign": "DARTAGNAN-67",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/retry-budget",
                 "checkout": "retry-budget",
@@ -268,6 +269,7 @@
               {
                 "id": "20261004-090007-labx",
                 "callsign": "FREYR-79",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/retry-budget-review",
                 "checkout": "retry-budget-review",
@@ -418,6 +420,7 @@
               {
                 "id": "20261004-090014-labx",
                 "callsign": "RAGNAR-12",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/readme",
                 "checkout": "readme",
@@ -555,6 +558,7 @@
               {
                 "id": "20261004-090021-labx",
                 "callsign": "AMUNDSEN-99",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab",
                 "checkout": "main",
@@ -686,6 +690,7 @@
               {
                 "id": "20261004-090028-labx",
                 "callsign": "AURELIUS-26",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/old-flags",
                 "checkout": "old-flags",
@@ -1336,6 +1341,7 @@
               {
                 "id": "20261004-090000-labx",
                 "callsign": "DARTAGNAN-67",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/retry-budget",
                 "checkout": "retry-budget",
@@ -1458,6 +1464,7 @@
               {
                 "id": "20261004-090007-labx",
                 "callsign": "FREYR-79",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/retry-budget-review",
                 "checkout": "retry-budget-review",
@@ -1608,6 +1615,7 @@
               {
                 "id": "20261004-090014-labx",
                 "callsign": "RAGNAR-12",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/readme",
                 "checkout": "readme",
@@ -1745,6 +1753,7 @@
               {
                 "id": "20261004-090021-labx",
                 "callsign": "AMUNDSEN-99",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab",
                 "checkout": "main",
@@ -1876,6 +1885,7 @@
               {
                 "id": "20261004-090028-labx",
                 "callsign": "AURELIUS-26",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/old-flags",
                 "checkout": "old-flags",
@@ -2526,6 +2536,7 @@
               {
                 "id": "20261004-090000-labx",
                 "callsign": "DARTAGNAN-67",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/retry-budget",
                 "checkout": "retry-budget",
@@ -2648,6 +2659,7 @@
               {
                 "id": "20261004-090007-labx",
                 "callsign": "FREYR-79",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/retry-budget-review",
                 "checkout": "retry-budget-review",
@@ -2798,6 +2810,7 @@
               {
                 "id": "20261004-090014-labx",
                 "callsign": "RAGNAR-12",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/readme",
                 "checkout": "readme",
@@ -2935,6 +2948,7 @@
               {
                 "id": "20261004-090021-labx",
                 "callsign": "AMUNDSEN-99",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab",
                 "checkout": "main",
@@ -3066,6 +3080,7 @@
               {
                 "id": "20261004-090028-labx",
                 "callsign": "AURELIUS-26",
+                "runtime": "claude",
                 "project": "lab",
                 "cwd": "/work/lab/.worktrees/old-flags",
                 "checkout": "old-flags",

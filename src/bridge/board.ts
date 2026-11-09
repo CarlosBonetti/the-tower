@@ -94,6 +94,8 @@ export type Card = {
   callsign: string
   /** The Claude session name its peers message it by (`SendMessage`'s `to`), while its Claude runs. */
   peer?: string
+  /** The agent it runs (`RUNTIMES`), `claude` for a log from before runtimes were logged. @since 1.171 */
+  runtime: string
   project: string
   cwd: string
   /**
@@ -544,7 +546,7 @@ const card = (
   const { header, facts } = session
   const worker = lineage(session, (s) => continued.get(s))
   const callsign = nameOf(session)
-  const launch = launchOf(worker[0].header.argv).prompt
+  const launch = launchOf(worker[0].header).prompt
   const legacy = legacyReviewer(worker[0].facts, launch)
   const reviews = legacy?.reviews
   const exempt = legacy?.exempt ?? worker[0].facts.exempt
@@ -591,6 +593,7 @@ const card = (
     id: header.id,
     callsign,
     peer: peers.find((p) => p.session === header.id)?.name,
+    runtime: header.runtime ?? 'claude',
     project: header.project,
     cwd: header.cwd,
     worktree,

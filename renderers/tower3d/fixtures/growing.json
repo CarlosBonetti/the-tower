@@ -118,6 +118,7 @@
               {
                 "id": "20261004-090000-grow",
                 "callsign": "DON-73",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -218,6 +219,7 @@
               {
                 "id": "20261004-090007-grow",
                 "callsign": "PATHFINDER-95",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -324,6 +326,7 @@
               {
                 "id": "20261004-090014-grow",
                 "callsign": "FORGER-06",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -430,6 +433,7 @@
               {
                 "id": "20261004-090021-grow",
                 "callsign": "MARLOWE-72",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -843,6 +847,7 @@
               {
                 "id": "20261004-090000-grow",
                 "callsign": "DON-73",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -943,6 +948,7 @@
               {
                 "id": "20261004-090007-grow",
                 "callsign": "PATHFINDER-95",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -1049,6 +1055,7 @@
               {
                 "id": "20261004-090014-grow",
                 "callsign": "FORGER-06",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -1155,6 +1162,7 @@
               {
                 "id": "20261004-090021-grow",
                 "callsign": "MARLOWE-72",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -1261,6 +1269,7 @@
               {
                 "id": "20261004-090028-grow",
                 "callsign": "TYR-65",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -1674,6 +1683,7 @@
               {
                 "id": "20261004-090000-grow",
                 "callsign": "DON-73",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -1774,6 +1784,7 @@
               {
                 "id": "20261004-090007-grow",
                 "callsign": "PATHFINDER-95",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -1880,6 +1891,7 @@
               {
                 "id": "20261004-090014-grow",
                 "callsign": "FORGER-06",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -1986,6 +1998,7 @@
               {
                 "id": "20261004-090021-grow",
                 "callsign": "MARLOWE-72",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -2092,6 +2105,7 @@
               {
                 "id": "20261004-090028-grow",
                 "callsign": "TYR-65",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -2198,6 +2212,7 @@
               {
                 "id": "20261004-090035-grow",
                 "callsign": "RAPUNZEL-48",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -2304,6 +2319,7 @@
               {
                 "id": "20261004-090042-grow",
                 "callsign": "HEPHAESTUS-18",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -2717,6 +2733,7 @@
               {
                 "id": "20261004-090000-grow",
                 "callsign": "DON-73",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -2817,6 +2834,7 @@
               {
                 "id": "20261004-090007-grow",
                 "callsign": "PATHFINDER-95",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -2923,6 +2941,7 @@
               {
                 "id": "20261004-090014-grow",
                 "callsign": "FORGER-06",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -3030,6 +3049,7 @@
               {
                 "id": "20261004-090021-grow",
                 "callsign": "MARLOWE-72",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -3136,6 +3156,7 @@
               {
                 "id": "20261004-090028-grow",
                 "callsign": "TYR-65",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -3242,6 +3263,7 @@
               {
                 "id": "20261004-090035-grow",
                 "callsign": "RAPUNZEL-48",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -3348,6 +3370,7 @@
               {
                 "id": "20261004-090042-grow",
                 "callsign": "HEPHAESTUS-18",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -3761,6 +3784,7 @@
               {
                 "id": "20261004-090000-grow",
                 "callsign": "DON-73",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -3861,6 +3885,7 @@
               {
                 "id": "20261004-090007-grow",
                 "callsign": "PATHFINDER-95",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -3967,6 +3992,7 @@
               {
                 "id": "20261004-090021-grow",
                 "callsign": "MARLOWE-72",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -4073,6 +4099,7 @@
               {
                 "id": "20261004-090028-grow",
                 "callsign": "TYR-65",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -4179,6 +4206,7 @@
               {
                 "id": "20261004-090035-grow",
                 "callsign": "RAPUNZEL-48",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -4285,6 +4313,7 @@
               {
                 "id": "20261004-090042-grow",
                 "callsign": "HEPHAESTUS-18",
+                "runtime": "claude",
                 "project": "grow",
                 "cwd": "/work/grow",
                 "checkout": "main",
@@ -4583,6 +4612,7 @@
         {
           "id": "20261004-090014-grow",
           "callsign": "FORGER-06",
+          "runtime": "claude",
           "project": "grow",
           "cwd": "/work/grow",
           "checkout": "main",

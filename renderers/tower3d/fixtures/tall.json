@@ -118,6 +118,7 @@
               {
                 "id": "20261004-090000-f1xx",
                 "callsign": "EITRI-89",
+                "runtime": "claude",
                 "project": "f1",
                 "cwd": "/work/f1",
                 "checkout": "main",
@@ -284,6 +285,7 @@
               {
                 "id": "20261004-090000-f2xx",
                 "callsign": "MARCO-42",
+                "runtime": "claude",
                 "project": "f2",
                 "cwd": "/work/f2",
                 "checkout": "main",
@@ -466,6 +468,7 @@
               {
                 "id": "20261004-090000-f3xx",
                 "callsign": "COURIER-65",
+                "runtime": "claude",
                 "project": "f3",
                 "cwd": "/work/f3",
                 "checkout": "main",
@@ -648,6 +651,7 @@
               {
                 "id": "20261004-090000-f4xx",
                 "callsign": "HANDLER-25",
+                "runtime": "claude",
                 "project": "f4",
                 "cwd": "/work/f4",
                 "checkout": "main",
@@ -814,6 +818,7 @@
               {
                 "id": "20261004-090000-f5xx",
                 "callsign": "DON-32",
+                "runtime": "claude",
                 "project": "f5",
                 "cwd": "/work/f5",
                 "checkout": "main",
@@ -996,6 +1001,7 @@
               {
                 "id": "20261004-090000-f6xx",
                 "callsign": "THOTH-96",
+                "runtime": "claude",
                 "project": "f6",
                 "cwd": "/work/f6",
                 "checkout": "main",
@@ -1178,6 +1184,7 @@
               {
                 "id": "20261004-090000-f7xx",
                 "callsign": "PORTHOS-18",
+                "runtime": "claude",
                 "project": "f7",
                 "cwd": "/work/f7",
                 "checkout": "main",
@@ -1344,6 +1351,7 @@
               {
                 "id": "20261004-090000-f8xx",
                 "callsign": "KEPLER-76",
+                "runtime": "claude",
                 "project": "f8",
                 "cwd": "/work/f8",
                 "checkout": "main",
@@ -1526,6 +1534,7 @@
               {
                 "id": "20261004-090000-f9xx",
                 "callsign": "MYCROFT-83",
+                "runtime": "claude",
                 "project": "f9",
                 "cwd": "/work/f9",
                 "checkout": "main",
@@ -1708,6 +1717,7 @@
               {
                 "id": "20261004-090000-f10x",
                 "callsign": "FRANKLIN-90",
+                "runtime": "claude",
                 "project": "f10",
                 "cwd": "/work/f10",
                 "checkout": "main",
@@ -1874,6 +1884,7 @@
               {
                 "id": "20261004-090000-f11x",
                 "callsign": "PUCK-90",
+                "runtime": "claude",
                 "project": "f11",
                 "cwd": "/work/f11",
                 "checkout": "main",
@@ -2056,6 +2067,7 @@
               {
                 "id": "20261004-090000-f12x",
                 "callsign": "ENDURANCE-88",
+                "runtime": "claude",
                 "project": "f12",
                 "cwd": "/work/f12",
                 "checkout": "main",

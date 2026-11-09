@@ -65,7 +65,10 @@ export type Facts = {
   says: string[]
   /** The main loop's turns that ran to their Stop: an interrupted or failed turn raises none. */
   turns: number
-  /** The model and effort of the main loop's latest step: what Claude used, whatever was asked for. Haiku has no effort. */
+  /**
+   * The model and effort of the main loop's latest step: what Claude used, whatever was asked for. Haiku has no effort.
+   * An opencode session's is its latest prompt's, `provider/model`, and it has no effort.
+   */
   model?: string
   effort?: string
   /** When the main loop last stepped (epoch ms): when `model` and `effort` were last seen. */
@@ -358,6 +361,10 @@ const hookFacts = (facts: Facts, t: number, startedAt: number, hook: Record<stri
     }
     case 'PermissionRequest':
       return { ...facts, asks: [...facts.asks, at] }
+    case 'opencode.chat.message': {
+      const model = hook.model as { providerID: string; modelID: string }
+      return { ...facts, model: `${model.providerID}/${model.modelID}` }
+    }
     case 'PostToolUseFailure':
       return { ...facts, failures: [...facts.failures, at] }
     case 'agent.spawn':

@@ -140,7 +140,7 @@ const USER_RUNS: Record<VerbOf<'user'>, Run> = {
     const { values, positionals } = parseArgs({
       args: rest,
       allowPositionals: true,
-      options: { cwd: { type: 'string' }, callsign: { type: 'string' }, model: { type: 'string' }, effort: { type: 'string' } },
+      options: { cwd: { type: 'string' }, callsign: { type: 'string' }, runtime: { type: 'string' }, model: { type: 'string' }, effort: { type: 'string' } },
     })
     if (!project) throw new CliError(usageLine('spawn'))
     const prompt = positionals.join(' ') || undefined

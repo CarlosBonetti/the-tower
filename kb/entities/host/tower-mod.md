@@ -2,10 +2,10 @@
 {
   "type": "container",
   "name": "tower mod",
-  "summary": "The Claude Code mod loaded into every session, posting Claude's mod events and a few derived ones to the host, and teaching the session the tower: the tower command on its PATH and three skills, tower:handbook, tower:review and tower:guide.",
+  "summary": "The Claude Code mod loaded into every session, posting Claude's mod events and a few derived ones to the host, and teaching the session the tower: the tower command on its PATH and three skills, tower:handbook, tower:review and tower:guide. An opencode session loads its opencode plugin instead.",
   "in": "host",
   "reviewed": "2026-11-10",
-  "refs": ["hub/src/mod/hooks/register.js#register", "hub/src/mod/hooks/register.js#forward", "hub/src/mod/hooks/hooks.json", "hub/src/mod/.claude-plugin/plugin.json", "hub/src/mod/bin/tower", "hub/src/mod/skills/handbook/SKILL.md", "hub/src/mod/skills/review/SKILL.md", "hub/src/mod/skills/guide/SKILL.md"],
+  "refs": ["hub/src/mod/opencode/tower.js", "hub/src/mod/hooks/register.js#register", "hub/src/mod/hooks/register.js#forward", "hub/src/mod/hooks/hooks.json", "hub/src/mod/.claude-plugin/plugin.json", "hub/src/mod/bin/tower", "hub/src/mod/skills/handbook/SKILL.md", "hub/src/mod/skills/review/SKILL.md", "hub/src/mod/skills/guide/SKILL.md"],
   "links": [
     { "to": "host-daemon", "verb": "sends", "carries": "mod events under Claude's names (turn.step with usage and the step's visible text, tool.call, session.measure, ...) and tower.tool.result / tower.tool.abandoned / tower.claude, POST /hooks/<id> on hooks.sock" },
     { "to": "tower-server", "verb": "reads", "carries": "from the tower command: GET /board, the first event; /conversations/<id> (agent); /archive/<project> for a callsign no worker on duty has; collection items (kept, read); the extensions' reads it names: /reviews/said (thread), /policies/said (policies, runs), /quota/said (probes), any other through `tower x`; /extensions and /schema (extensions, api)" },
@@ -45,3 +45,8 @@ how to keep to it ([[tower-cuts-worktrees]]). Its `review` skill is what a revie
 tower or for a tour, the session reads [[docs-usage]] from the checkout, the capabilities and patterns the tips show
 (`src/shared/capabilities.ts`, `docs/patterns/`), and the live system (`whoami`, `agents --all`, `kept`), tours their
 own floors, and offers one live demo.
+
+An opencode session ([[opencode-runtime]]) loads `opencode/tower.js` instead, named in `OPENCODE_CONFIG_CONTENT`: it
+posts opencode's own events under `opencode.*`, the main session's only, puts `bin/tower` on the PATH of the agent's
+commands, and adds the brief from `TOWER_BRIEF` to every system prompt. `bin/tower` runs on `TOWER_NODE` where the
+session sets it, else on the node the PATH finds.

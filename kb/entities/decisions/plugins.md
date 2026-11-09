@@ -29,6 +29,8 @@ touching any repo.
   hire` and `tower x reviews review` all load them. The host composes none of it ([[host-owns-ptys]]): the tower puts the mod's
   `--plugin-dir` before these args ([`hostSpawn`](ref:hub/src/shared/launch.ts#hostSpawn)), and Claude takes the flag repeated. Each Claude reads its plugins as it
   starts: a changed plugin reaches the next session started, a changed list the next spawn or resume.
+- *Claude's only.* They are Claude plugin directories: an opencode session loads none of them, only the extensions'
+  `plugins.opencode` ([[opencode-runtime]]).
 - *An extension's.* A manifest's `plugins.claude` names a folder inside the extension; each running extension's joins
   the list after the config's, on floors where it is on, for every spawn, resume and fork ([[extensions]]).
 - *What goes in a plugin.* Commands and skills that describe a workflow only. What a project adds (its knowledge base,

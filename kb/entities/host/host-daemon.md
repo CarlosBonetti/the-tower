@@ -22,8 +22,8 @@
   ([[tower-cuts-worktrees]]). Since protocol 5 the host runs the spawn's `argv` whole, with the spawn's `env` over its
   own, scrubbed ([`sessionEnv`](ref:hub/src/host/session.ts#sessionEnv), [[env-scrub]]); it takes no other spawn shape
   and refuses one with `args`, from a tower older than itself, naming the restart ([`checkSpawn`](ref:hub/src/host/session.ts#checkSpawn)).
-  `runtime` and `command` are labels it copies to the header and never reads: the tower sends `claude` and the name
-  of the config's `argv` command it composed from ([`hostSpawn`](ref:hub/src/shared/launch.ts#hostSpawn)); a log with
+  `runtime` and `command` are labels it copies to the header and never reads: the tower sends `claude` or `opencode`
+  ([[opencode-runtime]]) and the name of the config's `argv` command it composed from ([`hostSpawn`](ref:hub/src/shared/launch.ts#hostSpawn)); a log with
   no `runtime`, from a host before protocol 3, is Claude's. The env is never logged. A spawn's `facts`, `tower.*` events only
   ([`checkFact`](ref:hub/src/host/main.ts#checkFact)), are logged as `h` events right after the header, in the same
   tick, so they come before the session's first output or hook whoever asked for the spawn, and whatever happens to

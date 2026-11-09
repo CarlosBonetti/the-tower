@@ -1180,7 +1180,7 @@ export const Manifest = z
       z
         .partialRecord(z.enum(RUNTIMES), Path)
         .optional()
-        .describe("What teaches a session of a runtime the extension, by runtime: for claude, a Claude plugin's folder, passed with --plugin-dir on floors where it is on."),
+        .describe("What teaches a session of a runtime the extension, by runtime: for claude, a Claude plugin's folder, passed with --plugin-dir on floors where it is on; for opencode, an opencode plugin's file, named in its config."),
     ),
     views: since(z.record(Word, View).optional().describe('Its views by name, `<capability>/<name>`: modules a renderer mounts into a region it gives them.')),
     guidance: guided(Guidance.optional().describe('What it tells the workers: when to use its doors, verbs and reads, and how. The config may replace or add to it.')),

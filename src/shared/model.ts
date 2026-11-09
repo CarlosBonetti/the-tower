@@ -267,13 +267,17 @@ export const commandNames = (config: Config): string[] | undefined => (Array.isA
 /** A command of the config's `argv`, by its name when `argv` names its commands, with the env its sessions run with. */
 export type SessionCommand = { name?: string; argv: string[]; env: Record<string, string> }
 
+/** The command an opencode session starts with: one, unnamed, found on the host's PATH. */
+export const OPENCODE_ARGV = ['opencode']
+
 /**
- * Every command `runtime` starts with, in `argv`'s order, the default first: `argv` holds the one runtime's commands
- * today. A runtime the tower doesn't know is refused.
+ * Every command `runtime` starts with, the default first: Claude's are `argv`'s, in its order; opencode has one,
+ * `OPENCODE_ARGV`. A runtime the tower doesn't know is refused.
  */
 export const runtimeCommands = (config: Config, runtime: Runtime): SessionCommand[] => {
   if (!RUNTIMES.includes(runtime)) throw new Error(`runtime ${JSON.stringify(runtime)} is none the tower knows: it runs ${RUNTIMES.join(', ')}`)
   const env = config.env ?? {}
+  if (runtime === 'opencode') return [{ argv: OPENCODE_ARGV, env }]
   return Array.isArray(config.argv) ? [{ argv: config.argv, env }] : Object.entries(config.argv).map(([name, argv]) => ({ name, argv, env }))
 }
 
@@ -412,8 +416,11 @@ export const projectCollections = (config: Config, projectId: string): Record<st
 /** The plugin directories a project's sessions load: every session's, then its own. */
 export const projectPlugins = (config: Config, projectId: string): string[] => [...(config.plugins ?? []), ...(config.projects[projectId].plugins ?? [])]
 
-/** The agent runtimes the tower launches: a session runs one, fixed for its life and its whole resume chain. */
-export const RUNTIMES = ['claude'] as const
+/**
+ * The agent runtimes the tower launches: a session runs one, fixed for its life and its whole resume chain. Claude is
+ * every session's unless its spawn names another; opencode runs any model its providers offer (`openai/gpt-6-sol`).
+ */
+export const RUNTIMES = ['claude', 'opencode'] as const
 export type Runtime = (typeof RUNTIMES)[number]
 
 export const isRuntime = (runtime: string): runtime is Runtime => (RUNTIMES as readonly string[]).includes(runtime)

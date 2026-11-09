@@ -36,7 +36,7 @@ export const CLI_VERBS = {
   },
   spawn: {
     of: 'user',
-    usage: 'spawn <project> [--cwd <dir>] [--callsign <C>] [--model <m>] [--effort <e>] [-- <prompt...>]',
+    usage: 'spawn <project> [--cwd <dir>] [--callsign <C>] [--runtime <claude|opencode>] [--model <m>] [--effort <e>] [-- <prompt...>]',
     help: "start a session through the tower (in the project's hub by default), print its id; --callsign names its worker (NAME-NN, or NAME given the id's number), refused when the name is a running worker's",
   },
   resume: {
@@ -101,8 +101,8 @@ export const CLI_VERBS = {
   },
   hire: {
     of: 'worker',
-    usage: 'hire [<tag|id>] [floor <id>] [model <m>] [effort <e>] [callsign <C>] [name <n>] [base origin/<b>] [x.<cap>.<field> <value>...]',
-    help: "start a worker on this floor, or the floor named, on a prompt: the text of an item of this floor's collections, or stdin; refused past the hiring floor's `hiring` limits. `callsign` names the worker, `name` its new worktree, `x.<cap>.<field>` an extension's spawn field, its value a string parsed by the field's schema as a spawn form's is",
+    usage: 'hire [<tag|id>] [floor <id>] [runtime opencode] [model <m>] [effort <e>] [callsign <C>] [name <n>] [base origin/<b>] [x.<cap>.<field> <value>...]',
+    help: "start a worker on this floor, or the floor named, on a prompt: the text of an item of this floor's collections, or stdin; refused past the hiring floor's `hiring` limits. `callsign` names the worker, `name` its new worktree, `x.<cap>.<field>` an extension's spawn field, its value a string parsed by the field's schema as a spawn form's is. `runtime opencode` runs it in opencode, `model` then opencode's provider/model (openai/gpt-6-sol), with no effort or callsign",
   },
   home: {
     of: 'worker',

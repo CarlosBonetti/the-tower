@@ -4,7 +4,7 @@
   "name": "Session stuck on booting",
   "summary": "A session that stays booting is Claude on a startup screen the bridge does not recognize (an external CLAUDE.md imports prompt, new dialog copy), or a launch that never drew Claude; recognized screens (trust, login) show as blocked.",
   "in": "host",
-  "reviewed": "2026-11-08",
+  "reviewed": "2026-11-09",
   "refs": ["hub/src/bridge/status.ts#BOOTING", "hub/src/bridge/status.ts#HOOK_STATUS", "hub/src/bridge/blocked.ts#blockedBy", "hub/src/bridge/composer.ts#AT_COMPOSER", "hub/src/cli.ts"]
 }
 ---
@@ -20,7 +20,9 @@ from the log) or `tower attach <id>` ([`cli.ts`](ref:hub/src/cli.ts)). Its log h
 **Likely causes.**
 - Every session starts [`booting`](ref:hub/src/bridge/status.ts#BOOTING) and leaves it on the first
   `SessionStart` ([`HOOK_STATUS`](ref:hub/src/bridge/status.ts#HOOK_STATUS)). Startup dialogs come before
-  `SessionStart`, so no hook fires while one waits.
+  `SessionStart`, so no hook fires while one waits. An opencode session leaves it on `opencode.start`, which the
+  tower's opencode plugin posts as it loads ([[opencode-runtime]]): one stuck booting never loaded the plugin, so look
+  for an error on its screen about `OPENCODE_CONFIG_CONTENT` or the plugin's file.
 - The workspace trust dialog, shown the first time Claude runs in a directory (a new hub, a new worktree).
   It preselects "No, exit".
 - "Allow external CLAUDE.md imports?", or a screen whose copy changed in a new Claude version: add its wording to

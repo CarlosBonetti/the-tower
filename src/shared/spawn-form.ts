@@ -36,6 +36,8 @@ export type SpawnForm = {
   effort: string
   /** The `argv` command to start under, by name; empty is left to the floor's resolved default. */
   command: string
+  /** The agent the worker runs (`RUNTIMES`); empty is Claude. No renderer draws it: `tower hire` sets it. */
+  runtime: string
   prompt: string
   x: Record<string, Record<string, string>>
 }
@@ -86,7 +88,7 @@ export const shellPlaces = (floors: Floor[], first?: string): ShellPlace[] =>
 
 /** The form as it opens, and as a quick hire sends it: everything left to its default. */
 export const spawnDefaults = (f: Floor, prompt = ''): SpawnForm => ({
-  where: defaultWhere(f), worktree: joinable(f)[0]?.repos[0].path ?? '', checkout: f.hub, callsign: '', name: '', branch: '', base: '', model: '', effort: '', command: f.command ?? '', prompt, x: {},
+  where: defaultWhere(f), worktree: joinable(f)[0]?.repos[0].path ?? '', checkout: f.hub, callsign: '', name: '', branch: '', base: '', model: '', effort: '', command: f.command ?? '', runtime: '', prompt, x: {},
 })
 
 /** The name an extension's field has in the form. */
@@ -110,7 +112,7 @@ export const spawnForm = (f: Floor, entries: Iterable<[string, unknown]>): Spawn
 export const spawnCall = (f: Floor, v: SpawnForm): [Call<'spawn'>, Partial<Verbs['spawn']>] => {
   const given = (o: Record<string, string>) => Object.fromEntries(Object.entries(o).filter(([, x]) => x.trim()).map(([k, x]) => [k, x.trim()]))
   const x = Object.fromEntries(Object.entries(v.x).flatMap(([cap, fields]) => (Object.keys(given(fields)).length ? [[cap, given(fields)]] : [])))
-  const launch = { ...given({ callsign: v.callsign, model: v.model, effort: v.effort, prompt: v.prompt, command: v.command }), ...(Object.keys(x).length && { x }) }
+  const launch = { ...given({ callsign: v.callsign, runtime: v.runtime, model: v.model, effort: v.effort, prompt: v.prompt, command: v.command }), ...(Object.keys(x).length && { x }) }
   if (v.where === 'new') return [offeredCall(f, 'cut', f.name), { ...launch, cut: given({ name: v.name, branch: v.branch, base: v.base }) }]
   return [offeredCall(f, 'spawn', f.name), { ...launch, cwd: v.where === 'worktree' ? v.worktree : v.checkout }]
 }

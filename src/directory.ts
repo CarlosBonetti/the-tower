@@ -97,12 +97,23 @@ const readBoard = async (): Promise<Board> => {
 
 const floorTitle = (floor: Floor) => `${floor.name} (floor "${floor.id}")`
 
+/**
+ * How a worker is reached: a Claude by its session name while it runs; an opencode worker, which has none, by typing
+ * to it (`tower submit`), on duty or not, as the tower then says why it can't.
+ */
+const reachLine = (card: Card): string =>
+  card.runtime === 'opencode'
+    ? `runs opencode: type to it with \`tower submit ${card.id} <text>\``
+    : card.peer
+      ? `message as "${card.peer}"`
+      : 'not reachable: its Claude is not running'
+
 const cardLines = (card: Card, me: string | undefined, now: number, depth = 0): string[] => {
   const indent = '    '.repeat(depth)
   const facts = [
     statusName(card),
     `for ${ago(now - card.enteredAt)}`,
-    card.peer ? `message as "${card.peer}"` : 'not reachable: its Claude is not running',
+    reachLine(card),
     modelName(card.model),
   ].filter(Boolean)
   const gist = gistLine(card).replace(/\s+/g, ' ')
@@ -150,7 +161,11 @@ const whoami = (board: Board, me: string | undefined): string[] => {
   const floor = board.floors.find((f) => f.id === card.project)!
   return [
     `You are ${card.callsign}, session ${card.id}, a worker on ${floorTitle(floor)}.`,
-    card.peer ? `Other Claude sessions message you as "${card.peer}".` : 'Your Claude session name is not known to the tower yet.',
+    card.runtime === 'opencode'
+      ? `You run opencode, which has no session name: other workers type to you with \`tower submit ${card.id} <text>\`.`
+      : card.peer
+        ? `Other Claude sessions message you as "${card.peer}".`
+        : 'Your Claude session name is not known to the tower yet.',
     ...(card.hiredBy ? [`${hirerWords(card)} hired you: \`tower agent ${card.hiredBy.callsign}\` says how to reach it.`] : []),
     ...(card.crew ? [`You are in ${card.crew.callsign}'s crew, by ${card.crew.by}: \`tower agent ${card.crew.callsign}\` says how to reach it.`] : []),
     ...(card.exempt ?? []).map((e) => `You are ${exemptionWords(e)}.`),
@@ -279,7 +294,7 @@ const agent = (board: Board, card: Card, cards: Card[], briefs: Brief[], now: nu
   const [current, ...earlier] = briefParts(briefs)
   return [
     `${card.callsign}, session ${card.id}, on ${floorTitle(floor)}`,
-    `  ${[statusName(card), `for ${ago(now - card.enteredAt)}`, card.peer ? `message as "${card.peer}"` : 'not reachable: its Claude is not running', modelName(card.model)].filter(Boolean).join('  ·  ')}`,
+    `  ${[statusName(card), `for ${ago(now - card.enteredAt)}`, reachLine(card), modelName(card.model)].filter(Boolean).join('  ·  ')}`,
     `  in ${card.cwd}`,
     ...(card.unresumable ? [`  ${UNRESUMABLE_TITLE[card.unresumable]}`] : []),
     ...(reviewerOf(card) ? [`  reviews ${reviewerOf(card)}'s work`] : []),
@@ -526,7 +541,7 @@ const keepContent = async (file: string | undefined): Promise<{ ext: string; con
 }
 
 const HIRE_USAGE = `${usageLine('hire')}, the prompt on stdin when no item names it`
-const HIRE_FIELDS = ['model', 'effort', 'callsign', 'name', 'base'] as const
+const HIRE_FIELDS = ['runtime', 'model', 'effort', 'callsign', 'name', 'base'] as const
 
 /** `fields`: the spawn form's entries a hire sets, named as the form names them, an extension's `x.<cap>.<field>` included. */
 type HireArgs = { item?: string; floor?: string; fields: [string, string][] }
@@ -559,7 +574,9 @@ const hiredLines = (board: Board, floor: Floor, reply: Replies['spawn'], form: S
     : `in ${form.where === 'worktree' ? form.worktree : form.checkout}, beside whoever works there`
   return [
     `Hired ${who}, session ${reply.id}, on ${floorTitle(floor)}, ${place}.`,
-    `\`tower agent ${who}\` follows its work; once its Claude is up, \`tower agents\` names how to message it.`,
+    form.runtime === 'opencode'
+      ? `\`tower agent ${who}\` follows its work; it runs opencode, so reach it with \`tower submit ${reply.id} <text>\`.`
+      : `\`tower agent ${who}\` follows its work; once its Claude is up, \`tower agents\` names how to message it.`,
   ]
 }
 

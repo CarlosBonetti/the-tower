@@ -146,6 +146,7 @@
               {
                 "id": "20261004-090000-arca",
                 "callsign": "RATATOSK-78",
+                "runtime": "claude",
                 "project": "arcade",
                 "cwd": "/work/arcade",
                 "checkout": "main",
@@ -246,6 +247,7 @@
               {
                 "id": "20261004-090007-arca",
                 "callsign": "HUGO-68",
+                "runtime": "claude",
                 "project": "arcade",
                 "cwd": "/work/arcade",
                 "checkout": "main",
@@ -373,6 +375,7 @@
               {
                 "id": "20261004-090014-arca",
                 "callsign": "WHEELMAN-31",
+                "runtime": "claude",
                 "project": "arcade",
                 "cwd": "/work/arcade",
                 "checkout": "main",
@@ -500,6 +503,7 @@
               {
                 "id": "20261004-090021-arca",
                 "callsign": "AMUNDSEN-97",
+                "runtime": "claude",
                 "project": "arcade",
                 "cwd": "/work/arcade",
                 "checkout": "main",
@@ -627,6 +631,7 @@
               {
                 "id": "20261004-090028-arca",
                 "callsign": "PROMETHEUS-16",
+                "runtime": "claude",
                 "project": "arcade",
                 "cwd": "/work/arcade",
                 "checkout": "main",
@@ -754,6 +759,7 @@
               {
                 "id": "20261004-090035-arca",
                 "callsign": "HECTOR-60",
+                "runtime": "claude",
                 "project": "arcade",
                 "cwd": "/work/arcade",
                 "checkout": "main",
@@ -860,6 +866,7 @@
               {
                 "id": "20261004-090042-arca",
                 "callsign": "ALTAIR-72",
+                "runtime": "claude",
                 "project": "arcade",
                 "cwd": "/work/arcade",
                 "checkout": "main",
@@ -976,6 +983,7 @@
               {
                 "id": "20261004-090049-arca",
                 "callsign": "ARGUS-59",
+                "runtime": "claude",
                 "project": "arcade",
                 "cwd": "/work/arcade",
                 "checkout": "main",
@@ -1076,6 +1084,7 @@
               {
                 "id": "20261004-090056-arca",
                 "callsign": "TURING-38",
+                "runtime": "claude",
                 "project": "arcade",
                 "cwd": "/work/arcade",
                 "checkout": "main",
@@ -1285,6 +1294,7 @@
               {
                 "id": "20261004-090000-quie",
                 "callsign": "KOWALSKI-17",
+                "runtime": "claude",
                 "project": "quiet",
                 "cwd": "/work/quiet",
                 "checkout": "main",
@@ -1385,6 +1395,7 @@
               {
                 "id": "20261004-090007-quie",
                 "callsign": "MARSHAL-38",
+                "runtime": "claude",
                 "project": "quiet",
                 "cwd": "/work/quiet",
                 "checkout": "main",
@@ -1512,6 +1523,7 @@
               {
                 "id": "20261004-090014-quie",
                 "callsign": "WALT-02",
+                "runtime": "claude",
                 "project": "quiet",
                 "cwd": "/work/quiet/.worktrees/release-script",
                 "checkout": "release-script",
@@ -1617,6 +1629,7 @@
               {
                 "id": "20261004-090021-quie",
                 "callsign": "COLOMBO-20",
+                "runtime": "claude",
                 "project": "quiet",
                 "cwd": "/work/quiet/.worktrees/release-script-review",
                 "checkout": "release-script-review",

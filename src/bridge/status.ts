@@ -48,6 +48,31 @@ const stopStatus = (hook: ClaudeHookInput | ModEvent): 'watching' | 'done' => {
   return tasks.some((task) => task.status === 'running') || crons.length ? 'watching' : 'done'
 }
 
+/**
+ * What opencode's events (posted by its tower mod, `src/mod/opencode/tower.js`, its main session's only) mean: it starts
+ * idle, works from a prompt through its tool calls, asks for a permission, and ends a turn with `session.idle`
+ * (`opencodeIdleStatus`).
+ */
+const OPENCODE_STATUS: Record<string, Unblocked> = {
+  'opencode.start': 'idle',
+  'opencode.chat.message': 'working',
+  'opencode.tool.execute.before': 'working',
+  'opencode.tool.execute.after': 'working',
+  'opencode.permission.asked': 'needs_input',
+  'opencode.permission.updated': 'needs_input',
+  'opencode.permission.replied': 'working',
+}
+
+/**
+ * A turn's `session.idle`: done when it ended answered, as nothing but the user wakes it. opencode raises
+ * `session.error` before it on a failed turn and on an aborted one (`opencodeErrorStatus`), whose status it keeps.
+ */
+const opencodeIdleStatus = (status: Unblocked): Unblocked => (status === 'failed' || status === 'idle' ? status : 'done')
+
+/** An aborted turn, the user's Esc, leaves the session idle, as Claude's interrupt does: any other error is a failure. */
+const opencodeErrorStatus = (hook: ClaudeHookInput | ModEvent): Unblocked =>
+  (hook.error as { name?: string } | undefined)?.name === 'MessageAbortedError' ? 'idle' : 'failed'
+
 const NOTIFICATION_STATUS: Record<string, Unblocked> = {
   permission_prompt: 'needs_input',
 }
@@ -102,7 +127,9 @@ const statusAfter = (status: Unblocked, compaction: Compaction | undefined, even
   if (isCompactionEnd(hook)) return compaction?.trigger === 'manual' ? (compaction.resumes ?? 'idle') : status
   if (hook.hook_event_name === 'Stop') return stopStatus(hook)
   if (hook.hook_event_name === 'Notification') return NOTIFICATION_STATUS[String(hook.notification_type)] ?? status
-  return HOOK_STATUS[hook.hook_event_name] ?? status
+  if (hook.hook_event_name === 'opencode.session.error') return opencodeErrorStatus(hook)
+  if (hook.hook_event_name === 'opencode.session.idle') return opencodeIdleStatus(status)
+  return HOOK_STATUS[hook.hook_event_name] ?? OPENCODE_STATUS[hook.hook_event_name] ?? status
 }
 
 const AUTO: Compaction = { trigger: 'auto' }

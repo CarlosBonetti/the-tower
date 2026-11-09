@@ -603,6 +603,10 @@
           "type": "string",
           "description": "The Claude session name its peers message it by (`SendMessage`'s `to`), while its Claude runs."
         },
+        "runtime": {
+          "type": "string",
+          "description": "The agent it runs (`RUNTIMES`), `claude` for a log from before runtimes were logged."
+        },
         "project": {
           "type": "string"
         },
@@ -912,6 +916,7 @@
       "required": [
         "id",
         "callsign",
+        "runtime",
         "project",
         "cwd",
         "checkout",

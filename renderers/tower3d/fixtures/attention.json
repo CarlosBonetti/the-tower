@@ -118,6 +118,7 @@
               {
                 "id": "20261004-090000-opsx",
                 "callsign": "OTTO-29",
+                "runtime": "claude",
                 "project": "ops",
                 "cwd": "/work/ops",
                 "checkout": "main",
@@ -218,6 +219,7 @@
               {
                 "id": "20261004-090007-opsx",
                 "callsign": "BISHOP-22",
+                "runtime": "claude",
                 "project": "ops",
                 "cwd": "/work/ops",
                 "checkout": "main",
@@ -345,6 +347,7 @@
               {
                 "id": "20261004-090014-opsx",
                 "callsign": "SOCRATES-17",
+                "runtime": "claude",
                 "project": "ops",
                 "cwd": "/work/ops",
                 "checkout": "main",
@@ -461,6 +464,7 @@
               {
                 "id": "20261004-090021-opsx",
                 "callsign": "KOROLEV-05",
+                "runtime": "claude",
                 "project": "ops",
                 "cwd": "/work/ops",
                 "checkout": "main",
@@ -545,6 +549,7 @@
               {
                 "id": "20261004-090028-opsx",
                 "callsign": "ADA-17",
+                "runtime": "claude",
                 "project": "ops",
                 "cwd": "/work/ops",
                 "checkout": "main",
@@ -620,6 +625,7 @@
               {
                 "id": "20261004-090035-opsx",
                 "callsign": "WOLF-41",
+                "runtime": "claude",
                 "project": "ops",
                 "cwd": "/work/ops",
                 "checkout": "main",
@@ -735,6 +741,7 @@
               {
                 "id": "20261004-090042-opsx",
                 "callsign": "OTTO-77",
+                "runtime": "claude",
                 "project": "ops",
                 "cwd": "/work/ops",
                 "checkout": "main",
@@ -850,6 +857,7 @@
               {
                 "id": "20261004-090049-opsx",
                 "callsign": "ARGUS-93",
+                "runtime": "claude",
                 "project": "ops",
                 "cwd": "/work/ops",
                 "checkout": "main",
@@ -966,6 +974,7 @@
               {
                 "id": "20261004-090056-opsx",
                 "callsign": "RONDON-02",
+                "runtime": "claude",
                 "project": "ops",
                 "cwd": "/work/ops",
                 "checkout": "main",

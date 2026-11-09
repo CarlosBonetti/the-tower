@@ -57,10 +57,10 @@ export const continuations = (sessions: Session[], chains: Chains): Map<Session,
 
 /** The conversation a session is in: its latest, or, before Claude reports one, the one its argv resumes. */
 const inConversation = (session: Session): string | undefined =>
-  session.facts.conversations.at(-1)?.id ?? launchOf(session.header.argv).resume
+  session.facts.conversations.at(-1)?.id ?? launchOf(session.header).resume
 
 /** The name the session's Claude runs under (`resumeName`), from its first moment. */
-export const runsAs = (session: Session): string | undefined => launchOf(session.header.argv).name
+export const runsAs = (session: Session): string | undefined => launchOf(session.header).name
 
 /** The running session already in `conversation`: a second Claude resuming it would write the same transcript. */
 export const heldBy = (conversation: string, sessions: Session[], running: Set<string>): Session | undefined =>
