@@ -105,7 +105,7 @@ test('resumeRequest: carries the command it is given straight through to the hos
 test('an opencode spawn: its model and prompt as opencode flags, the mod and plugins in its env with the brief; launchOf reads them back', () => {
   const s = { ...EVERY_PART, runtime: 'opencode' as const, plugins: ['/x.js'], contributed: { ...NOTHING_CONTRIBUTED, env: { A: '1' }, prompt: ['also'] } }
   const started = runtimeSpawn({ ...s, kind: 'spawn', launch: { runtime: 'opencode', model: 'openai/gpt-6-sol', prompt: '-go' } }, { dir: '/mod', node: '/node/bin/node' })
-  assert.deepEqual(started.args, ['--model', 'openai/gpt-6-sol', '--prompt=-go\n\nalso'])
+  assert.deepEqual(started.args, ['--auto', '--model', 'openai/gpt-6-sol', '--prompt=-go\n\nalso'])
   assert.deepEqual(JSON.parse(started.env.OPENCODE_CONFIG_CONTENT), { plugin: ['file:///mod/opencode/tower.js', 'file:///x.js'] })
   assert.equal(started.env.A, '1')
   assert.equal(started.env.TOWER_NODE, '/node/bin/node')
@@ -113,13 +113,13 @@ test('an opencode spawn: its model and prompt as opencode flags, the mod and plu
   assert.match(started.env.TOWER_BRIEF, /\/mod\/skills\/handbook\/SKILL\.md/)
   assert.match(started.env.TOWER_BRIEF, /You work in worktree `name`/)
   const spawn = hostSpawn(started, sessionCommand({ argv: ['claude'], env: { B: '2' }, projects: {} } as Config, 'opencode', undefined), '/mod')
-  assert.deepEqual(spawn.argv, ['opencode', '--model', 'openai/gpt-6-sol', '--prompt=-go\n\nalso'])
+  assert.deepEqual(spawn.argv, ['opencode', '--auto', '--model', 'openai/gpt-6-sol', '--prompt=-go\n\nalso'])
   assert.equal(spawn.env.B, '2')
   assert.deepEqual(launchOf({ runtime: 'opencode', argv: spawn.argv }), { resume: undefined, model: 'openai/gpt-6-sol', prompt: '-go\n\nalso' })
 })
 
 test('an opencode resume continues its session by id, and launchOf reads it back', () => {
   const started = runtimeResume({ ...EVERY_PART, runtime: 'opencode', kind: 'resume', conversation: 'ses_1', prompt: 'carry on' }, { dir: '/mod', node: '/node/bin/node' })
-  assert.deepEqual(started.args, ['--session', 'ses_1', '--prompt=carry on'])
+  assert.deepEqual(started.args, ['--auto', '--session', 'ses_1', '--prompt=carry on'])
   assert.equal(launchOf({ runtime: 'opencode', argv: ['opencode', ...started.args] }).resume, 'ses_1')
 })

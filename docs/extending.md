@@ -1447,7 +1447,7 @@ field the spawn set keeps the spawn's value, the contributor's left unread, and 
 value off its schema, is a part the runtime can't place: on a spawn that set none of the extension's fields, that drops
 every part the contributor gave, its `fields` with the rest, and the worker starts without them), `args.claude` (Claude's own flags, each `--flag` or `--flag=value`, placed before the
 tower's; `args.opencode` likewise for an opencode session, whose `env` goes to its process, and where the tower passes
-`--model`, `--prompt` and `--session` and sets `OPENCODE_CONFIG_CONTENT`, `TOWER_BRIEF` and `TOWER_NODE`),
+`--auto`, `--model`, `--prompt` and `--session` and sets `OPENCODE_CONFIG_CONTENT`, `TOWER_BRIEF` and `TOWER_NODE`),
 `exempt: ['hiring']` and `reportsTo` (a callsign); `prompt`, `defaults`, `fields`, `exempt` and `reportsTo`
 count on a spawn only. A flag the tower passes (`--name`, `--settings`,
 `--add-dir`, `--plugin-dir`, `--append-system-prompt`, `--model`, `--effort`, `--resume`, `--`) or the config's `argv`

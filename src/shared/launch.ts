@@ -319,6 +319,12 @@ const opencodeEnv = (s: Start, place: ModPlace): Record<string, string> => {
 /** The environment names the tower sets on an opencode session, which no contributor may set. */
 export const OPENCODE_ENV = ['OPENCODE_CONFIG_CONTENT', 'TOWER_BRIEF', 'TOWER_NODE']
 
+/**
+ * Every opencode session starts in auto mode: `--auto` approves every permission not explicitly denied, as the user's
+ * Claude sessions run in theirs, so a worker never waits on a prompt nobody watches.
+ */
+const OPENCODE_AUTO = ['--auto']
+
 /** opencode's prompt is a flag's value, joined to it by `=` so a prompt starting with `-` is never read as a flag. */
 const opencodePromptArgs = (prompt: string | undefined) => (prompt ? [`--prompt=${prompt}`] : [])
 
@@ -329,14 +335,14 @@ const opencodePromptArgs = (prompt: string | undefined) => (prompt ? [`--prompt=
 export const opencodeSpawn = (s: SpawnLaunch, place: ModPlace): HostStart =>
   hostStart(
     s,
-    [...s.contributed.args, ...(s.launch.model ? ['--model', s.launch.model] : []), ...opencodePromptArgs(promptOf(s.launch.prompt, s.contributed.prompt))],
+    [...s.contributed.args, ...OPENCODE_AUTO, ...(s.launch.model ? ['--model', s.launch.model] : []), ...opencodePromptArgs(promptOf(s.launch.prompt, s.contributed.prompt))],
     undefined,
     opencodeEnv(s, place),
   )
 
 /** An opencode conversation continued: `conversation` is opencode's session id, which it files by project. */
 export const opencodeResume = (s: ResumeLaunch, place: ModPlace): HostStart =>
-  hostStart(s, [...s.contributed.args, '--session', s.conversation, ...opencodePromptArgs(s.prompt)], undefined, opencodeEnv(s, place))
+  hostStart(s, [...s.contributed.args, ...OPENCODE_AUTO, '--session', s.conversation, ...opencodePromptArgs(s.prompt)], undefined, opencodeEnv(s, place))
 
 /** A spawn composed by its runtime. `place`: the tower mod, which each runtime loads its own way (Claude's at `hostSpawn`). */
 export const runtimeSpawn = (s: SpawnLaunch, place: ModPlace): HostStart => (s.runtime === 'opencode' ? opencodeSpawn(s, place) : spawnRequest(s))
@@ -394,7 +400,7 @@ export const EVERY_PART: Start = {
  * the flags before a prompt. `--plugin-dir`, which also loads the tower mod (`hostSpawn`), is one of them.
  */
 export const CORE_FLAGS: Record<Runtime, string[]> = {
-  opencode: ['--model', '--prompt', '--session'],
+  opencode: ['--auto', '--model', '--prompt', '--session'],
   claude: [
     ...new Set(
       [

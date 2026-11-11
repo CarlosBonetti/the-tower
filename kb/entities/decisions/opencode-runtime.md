@@ -25,7 +25,8 @@ a mod that posts the runtime's events to the host, and a reading of those events
   ([`runtimeRefused`](ref:hub/src/tower/dispatch.ts#runtimeRefused)). Claude's defaults and the project's preferred
   command are Claude's, so an opencode launch is taken as asked ([`launchWithDefaults`](ref:hub/src/tower/dispatch.ts#launchWithDefaults)).
 - *The command line.* `opencode` (the config's `env` over it, [`runtimeCommands`](ref:hub/src/shared/model.ts#runtimeCommands)),
-  then contributors' `args.opencode`, `--model`, and the prompt as `--prompt=<text>`, so one starting with `-` is no
+  then contributors' `args.opencode`, `--auto` (auto mode: every permission not explicitly denied is approved, so a
+  worker never waits on a prompt nobody watches), `--model`, and the prompt as `--prompt=<text>`, so one starting with `-` is no
   flag ([`opencodeSpawn`](ref:hub/src/shared/launch.ts#opencodeSpawn)); a resume passes `--session <id>`
   ([`opencodeResume`](ref:hub/src/shared/launch.ts#opencodeResume)). [`launchOf`](ref:hub/src/shared/launch.ts#launchOf)
   reads a header back by its runtime.
